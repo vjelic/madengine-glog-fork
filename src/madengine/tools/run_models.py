@@ -906,11 +906,13 @@ class RunModels:
         run_details.gpu_architecture = self.context.ctx["docker_env_vars"]["MAD_SYSTEM_GPU_ARCHITECTURE"]
 
         # Check if model is deprecated
-        if model_info.get("is_deprecated", False):
-            print(f"WARNING: Model {model_info['name']} has been deprecated.")
-            if self.args.skip_deprecated_models:
-                print(f"Skipping deprecated model {model_info['name']}")
-                return True  # Return success to not affect overall status
+        if model_info.get("is_deprecated", False): 
+            print(f"WARNING: Model {model_info['name']} has been deprecated.") 
+            if self.args.force_deprecated:  
+                print(f"WARNING: Running deprecated model {model_info['name']} due to --force-deprecated flag.")  
+            else:  
+                print(f"WARNING: Skipping execution. No bypass flags mentioned.")  
+                return True  # exit early
 
         # check if model is supported on current gpu architecture, if not skip.
         list_skip_gpu_arch = []
