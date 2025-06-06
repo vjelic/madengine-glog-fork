@@ -127,7 +127,7 @@ def main():
     parser_run.add_argument('--tags', nargs='+', default=[], help="tags to run (can be multiple).")
 
     # Deprecated Tag
-    parser_run.add_argument('--ignore_deprecated_flag', action='store_true', help="Force run deprecated models even if marked deprecated.")
+    parser_run.add_argument('--ignore-deprecated-flag', action='store_true', help="Force run deprecated models even if marked deprecated.")
 
     parser_run.add_argument('--timeout', type=int, default=-1, help="time out for model run in seconds; Overrides per-model timeout if specified or default timeout of 7200 (2 hrs).\
                                                Timeout of 0 will never timeout.")

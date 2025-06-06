@@ -909,7 +909,7 @@ class RunModels:
         if model_info.get("is_deprecated", False): 
             print(f"WARNING: Model {model_info['name']} has been deprecated.") 
             if self.args.ignore_deprecated_flag:  
-                print(f"WARNING: Running deprecated model {model_info['name']} due to --force-deprecated flag.")  
+                print(f"WARNING: Running deprecated model {model_info['name']} due to --ignore-deprecated-flag.")  
             else:  
                 print(f"WARNING: Skipping execution. No bypass flags mentioned.")  
                 return True  # exit early
