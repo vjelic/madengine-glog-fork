@@ -144,8 +144,9 @@ class DiscoverModels:
                 # of the tags are extra args to be passed into the model script.
                 if len(tag_list) > 1:
                     extra_args = [tag_ for tag_ in tag_list[1:]]
-                    extra_args = " ".join(extra_args)
-                    extra_args = " " + extra_args
+                    extra_args = [tag_.strip().replace("=", " ") for tag_ in extra_args]
+                    extra_args = " --".join(extra_args)
+                    extra_args = " --" + extra_args
                 else:
                     extra_args = ""
                 
