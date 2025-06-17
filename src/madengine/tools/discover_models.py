@@ -95,8 +95,8 @@ class DiscoverModels:
                             # Update model name using backslash-separated path
                             model_dict["name"] = dirname + '/' + model_dict["name"]
                             # Update relative path for dockerfile and scripts
-                            model_dict["dockerfile"] = os.path.join("scripts", dirname, model_dict["dockerfile"])
-                            model_dict["scripts"] = os.path.join("scripts", dirname, model_dict["scripts"])
+                            model_dict["dockerfile"] = os.path.normpath(os.path.join("scripts", dirname, model_dict["dockerfile"]))
+                            model_dict["scripts"] = os.path.normpath(os.path.join("scripts", dirname, model_dict["scripts"]))
                             self.models.append(model_dict)
                             self.model_list.append(model_dict["name"])
 
@@ -160,8 +160,8 @@ class DiscoverModels:
                         custom_model.update_model()
                         # Update relative path for dockerfile and scripts
                         dirname = custom_model.name.split("/")[0]
-                        custom_model.dockerfile = os.path.join("scripts", dirname, custom_model.dockerfile)
-                        custom_model.scripts = os.path.join("scripts", dirname, custom_model.scripts)
+                        custom_model.dockerfile = os.path.normpath(os.path.join("scripts", dirname, custom_model.dockerfile))
+                        custom_model.scripts = os.path.normpath(os.path.join("scripts", dirname, custom_model.scripts))
                         model_dict = custom_model.to_dict()
                         model_dict["args"] = model_dict["args"] + extra_args
                         tag_models.append(model_dict)
