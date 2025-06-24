@@ -611,14 +611,14 @@ class RunModels:
                 run_details.base_docker = self.context.ctx["docker_build_arg"]["BASE_DOCKER"]
             else:
                 run_details.base_docker = self.console.sh(
-                    "grep 'ARG BASE_DOCKER=' "
+                    "grep '^ARG BASE_DOCKER=' "
                     + dockerfile
                     + " | sed -E 's/ARG BASE_DOCKER=//g'"
                 )
             print(f"BASE DOCKER is {run_details.base_docker}")
 
             # print base docker image digest
-            run_details.docker_sha = self.console.sh("docker inspect --format='{{index .RepoDigests 0}}' " + run_details.base_docker + " | cut -d '@' -f 2")
+            run_details.docker_sha = self.console.sh("docker manifest inspect " + run_details.base_docker + " | grep digest | head -n 1 | cut -d \\\" -f 4")
             print(f"BASE DOCKER SHA is {run_details.docker_sha}")
 
         else:
