@@ -617,9 +617,8 @@ class RunModels:
                 )
             print(f"BASE DOCKER is {run_details.base_docker}")
 
-            self.console.sh("docker images")
-
             # print base docker image digest
+            self.console.sh(f"docker pull {run_details.base_docker}")
             run_details.docker_sha = self.console.sh("docker inspect --format='{{index .RepoDigests 0}}' " + run_details.base_docker + " | cut -d '@' -f 2")
             print(f"BASE DOCKER SHA is {run_details.docker_sha}")
 
