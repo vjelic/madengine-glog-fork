@@ -69,26 +69,29 @@ class TestSSHMultiNodeRunner(unittest.TestCase):
     def test_validation_errors(self):
         """Test configuration validation errors."""
         # Test missing nodes
-        self.mock_args.nodes = ''
+        args_copy = MagicMock()
+        for attr in ['model', 'nodes', 'master_addr', 'master_port', 'ssh_user', 'ssh_password', 'ssh_key']:
+            setattr(args_copy, attr, getattr(self.mock_args, attr))
+        args_copy.nodes = ''
         with self.assertRaises(ValueError):
-            SSHMultiNodeRunner(self.mock_args)
-        
-        # Reset nodes
-        self.mock_args.nodes = '10.0.0.1,10.0.0.2'
+            SSHMultiNodeRunner(args_copy)
         
         # Test missing SSH user
-        self.mock_args.ssh_user = ''
+        args_copy = MagicMock()
+        for attr in ['model', 'nodes', 'master_addr', 'master_port', 'ssh_user', 'ssh_password', 'ssh_key']:
+            setattr(args_copy, attr, getattr(self.mock_args, attr))
+        args_copy.ssh_user = ''
         with self.assertRaises(ValueError):
-            SSHMultiNodeRunner(self.mock_args)
-        
-        # Reset SSH user
-        self.mock_args.ssh_user = 'testuser'
+            SSHMultiNodeRunner(args_copy)
         
         # Test missing authentication
-        self.mock_args.ssh_password = None
-        self.mock_args.ssh_key = None
+        args_copy = MagicMock()
+        for attr in ['model', 'nodes', 'master_addr', 'master_port', 'ssh_user', 'ssh_password', 'ssh_key']:
+            setattr(args_copy, attr, getattr(self.mock_args, attr))
+        delattr(args_copy, 'ssh_password')
+        delattr(args_copy, 'ssh_key')
         with self.assertRaises(ValueError):
-            SSHMultiNodeRunner(self.mock_args)
+            SSHMultiNodeRunner(args_copy)
     
     def test_config_file_loading(self):
         """Test configuration file loading."""
@@ -193,6 +196,77 @@ class MockSSHIntegrationTest(unittest.TestCase):
         self.assertEqual(hostname, '10.0.0.1')
         self.assertTrue(success)
         self.assertIn('Training started...', output)
+    
+    @patch('run.paramiko.SSHClient')
+    def test_prerequisites_validation_success(self, mock_ssh_client_class):
+        """Test successful prerequisites validation."""
+        # Mock SSH client
+        mock_ssh_client = MagicMock()
+        mock_ssh_client_class.return_value = mock_ssh_client
+        
+        # Mock successful prerequisites checks
+        def mock_exec_command(command):
+            mock_stdout = MagicMock()
+            mock_stderr = MagicMock()
+            if 'test -d DeepLearningModels' in command:
+                mock_stdout.read.return_value = b'exists'
+            elif 'which madengine' in command:
+                mock_stdout.read.return_value = b'found'
+            elif 'cd DeepLearningModels' in command:
+                mock_stdout.read.return_value = b'/home/user/DeepLearningModels'
+                mock_stderr.read.return_value = b''
+            return (None, mock_stdout, mock_stderr)
+        
+        mock_ssh_client.exec_command.side_effect = mock_exec_command
+        
+        runner = SSHMultiNodeRunner(self.mock_args)
+        success, error_msg = runner._validate_remote_node_prerequisites('10.0.0.1')
+        
+        self.assertTrue(success)
+        self.assertEqual(error_msg, "")
+    
+    @patch('run.paramiko.SSHClient')
+    def test_prerequisites_validation_missing_deeplearning_models(self, mock_ssh_client_class):
+        """Test prerequisites validation with missing DeepLearningModels folder."""
+        # Mock SSH client
+        mock_ssh_client = MagicMock()
+        mock_ssh_client_class.return_value = mock_ssh_client
+        
+        # Mock missing DeepLearningModels folder
+        mock_stdout = MagicMock()
+        mock_stdout.read.return_value = b'missing'
+        mock_ssh_client.exec_command.return_value = (None, mock_stdout, None)
+        
+        runner = SSHMultiNodeRunner(self.mock_args)
+        success, error_msg = runner._validate_remote_node_prerequisites('10.0.0.1')
+        
+        self.assertFalse(success)
+        self.assertIn('DeepLearningModels folder not found', error_msg)
+    
+    @patch('run.paramiko.SSHClient')
+    def test_prerequisites_validation_missing_madengine(self, mock_ssh_client_class):
+        """Test prerequisites validation with missing madengine."""
+        # Mock SSH client
+        mock_ssh_client = MagicMock()
+        mock_ssh_client_class.return_value = mock_ssh_client
+        
+        # Mock DeepLearningModels exists but madengine missing
+        def mock_exec_command(command):
+            mock_stdout = MagicMock()
+            mock_stderr = MagicMock()
+            if 'test -d DeepLearningModels' in command:
+                mock_stdout.read.return_value = b'exists'
+            elif 'which madengine' in command or 'madengine --help' in command:
+                mock_stdout.read.return_value = b'missing'
+            return (None, mock_stdout, mock_stderr)
+        
+        mock_ssh_client.exec_command.side_effect = mock_exec_command
+        
+        runner = SSHMultiNodeRunner(self.mock_args)
+        success, error_msg = runner._validate_remote_node_prerequisites('10.0.0.1')
+        
+        self.assertFalse(success)
+        self.assertIn('madengine not found', error_msg)
 
 
 def run_tests():

@@ -39,8 +39,6 @@ except ImportError:
 # Add madengine to path if needed
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'src'))
 
-from madengine.utils.ssh_to_db import print_ssh_out
-
 
 class SSHMultiNodeRunner:
     """SSH-based multi-node runner for distributed training."""
@@ -52,7 +50,7 @@ class SSHMultiNodeRunner:
             args: Command line arguments containing configuration
         """
         self.args = args
-        self.nodes = [node.strip() for node in args.nodes.split(',')]
+        self.nodes = [node.strip() for node in args.nodes.split(',') if node.strip()]
         self.master_addr = args.master_addr or self.nodes[0]
         self.master_port = str(args.master_port)
         self.ssh_user = args.ssh_user
@@ -71,7 +69,7 @@ class SSHMultiNodeRunner:
         
     def _validate_config(self) -> None:
         """Validate the configuration parameters."""
-        if not self.nodes:
+        if not self.nodes or not any(node.strip() for node in self.nodes):
             raise ValueError("At least one node must be specified")
             
         if not self.ssh_user:
