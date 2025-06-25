@@ -2,101 +2,117 @@
 # -*- coding: utf-8 -*-
 """Test script for SSH Multi-Node Runner
 
-This script provides basic unit tests and validation for the SSH runner.
+This script provides comprehensive unit tests and validation for the SSH runner.
 """
 
 import os
 import sys
 import tempfile
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, call
+from pathlib import Path
 
 # Add the current directory to the Python path
 sys.path.insert(0, os.path.dirname(__file__))
 
 try:
-    from run import SSHMultiNodeRunner, load_config_file, merge_config_and_args, parse_args
-except ImportError:
-    print("Error: Could not import run module. Make sure run.py is in the same directory.")
+    from config_manager import MultiNodeConfig, SSHConfig, ClusterConfig, TrainingConfig
+    from ssh_client_manager import SSHClientManager
+    from run import SSHMultiNodeRunner
+except ImportError as e:
+    print(f"Error: Could not import modules: {e}")
+    print("Make sure all modules are in the same directory.")
     sys.exit(1)
 
 
-class TestSSHMultiNodeRunner(unittest.TestCase):
-    """Test cases for SSH Multi-Node Runner."""
+class TestConfigManager(unittest.TestCase):
+    """Test cases for configuration management."""
     
-    def setUp(self):
-        """Set up test fixtures."""
-        self.mock_args = MagicMock()
-        self.mock_args.model = 'pyt_megatron_lm_train_llama2_7b'
-        self.mock_args.nodes = '10.0.0.1,10.0.0.2'
-        self.mock_args.master_addr = '10.0.0.1'
-        self.mock_args.master_port = 4000
-        self.mock_args.ssh_user = 'testuser'
-        self.mock_args.ssh_password = 'testpass'
-        self.mock_args.ssh_key = None
-        self.mock_args.shared_data_path = '/nfs/data'
-        self.mock_args.nccl_interface = 'eth0'
-        self.mock_args.gloo_interface = 'eth0'
-        self.mock_args.timeout = 3600
-        self.mock_args.madengine_path = 'madengine'
-        self.mock_args.additional_args = ''
-    
-    def test_initialization(self):
-        """Test runner initialization."""
-        runner = SSHMultiNodeRunner(self.mock_args)
+    def test_ssh_config_validation(self):
+        """Test SSH configuration validation."""
+        # Valid configuration with password
+        config = SSHConfig(user="testuser", password="testpass")
+        self.assertEqual(config.user, "testuser")
+        self.assertEqual(config.password, "testpass")
         
-        self.assertEqual(runner.nodes, ['10.0.0.1', '10.0.0.2'])
-        self.assertEqual(runner.master_addr, '10.0.0.1')
-        self.assertEqual(runner.master_port, '4000')
-        self.assertEqual(runner.ssh_user, 'testuser')
-        self.assertEqual(runner.model_tag, 'pyt_megatron_lm_train_llama2_7b')
-    
-    def test_command_generation(self):
-        """Test madengine command generation."""
-        runner = SSHMultiNodeRunner(self.mock_args)
+        # Valid configuration with key file (mock file existence)
+        with patch('os.path.exists', return_value=True):
+            config = SSHConfig(user="testuser", key_file="/path/to/key")
+            self.assertEqual(config.key_file, "/path/to/key")
         
-        # Test command for node rank 0
-        cmd_0 = runner._build_madengine_command(0)
-        self.assertIn('madengine run', cmd_0)
-        self.assertIn('pyt_megatron_lm_train_llama2_7b', cmd_0)
-        self.assertIn('"NODE_RANK": "0"', cmd_0)
-        self.assertIn('"NNODES": "2"', cmd_0)
-        self.assertIn('--force-mirror-local /nfs/data', cmd_0)
-        
-        # Test command for node rank 1
-        cmd_1 = runner._build_madengine_command(1)
-        self.assertIn('"NODE_RANK": "1"', cmd_1)
-    
-    def test_validation_errors(self):
-        """Test configuration validation errors."""
-        # Test missing nodes
-        args_copy = MagicMock()
-        for attr in ['model', 'nodes', 'master_addr', 'master_port', 'ssh_user', 'ssh_password', 'ssh_key']:
-            setattr(args_copy, attr, getattr(self.mock_args, attr))
-        args_copy.nodes = ''
+        # Invalid configuration - no auth method
         with self.assertRaises(ValueError):
-            SSHMultiNodeRunner(args_copy)
+            SSHConfig(user="testuser")
         
-        # Test missing SSH user
-        args_copy = MagicMock()
-        for attr in ['model', 'nodes', 'master_addr', 'master_port', 'ssh_user', 'ssh_password', 'ssh_key']:
-            setattr(args_copy, attr, getattr(self.mock_args, attr))
-        args_copy.ssh_user = ''
-        with self.assertRaises(ValueError):
-            SSHMultiNodeRunner(args_copy)
-        
-        # Test missing authentication
-        args_copy = MagicMock()
-        for attr in ['model', 'nodes', 'master_addr', 'master_port', 'ssh_user', 'ssh_password', 'ssh_key']:
-            setattr(args_copy, attr, getattr(self.mock_args, attr))
-        delattr(args_copy, 'ssh_password')
-        delattr(args_copy, 'ssh_key')
-        with self.assertRaises(ValueError):
-            SSHMultiNodeRunner(args_copy)
+        # Invalid configuration - non-existent key file
+        with patch('os.path.exists', return_value=False):
+            with self.assertRaises(FileNotFoundError):
+                SSHConfig(user="testuser", key_file="/nonexistent/key")
     
-    def test_config_file_loading(self):
-        """Test configuration file loading."""
-        # Create a temporary config file
+    def test_cluster_config_validation(self):
+        """Test cluster configuration validation."""
+        # Valid configuration
+        config = ClusterConfig(nodes=["node1", "node2"])
+        self.assertEqual(config.nodes, ["node1", "node2"])
+        self.assertEqual(config.master_addr, "node1")  # Should default to first node
+        
+        # Valid configuration with master_addr specified
+        config = ClusterConfig(nodes=["node1", "node2"], master_addr="node1")
+        self.assertEqual(config.master_addr, "node1")
+        
+        # Invalid configuration - empty nodes
+        with self.assertRaises(ValueError):
+            ClusterConfig(nodes=[])
+        
+        # Invalid configuration - whitespace-only nodes
+        with self.assertRaises(ValueError):
+            ClusterConfig(nodes=["", "  ", "\t"])
+    
+    def test_training_config_validation(self):
+        """Test training configuration validation."""
+        # Valid configuration
+        config = TrainingConfig(model="test_model")
+        self.assertEqual(config.model, "test_model")
+        self.assertEqual(config.shared_data_path, "/nfs/data")  # Default
+        
+        # Invalid configuration - empty model
+        with self.assertRaises(ValueError):
+            TrainingConfig(model="")
+    
+    def test_config_from_args(self):
+        """Test configuration creation from arguments."""
+        mock_args = MagicMock()
+        mock_args.model = 'test_model'
+        mock_args.nodes = 'node1,node2,node3'
+        mock_args.ssh_user = 'testuser'
+        mock_args.ssh_password = 'testpass'
+        mock_args.ssh_key = None
+        
+        # Set default values for optional attributes
+        for attr, default in [
+            ('master_addr', None),
+            ('master_port', 4000),
+            ('shared_data_path', '/nfs/data'),
+            ('nccl_interface', 'ens14np0'),
+            ('gloo_interface', 'ens14np0'),
+            ('timeout', 3600),
+            ('additional_args', ''),
+            ('madengine_path', 'madengine'),
+            ('working_directory', 'DeepLearningModels'),
+            ('ssh_timeout', 30),
+            ('ssh_max_retries', 3)
+        ]:
+            setattr(mock_args, attr, getattr(mock_args, attr, default))
+        
+        config = MultiNodeConfig.from_args(mock_args)
+        
+        self.assertEqual(config.training.model, 'test_model')
+        self.assertEqual(config.cluster.nodes, ['node1', 'node2', 'node3'])
+        self.assertEqual(config.ssh.user, 'testuser')
+        self.assertEqual(config.ssh.password, 'testpass')
+    
+    def test_config_from_file(self):
+        """Test configuration loading from file."""
         config_content = """
 [cluster]
 nodes = node1,node2,node3
@@ -105,7 +121,7 @@ master_port = 5000
 
 [ssh]
 user = testuser
-key_file = /path/to/key
+password = testpass
 
 [training]
 model = test_model
@@ -117,157 +133,217 @@ shared_data_path = /shared/data
             temp_config_path = f.name
         
         try:
-            config_dict = load_config_file(temp_config_path)
+            config = MultiNodeConfig.from_config_file(temp_config_path)
             
-            self.assertEqual(config_dict['cluster_nodes'], 'node1,node2,node3')
-            self.assertEqual(config_dict['cluster_master_addr'], 'node1')
-            self.assertEqual(config_dict['cluster_master_port'], '5000')
-            self.assertEqual(config_dict['ssh_user'], 'testuser')
-            self.assertEqual(config_dict['ssh_key_file'], '/path/to/key')
-            self.assertEqual(config_dict['training_model'], 'test_model')
+            self.assertEqual(config.cluster.nodes, ['node1', 'node2', 'node3'])
+            self.assertEqual(config.cluster.master_addr, 'node1')
+            self.assertEqual(config.cluster.master_port, 5000)
+            self.assertEqual(config.ssh.user, 'testuser')
+            self.assertEqual(config.ssh.password, 'testpass')
+            self.assertEqual(config.training.model, 'test_model')
+            self.assertEqual(config.training.shared_data_path, '/shared/data')
             
         finally:
             os.unlink(temp_config_path)
+
+
+class TestSSHClientManager(unittest.TestCase):
+    """Test cases for SSH client management."""
     
-    def test_config_file_not_found(self):
-        """Test error handling for missing config file."""
-        with self.assertRaises(FileNotFoundError):
-            load_config_file('/nonexistent/config.ini')
+    @patch('paramiko.SSHClient')
+    def test_connectivity_test_success(self, mock_ssh_client_class):
+        """Test successful connectivity test."""
+        # Mock SSH client
+        mock_client = MagicMock()
+        mock_ssh_client_class.return_value = mock_client
+        
+        # Mock successful execution
+        mock_client.exec_command.return_value = (None, MagicMock(), MagicMock())
+        mock_client.exec_command.return_value[1].channel.recv_exit_status.return_value = 0
+        mock_client.exec_command.return_value[1].read.return_value = b'connectivity_test'
+        mock_client.exec_command.return_value[2].read.return_value = b''
+        
+        ssh_manager = SSHClientManager(
+            hostname="testhost",
+            username="testuser",
+            password="testpass"
+        )
+        
+        result = ssh_manager.test_connectivity()
+        self.assertTrue(result)
+    
+    @patch('paramiko.SSHClient')
+    def test_connectivity_test_failure(self, mock_ssh_client_class):
+        """Test failed connectivity test."""
+        # Mock SSH client that raises exception
+        mock_client = MagicMock()
+        mock_ssh_client_class.return_value = mock_client
+        mock_client.connect.side_effect = Exception("Connection failed")
+        
+        ssh_manager = SSHClientManager(
+            hostname="testhost",
+            username="testuser",
+            password="testpass"
+        )
+        
+        result = ssh_manager.test_connectivity()
+        self.assertFalse(result)
+    
+    def test_invalid_authentication(self):
+        """Test invalid authentication configuration."""
+        with self.assertRaises(ValueError):
+            SSHClientManager(
+                hostname="testhost",
+                username="testuser"
+                # No password or key_filename
+            )
 
 
-class MockSSHIntegrationTest(unittest.TestCase):
-    """Integration tests with mocked SSH connections."""
+class TestSSHMultiNodeRunner(unittest.TestCase):
+    """Test cases for SSH Multi-Node Runner."""
     
     def setUp(self):
         """Set up test fixtures."""
-        self.mock_args = MagicMock()
-        self.mock_args.model = 'pyt_megatron_lm_train_llama2_7b'
-        self.mock_args.nodes = '10.0.0.1,10.0.0.2'
-        self.mock_args.master_addr = '10.0.0.1'
-        self.mock_args.master_port = 4000
-        self.mock_args.ssh_user = 'testuser'
-        self.mock_args.ssh_password = 'testpass'
-        self.mock_args.ssh_key = None
-        self.mock_args.shared_data_path = '/nfs/data'
-        self.mock_args.nccl_interface = 'eth0'
-        self.mock_args.gloo_interface = 'eth0'
-        self.mock_args.timeout = 3600
-        self.mock_args.madengine_path = 'madengine'
-        self.mock_args.additional_args = ''
+        self.config = MultiNodeConfig(
+            ssh=SSHConfig(user="testuser", password="testpass"),
+            cluster=ClusterConfig(nodes=["node1", "node2"]),
+            training=TrainingConfig(model="test_model")
+        )
     
-    @patch('run.paramiko.SSHClient')
-    def test_connectivity_check(self, mock_ssh_client_class):
-        """Test node connectivity checking."""
-        # Mock SSH client
-        mock_ssh_client = MagicMock()
-        mock_ssh_client_class.return_value = mock_ssh_client
+    def test_initialization(self):
+        """Test runner initialization."""
+        runner = SSHMultiNodeRunner(self.config)
         
-        # Mock successful connection and command execution
-        mock_stdout = MagicMock()
-        mock_stdout.read.return_value = b'connectivity_test'
-        mock_ssh_client.exec_command.return_value = (None, mock_stdout, None)
+        self.assertEqual(len(runner.ssh_managers), 2)
+        self.assertIn("node1", runner.ssh_managers)
+        self.assertIn("node2", runner.ssh_managers)
+    
+    def test_command_generation(self):
+        """Test madengine command generation."""
+        runner = SSHMultiNodeRunner(self.config)
         
-        runner = SSHMultiNodeRunner(self.mock_args)
+        # Test command for node rank 0
+        cmd_0 = runner._build_madengine_command(0)
+        self.assertIn('madengine run', cmd_0)
+        self.assertIn('test_model', cmd_0)
+        self.assertIn('"NODE_RANK": "0"', cmd_0)
+        self.assertIn('"NNODES": "2"', cmd_0)
+        
+        # Test command for node rank 1
+        cmd_1 = runner._build_madengine_command(1)
+        self.assertIn('"NODE_RANK": "1"', cmd_1)
+    
+    @patch.object(SSHClientManager, 'test_connectivity')
+    def test_connectivity_check_success(self, mock_connectivity):
+        """Test successful connectivity checking."""
+        mock_connectivity.return_value = True
+        
+        runner = SSHMultiNodeRunner(self.config)
         reachable_nodes = runner._check_node_connectivity()
         
         self.assertEqual(len(reachable_nodes), 2)
-        self.assertIn('10.0.0.1', reachable_nodes)
-        self.assertIn('10.0.0.2', reachable_nodes)
+        self.assertIn("node1", reachable_nodes)
+        self.assertIn("node2", reachable_nodes)
     
-    @patch('run.paramiko.SSHClient')
-    def test_command_execution(self, mock_ssh_client_class):
-        """Test command execution on nodes."""
-        # Mock SSH client
-        mock_ssh_client = MagicMock()
-        mock_ssh_client_class.return_value = mock_ssh_client
+    @patch.object(SSHClientManager, 'test_connectivity')
+    def test_connectivity_check_partial_failure(self, mock_connectivity):
+        """Test connectivity checking with partial failures."""
+        # Mock node1 success, node2 failure
+        mock_connectivity.side_effect = [True, False]
         
-        # Mock successful command execution
-        mock_stdout = MagicMock()
-        mock_stdout.__iter__ = lambda self: iter(['Training started...', 'Training completed!'])
-        mock_stdout.channel.recv_exit_status.return_value = 0
+        runner = SSHMultiNodeRunner(self.config)
+        reachable_nodes = runner._check_node_connectivity()
         
-        mock_stderr = MagicMock()
-        mock_stderr.__iter__ = lambda self: iter([])
-        
-        mock_ssh_client.exec_command.return_value = (None, mock_stdout, mock_stderr)
-        
-        runner = SSHMultiNodeRunner(self.mock_args)
-        hostname, success, output = runner._execute_on_node('10.0.0.1', 0)
-        
-        self.assertEqual(hostname, '10.0.0.1')
-        self.assertTrue(success)
-        self.assertIn('Training started...', output)
+        self.assertEqual(len(reachable_nodes), 1)
+        self.assertIn("node1", reachable_nodes)
+        self.assertNotIn("node2", reachable_nodes)
     
-    @patch('run.paramiko.SSHClient')
-    def test_prerequisites_validation_success(self, mock_ssh_client_class):
+    @patch.object(SSHClientManager, 'execute_command')
+    def test_prerequisites_validation_success(self, mock_execute):
         """Test successful prerequisites validation."""
-        # Mock SSH client
-        mock_ssh_client = MagicMock()
-        mock_ssh_client_class.return_value = mock_ssh_client
+        # Mock successful responses for all checks
+        mock_execute.side_effect = [
+            (0, "exists", ""),      # Working directory exists
+            (0, "found", ""),       # madengine found
+            (0, "/home/user/DeepLearningModels", "")  # Directory accessible
+        ]
         
-        # Mock successful prerequisites checks
-        def mock_exec_command(command):
-            mock_stdout = MagicMock()
-            mock_stderr = MagicMock()
-            if 'test -d DeepLearningModels' in command:
-                mock_stdout.read.return_value = b'exists'
-            elif 'which madengine' in command:
-                mock_stdout.read.return_value = b'found'
-            elif 'cd DeepLearningModels' in command:
-                mock_stdout.read.return_value = b'/home/user/DeepLearningModels'
-                mock_stderr.read.return_value = b''
-            return (None, mock_stdout, mock_stderr)
-        
-        mock_ssh_client.exec_command.side_effect = mock_exec_command
-        
-        runner = SSHMultiNodeRunner(self.mock_args)
-        success, error_msg = runner._validate_remote_node_prerequisites('10.0.0.1')
+        runner = SSHMultiNodeRunner(self.config)
+        success, error_msg = runner._validate_remote_prerequisites("node1")
         
         self.assertTrue(success)
         self.assertEqual(error_msg, "")
     
-    @patch('run.paramiko.SSHClient')
-    def test_prerequisites_validation_missing_deeplearning_models(self, mock_ssh_client_class):
-        """Test prerequisites validation with missing DeepLearningModels folder."""
-        # Mock SSH client
-        mock_ssh_client = MagicMock()
-        mock_ssh_client_class.return_value = mock_ssh_client
+    @patch.object(SSHClientManager, 'execute_command')
+    def test_prerequisites_validation_missing_directory(self, mock_execute):
+        """Test prerequisites validation with missing directory."""
+        mock_execute.return_value = (0, "missing", "")
         
-        # Mock missing DeepLearningModels folder
-        mock_stdout = MagicMock()
-        mock_stdout.read.return_value = b'missing'
-        mock_ssh_client.exec_command.return_value = (None, mock_stdout, None)
-        
-        runner = SSHMultiNodeRunner(self.mock_args)
-        success, error_msg = runner._validate_remote_node_prerequisites('10.0.0.1')
+        runner = SSHMultiNodeRunner(self.config)
+        success, error_msg = runner._validate_remote_prerequisites("node1")
         
         self.assertFalse(success)
-        self.assertIn('DeepLearningModels folder not found', error_msg)
+        self.assertIn("DeepLearningModels folder not found", error_msg)
+
+
+class TestIntegration(unittest.TestCase):
+    """Integration tests with mocked components."""
     
-    @patch('run.paramiko.SSHClient')
-    def test_prerequisites_validation_missing_madengine(self, mock_ssh_client_class):
-        """Test prerequisites validation with missing madengine."""
-        # Mock SSH client
-        mock_ssh_client = MagicMock()
-        mock_ssh_client_class.return_value = mock_ssh_client
+    def setUp(self):
+        """Set up test fixtures."""
+        self.config = MultiNodeConfig(
+            ssh=SSHConfig(user="testuser", password="testpass"),
+            cluster=ClusterConfig(nodes=["node1", "node2"]),
+            training=TrainingConfig(model="test_model")
+        )
+    
+    @patch.object(SSHMultiNodeRunner, '_execute_on_node')
+    @patch.object(SSHMultiNodeRunner, '_check_all_prerequisites')
+    @patch.object(SSHMultiNodeRunner, '_check_node_connectivity')
+    def test_successful_run(self, mock_connectivity, mock_prerequisites, mock_execute):
+        """Test successful end-to-end run."""
+        # Mock all checks and execution as successful
+        mock_connectivity.return_value = ["node1", "node2"]
+        mock_prerequisites.return_value = True
+        mock_execute.side_effect = [
+            ("node1", True, "Training completed"),
+            ("node2", True, "Training completed")
+        ]
         
-        # Mock DeepLearningModels exists but madengine missing
-        def mock_exec_command(command):
-            mock_stdout = MagicMock()
-            mock_stderr = MagicMock()
-            if 'test -d DeepLearningModels' in command:
-                mock_stdout.read.return_value = b'exists'
-            elif 'which madengine' in command or 'madengine --help' in command:
-                mock_stdout.read.return_value = b'missing'
-            return (None, mock_stdout, mock_stderr)
+        runner = SSHMultiNodeRunner(self.config)
+        result = runner.run()
         
-        mock_ssh_client.exec_command.side_effect = mock_exec_command
+        self.assertTrue(result)
+        self.assertEqual(mock_execute.call_count, 2)
+    
+    @patch.object(SSHMultiNodeRunner, '_execute_on_node')
+    @patch.object(SSHMultiNodeRunner, '_check_all_prerequisites')
+    @patch.object(SSHMultiNodeRunner, '_check_node_connectivity')
+    def test_failed_connectivity(self, mock_connectivity, mock_prerequisites, mock_execute):
+        """Test run with connectivity failure."""
+        # Mock partial connectivity failure
+        mock_connectivity.return_value = ["node1"]  # node2 unreachable
         
-        runner = SSHMultiNodeRunner(self.mock_args)
-        success, error_msg = runner._validate_remote_node_prerequisites('10.0.0.1')
+        runner = SSHMultiNodeRunner(self.config)
+        result = runner.run()
         
-        self.assertFalse(success)
-        self.assertIn('madengine not found', error_msg)
+        self.assertFalse(result)
+        mock_prerequisites.assert_not_called()
+        mock_execute.assert_not_called()
+    
+    @patch.object(SSHMultiNodeRunner, '_execute_on_node')
+    @patch.object(SSHMultiNodeRunner, '_check_all_prerequisites')
+    @patch.object(SSHMultiNodeRunner, '_check_node_connectivity')
+    def test_failed_prerequisites(self, mock_connectivity, mock_prerequisites, mock_execute):
+        """Test run with prerequisites failure."""
+        mock_connectivity.return_value = ["node1", "node2"]
+        mock_prerequisites.return_value = False
+        
+        runner = SSHMultiNodeRunner(self.config)
+        result = runner.run()
+        
+        self.assertFalse(result)
+        mock_execute.assert_not_called()
 
 
 def run_tests():
@@ -279,8 +355,10 @@ def run_tests():
     suite = unittest.TestSuite()
     
     # Add test cases
+    suite.addTests(loader.loadTestsFromTestCase(TestConfigManager))
+    suite.addTests(loader.loadTestsFromTestCase(TestSSHClientManager))
     suite.addTests(loader.loadTestsFromTestCase(TestSSHMultiNodeRunner))
-    suite.addTests(loader.loadTestsFromTestCase(MockSSHIntegrationTest))
+    suite.addTests(loader.loadTestsFromTestCase(TestIntegration))
     
     # Run tests
     runner = unittest.TextTestRunner(verbosity=2)
@@ -303,24 +381,21 @@ def validate_environment():
     except ImportError:
         issues.append("❌ paramiko is not installed. Run: pip install paramiko")
     
-    # Check if run.py exists
-    run_py_path = os.path.join(os.path.dirname(__file__), 'run.py')
-    if os.path.exists(run_py_path):
-        print("✅ run.py found")
-    else:
-        issues.append("❌ run.py not found in current directory")
+    # Check if required files exist
+    required_files = ['run.py', 'config_manager.py', 'ssh_client_manager.py', 'requirements.txt']
+    current_dir = os.path.dirname(__file__)
     
-    # Check if requirements.txt exists
-    req_path = os.path.join(os.path.dirname(__file__), 'requirements.txt')
-    if os.path.exists(req_path):
-        print("✅ requirements.txt found")
-    else:
-        issues.append("❌ requirements.txt not found")
+    for filename in required_files:
+        file_path = os.path.join(current_dir, filename)
+        if os.path.exists(file_path):
+            print(f"✅ {filename} found")
+        else:
+            issues.append(f"❌ {filename} not found in current directory")
     
     if issues:
         print("\n🚨 Issues found:")
         for issue in issues:
-            print("  {}".format(issue))
+            print(f"  {issue}")
         return False
     else:
         print("\n✅ Environment validation passed!")
