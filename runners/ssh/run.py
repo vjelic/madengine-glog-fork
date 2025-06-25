@@ -193,11 +193,14 @@ class SSHMultiNodeRunner:
             
             # Build and execute the madengine command
             command = self._build_madengine_command(node_rank)
-            print(f"🚀 Executing on {hostname} (rank {node_rank}): {command}")
+            
+            # Change to DeepLearningModels directory and execute the command
+            full_command = f"cd DeepLearningModels && {command}"
+            print(f"🚀 Executing on {hostname} (rank {node_rank}): {full_command}")
             
             # Execute the command
             stdin, stdout, stderr = ssh_client.exec_command(
-                command, 
+                full_command, 
                 timeout=self.timeout
             )
             
@@ -227,7 +230,8 @@ class SSHMultiNodeRunner:
             if exit_code == 0:
                 return hostname, True, '\n'.join(output_lines)
             else:
-                return hostname, False, '\n'.join(error_lines)
+                error_output = '\n'.join(error_lines) if error_lines else "Command failed with no error output"
+                return hostname, False, f"Exit code {exit_code}: {error_output}"
                 
         except Exception as e:
             return hostname, False, str(e)
@@ -296,6 +300,141 @@ class SSHMultiNodeRunner:
         print(f"✗ Master node did not become ready within {max_wait_time} seconds")
         return False
     
+    def _validate_remote_node_prerequisites(self, hostname: str) -> Tuple[bool, str]:
+        """Validate that remote node has required prerequisites.
+        
+        Args:
+            hostname: The hostname/IP of the node to validate
+            
+        Returns:
+            Tuple of (success, error_message)
+        """
+        try:
+            ssh_client = self._connect_ssh(hostname)
+            
+            # Check if DeepLearningModels folder exists
+            print(f"🔍 Checking DeepLearningModels folder on {hostname}...")
+            stdin, stdout, stderr = ssh_client.exec_command('test -d DeepLearningModels && echo "exists" || echo "missing"')
+            dl_models_result = stdout.read().decode().strip()
+            
+            if dl_models_result != "exists":
+                ssh_client.close()
+                return False, f"DeepLearningModels folder not found on {hostname}. Please set up the remote node with DeepLearningModels directory."
+            
+            print(f"✓ DeepLearningModels folder found on {hostname}")
+            
+            # Check if madengine is installed and accessible
+            print(f"🔍 Checking madengine installation on {hostname}...")
+            stdin, stdout, stderr = ssh_client.exec_command(f'which {self.madengine_path} > /dev/null 2>&1 && echo "found" || echo "missing"')
+            madengine_result = stdout.read().decode().strip()
+            
+            if madengine_result != "found":
+                # Try alternative check - see if madengine can be executed
+                stdin, stdout, stderr = ssh_client.exec_command(f'{self.madengine_path} --help > /dev/null 2>&1 && echo "found" || echo "missing"')
+                madengine_alt_result = stdout.read().decode().strip()
+                
+                if madengine_alt_result != "found":
+                    ssh_client.close()
+                    return False, f"madengine not found or not accessible on {hostname}. Please install madengine on the remote node or ensure it's in the PATH."
+            
+            print(f"✓ madengine installation found on {hostname}")
+            
+            # Check if we can access the DeepLearningModels directory
+            print(f"🔍 Checking access to DeepLearningModels directory on {hostname}...")
+            stdin, stdout, stderr = ssh_client.exec_command('cd DeepLearningModels && pwd')
+            cd_result = stdout.read().decode().strip()
+            cd_error = stderr.read().decode().strip()
+            
+            if cd_error or not cd_result.endswith('DeepLearningModels'):
+                ssh_client.close()
+                return False, f"Cannot access DeepLearningModels directory on {hostname}. Error: {cd_error or 'Unknown error'}"
+            
+            print(f"✓ DeepLearningModels directory is accessible on {hostname}")
+            
+            # Check if shared data path exists (if specified and not the default)
+            if self.shared_data_path and self.shared_data_path != '/nfs/data':
+                print(f"🔍 Checking shared data path on {hostname}...")
+                stdin, stdout, stderr = ssh_client.exec_command(f'test -d "{self.shared_data_path}" && echo "exists" || echo "missing"')
+                shared_data_result = stdout.read().decode().strip()
+                
+                if shared_data_result != "exists":
+                    ssh_client.close()
+                    return False, f"Shared data path '{self.shared_data_path}' not found on {hostname}. Please ensure the shared filesystem is mounted."
+                
+                print(f"✓ Shared data path '{self.shared_data_path}' found on {hostname}")
+            
+            print(f"✓ All checks passed for {hostname}")
+            
+            ssh_client.close()
+            return True, ""
+            
+        except Exception as e:
+            return False, f"Error validating prerequisites on {hostname}: {str(e)}"
+
+    def _check_all_prerequisites(self) -> bool:
+        """Check prerequisites on all nodes.
+        
+        Returns:
+            True if all nodes meet prerequisites, False otherwise
+        """
+        print("🔧 Validating prerequisites on all nodes...")
+        
+        failed_nodes = []
+        
+        for hostname in self.nodes:
+            success, error_msg = self._validate_remote_node_prerequisites(hostname)
+            if not success:
+                print(f"❌ {hostname}: {error_msg}")
+                failed_nodes.append((hostname, error_msg))
+            else:
+                print(f"✅ {hostname}: All prerequisites met")
+        
+        if failed_nodes:
+            print(f"\n💥 Prerequisites check failed for {len(failed_nodes)} node(s):")
+            for hostname, error_msg in failed_nodes:
+                print(f"   • {hostname}: {error_msg}")
+            
+            self._print_setup_instructions()
+            return False
+        
+        print("✅ All nodes meet the prerequisites")
+        return True
+    
+    def _print_setup_instructions(self) -> None:
+        """Print setup instructions for remote nodes."""
+        print("\n" + "="*60)
+        print("🔧 REMOTE NODE SETUP INSTRUCTIONS")
+        print("="*60)
+        print("\nTo prepare your remote nodes for multi-node training:")
+        print("\n1. DeepLearningModels Directory:")
+        print("   • Create or ensure the DeepLearningModels directory exists in the user's home directory")
+        print("   • Command: mkdir -p ~/DeepLearningModels")
+        print("   • This directory should contain your model configurations and training scripts")
+        
+        print("\n2. MAD Engine Installation:")
+        print("   • Install madengine on each remote node")
+        print("   • Command: pip install madengine")
+        print("   • Or ensure madengine is in the PATH and executable")
+        print("   • Verify with: madengine --help")
+        
+        if self.shared_data_path and self.shared_data_path != '/nfs/data':
+            print(f"\n3. Shared Data Path:")
+            print(f"   • Ensure the shared data path '{self.shared_data_path}' exists and is accessible")
+            print(f"   • This should be a shared filesystem (NFS, GPFS, etc.) mounted on all nodes")
+            print(f"   • All nodes should have read/write access to this path")
+        
+        print("\n4. SSH Access:")
+        print("   • Ensure SSH key-based or password authentication is configured")
+        print("   • Test SSH access manually before running this script")
+        
+        print("\n5. Network Configuration:")
+        print(f"   • Ensure nodes can communicate on the specified interfaces:")
+        print(f"   • NCCL interface: {self.nccl_interface}")
+        print(f"   • GLOO interface: {self.gloo_interface}")
+        print(f"   • Master node {self.master_addr} should be accessible on port {self.master_port}")
+        
+        print("\n" + "="*60)
+    
     def run(self) -> bool:
         """Run distributed training across all nodes.
         
@@ -317,6 +456,11 @@ class SSHMultiNodeRunner:
             return False
         
         print("✅ All nodes are reachable")
+        
+        # Validate prerequisites on all nodes
+        if not self._check_all_prerequisites():
+            return False
+            return False
         
         # Execute on all nodes concurrently
         results = []
