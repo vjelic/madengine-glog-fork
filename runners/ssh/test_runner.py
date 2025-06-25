@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """Test script for SSH Multi-Node Runner
 
 This script provides basic unit tests and validation for the SSH runner.
@@ -319,7 +320,7 @@ def validate_environment():
     if issues:
         print("\n🚨 Issues found:")
         for issue in issues:
-            print(f"  {issue}")
+            print("  {}".format(issue))
         return False
     else:
         print("\n✅ Environment validation passed!")
