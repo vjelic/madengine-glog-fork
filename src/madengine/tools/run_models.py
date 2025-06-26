@@ -909,6 +909,10 @@ class RunModels:
         # Environment variable updates for MAD Public CI
         run_details.gpu_architecture = self.context.ctx["docker_env_vars"]["MAD_SYSTEM_GPU_ARCHITECTURE"]
 
+        # Set shared memory size for the container
+        if "--shm-size" not in run_details.additional_docker_run_options:
+            run_details.additional_docker_run_options += " --shm-size=500g"
+
         # Check if model is deprecated
         if model_info.get("is_deprecated", False):
             print(f"WARNING: Model {model_info['name']} has been deprecated.")
