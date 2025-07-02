@@ -188,7 +188,8 @@ The generated command for each node follows this pattern:
 ```bash
 madengine run --tags pyt_megatron_lm_train_llama2_7b \
               --additional-context "{'multi_node_args': {
-                  'RUNNER': 'torchrun',                  'MASTER_ADDR': '192.168.0.1',
+                  'RUNNER': 'torchrun',                  
+                  'MASTER_ADDR': '192.168.0.1',
                   'MASTER_PORT': '4000',
                   'NNODES': '2',
                   'NODE_RANK': '0',  # Different for each node
