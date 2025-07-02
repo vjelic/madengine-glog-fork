@@ -915,11 +915,6 @@ class RunModels:
             if shm_size:
                 run_details.additional_docker_run_options += f" --shm-size={shm_size}"
                 print(f"Using SHM_SIZE from context: {shm_size}")
-        else:
-            # Check the machine_name is k8s node, if so set shm size to 500g
-            if "aks" in run_details.machine_name.lower():
-                run_details.additional_docker_run_options += " --shm-size=500g"
-                print("Using default SHM_SIZE of 500g for K8s node.")
 
         # Check if model is deprecated
         if model_info.get("is_deprecated", False):
