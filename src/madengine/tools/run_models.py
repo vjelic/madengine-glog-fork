@@ -909,7 +909,7 @@ class RunModels:
         # Environment variable updates for MAD Public CI
         run_details.gpu_architecture = self.context.ctx["docker_env_vars"]["MAD_SYSTEM_GPU_ARCHITECTURE"]
 
-        # Check self.context.ctx["docker_env_vars"]["SHM_SIZE"] for shared memory size
+        # Check the setting of shared memory size
         if "SHM_SIZE" in self.context.ctx["docker_env_vars"]:
             shm_size = self.context.ctx["docker_env_vars"]["SHM_SIZE"]
             if shm_size:
