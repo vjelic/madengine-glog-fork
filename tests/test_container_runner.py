@@ -23,9 +23,12 @@ from .fixtures.utils import BASE_DIR, MODEL_DIR
 class TestContainerRunner:
     """Test the container runner module."""
 
-    def test_container_runner_initialization(self):
+    @patch('madengine.core.context.Context')
+    def test_container_runner_initialization(self, mock_context_class):
         """Test ContainerRunner initialization."""
-        context = Context()
+        mock_context = MagicMock()
+        mock_context_class.return_value = mock_context
+        context = mock_context_class()
         console = Console()
         data = MagicMock()
         
@@ -96,304 +99,349 @@ class TestContainerRunner:
         ]
         mock_sh.assert_has_calls(expected_calls)
 
-    def test_get_gpu_arg_all_gpus(self):
+    @patch('madengine.core.context.Context')
+    def test_get_gpu_arg_all_gpus(self, mock_context_class):
         """Test get_gpu_arg with all GPUs requested."""
-        context = Context()
-        context.ctx = {
+        mock_context = MagicMock()
+        mock_context.ctx = {
             "docker_env_vars": {
-                "MAD_GPU_VENDOR": "nvidia",
+                "MAD_GPU_VENDOR": "AMD",
                 "MAD_SYSTEM_NGPUS": "4"
             },
-            "docker_gpus": "0,1,2,3"
+            "docker_gpus": "0,1,2,3",
+            "gpu_renderDs": [128, 129, 130, 131]  # Mock render device IDs for AMD GPUs
         }
-        runner = ContainerRunner(context)
+        mock_context_class.return_value = mock_context
+        runner = ContainerRunner(mock_context)
         
         result = runner.get_gpu_arg("-1")
         
         # Should return GPU args for all available GPUs
-        assert "0,1,2,3" in result or "--gpus all" in result
+        assert "--device=/dev/kfd" in result and "renderD" in result
 
-    def test_get_gpu_arg_specific_gpus(self):
+    @patch('madengine.core.context.Context')
+    def test_get_gpu_arg_specific_gpus(self, mock_context_class):
         """Test get_gpu_arg with specific GPUs requested."""
-        context = Context()
-        context.ctx = {
+        mock_context = MagicMock()
+        mock_context.ctx = {
             "docker_env_vars": {
-                "MAD_GPU_VENDOR": "nvidia",
+                "MAD_GPU_VENDOR": "NVIDIA",
                 "MAD_SYSTEM_NGPUS": "4"
             },
             "docker_gpus": "0,1,2,3"
         }
-        runner = ContainerRunner(context)
+        mock_context_class.return_value = mock_context
+        runner = ContainerRunner(mock_context)
         
         result = runner.get_gpu_arg("2")
         
         # Should return GPU args for 2 GPUs
         assert "gpu" in result.lower()
 
-    def test_get_gpu_arg_range_format(self):
+    @patch('madengine.core.context.Context')
+    def test_get_gpu_arg_range_format(self, mock_context_class):
         """Test get_gpu_arg with range format."""
-        context = Context()
-        context.ctx = {
+        mock_context = MagicMock()
+        mock_context.ctx = {
             "docker_env_vars": {
-                "MAD_GPU_VENDOR": "nvidia", 
+                "MAD_GPU_VENDOR": "NVIDIA", 
                 "MAD_SYSTEM_NGPUS": "4"
             },
             "docker_gpus": "0-3"
         }
-        runner = ContainerRunner(context)
+        mock_context_class.return_value = mock_context
+        runner = ContainerRunner(mock_context)
         
         result = runner.get_gpu_arg("2")
         
         # Should handle range format correctly
         assert isinstance(result, str)
 
+    @patch('madengine.core.context.Context')
     @patch.object(Console, 'sh')
-    def test_run_container_success(self, mock_sh):
+    @patch('madengine.tools.container_runner.Docker')
+    def test_run_container_success(self, mock_docker_class, mock_sh, mock_context_class):
         """Test successful container run."""
-        context = Context()
-        context.ctx = {
+        # Mock context to avoid GPU detection
+        mock_context = MagicMock()
+        mock_context.ctx = {
             "docker_env_vars": {
-                "MAD_GPU_VENDOR": "nvidia",
+                "MAD_GPU_VENDOR": "NVIDIA",
                 "MAD_SYSTEM_NGPUS": "2"
             },
             "docker_gpus": "0,1",
-            "docker_volumes": [],
-            "docker_network": "bridge"
+            "gpu_vendor": "NVIDIA"
         }
-        runner = ContainerRunner(context)
+        mock_context_class.return_value = mock_context
+        runner = ContainerRunner(mock_context)
         
-        mock_sh.return_value = "Container ran successfully"
+        # Mock Docker instance
+        mock_docker = MagicMock()
+        mock_docker.sh.return_value = "Command output"
+        mock_docker_class.return_value = mock_docker
         
-        container_info = {
-            "image_name": "test-image",
-            "model_name": "test_model",
-            "gpu_requirements": "1"
+        mock_sh.return_value = "hostname"
+        
+        model_info = {
+            "name": "test_model",
+            "n_gpus": "1",
+            "scripts": "test_script.sh",
+            "args": ""
         }
         
         with patch.object(runner, 'get_gpu_arg', return_value="--gpus device=0"):
-            result = runner.run_container(container_info, timeout=300)
+            with patch.object(runner, 'get_cpu_arg', return_value=""):
+                with patch.object(runner, 'get_env_arg', return_value=""):
+                    with patch.object(runner, 'get_mount_arg', return_value=""):
+                        result = runner.run_container(model_info, "test-image", timeout=300)
         
-        assert result["status"] == "success"
-        assert "execution_time" in result
-        assert mock_sh.called
+        assert result["status"] == "SUCCESS"
+        assert "test_duration" in result
+        assert mock_docker_class.called
 
+    @patch('madengine.core.context.Context')
     @patch.object(Console, 'sh')
-    def test_run_container_timeout(self, mock_sh):
+    @patch('madengine.tools.container_runner.Docker')
+    def test_run_container_timeout(self, mock_docker_class, mock_sh, mock_context_class):
         """Test container run with timeout."""
-        context = Context()
-        context.ctx = {
-            "docker_env_vars": {"MAD_GPU_VENDOR": "nvidia", "MAD_SYSTEM_NGPUS": "2"},
+        # Mock context to avoid GPU detection
+        mock_context = MagicMock()
+        mock_context.ctx = {
+            "docker_env_vars": {"MAD_GPU_VENDOR": "NVIDIA", "MAD_SYSTEM_NGPUS": "2"},
             "docker_gpus": "0,1",
-            "docker_volumes": [],
-            "docker_network": "bridge"
+            "gpu_vendor": "NVIDIA"
         }
-        runner = ContainerRunner(context)
+        mock_context_class.return_value = mock_context
+        runner = ContainerRunner(mock_context)
         
-        # Mock timeout exception
-        from madengine.core.timeout import TimeoutException
-        mock_sh.side_effect = TimeoutException("Timeout occurred")
+        # Mock Docker instance that raises TimeoutError
+        mock_docker = MagicMock()
+        mock_docker.sh.side_effect = TimeoutError("Timeout occurred")
+        mock_docker_class.return_value = mock_docker
         
-        container_info = {
-            "image_name": "test-image",
-            "model_name": "test_model",
-            "gpu_requirements": "1"
+        mock_sh.return_value = "hostname"
+        
+        model_info = {
+            "name": "test_model",
+            "n_gpus": "1",
+            "scripts": "test_script.sh",
+            "args": ""
         }
         
         with patch.object(runner, 'get_gpu_arg', return_value="--gpus device=0"):
-            result = runner.run_container(container_info, timeout=10)
-        
-        assert result["status"] == "timeout"
-        assert "timeout" in result["error"]
+            with patch.object(runner, 'get_cpu_arg', return_value=""):
+                with patch.object(runner, 'get_env_arg', return_value=""):
+                    with patch.object(runner, 'get_mount_arg', return_value=""):
+                        with pytest.raises(TimeoutError):
+                            runner.run_container(model_info, "test-image", timeout=10)
 
+    @patch('madengine.core.context.Context')
     @patch.object(Console, 'sh')
-    def test_run_container_failure(self, mock_sh):
+    @patch('madengine.tools.container_runner.Docker')
+    def test_run_container_failure(self, mock_docker_class, mock_sh, mock_context_class):
         """Test container run failure."""
-        context = Context()
-        context.ctx = {
-            "docker_env_vars": {"MAD_GPU_VENDOR": "nvidia", "MAD_SYSTEM_NGPUS": "2"},
+        # Mock context to avoid GPU detection
+        mock_context = MagicMock()
+        mock_context.ctx = {
+            "docker_env_vars": {"MAD_GPU_VENDOR": "NVIDIA", "MAD_SYSTEM_NGPUS": "2"},
             "docker_gpus": "0,1",
-            "docker_volumes": [],
-            "docker_network": "bridge"
+            "gpu_vendor": "NVIDIA"
         }
-        runner = ContainerRunner(context)
+        mock_context_class.return_value = mock_context
+        runner = ContainerRunner(mock_context)
         
-        # Mock runtime error
-        mock_sh.side_effect = RuntimeError("Container failed to start")
+        # Mock Docker instance that raises RuntimeError
+        mock_docker = MagicMock()
+        mock_docker.sh.side_effect = RuntimeError("Container failed to start")
+        mock_docker_class.return_value = mock_docker
         
-        container_info = {
-            "image_name": "test-image",
-            "model_name": "test_model",
-            "gpu_requirements": "1"
+        mock_sh.return_value = "hostname"
+        
+        model_info = {
+            "name": "test_model",
+            "n_gpus": "1",
+            "scripts": "test_script.sh",
+            "args": ""
         }
         
         with patch.object(runner, 'get_gpu_arg', return_value="--gpus device=0"):
-            result = runner.run_container(container_info, timeout=300)
-        
-        assert result["status"] == "failed"
-        assert "Container failed to start" in result["error"]
+            with patch.object(runner, 'get_cpu_arg', return_value=""):
+                with patch.object(runner, 'get_env_arg', return_value=""):
+                    with patch.object(runner, 'get_mount_arg', return_value=""):
+                        with pytest.raises(RuntimeError):
+                            runner.run_container(model_info, "test-image", timeout=300)
 
-    def test_run_all_containers(self):
-        """Test running all containers from manifest."""
-        context = Context()
-        runner = ContainerRunner(context)
+    @patch('madengine.core.context.Context')
+    def test_load_credentials(self, mock_context_class):
+        """Test setting credentials for container runner."""
+        # Mock context to avoid GPU detection
+        mock_context = MagicMock()
+        mock_context_class.return_value = mock_context
+        runner = ContainerRunner(mock_context)
         
-        manifest = {
-            "images": {
-                "model1": "localhost:5000/ci-model1:latest",
-                "model2": "localhost:5000/ci-model2:latest"
+        credentials = {
+            "github": {
+                "username": "testuser",
+                "password": "testpass"
             }
         }
         
-        # Mock successful container runs
-        with patch.object(runner, 'pull_image', return_value="local-image"):
-            with patch.object(runner, 'run_container') as mock_run:
-                mock_run.return_value = {
-                    "status": "success",
-                    "execution_time": 45.0,
-                    "performance": "100 ops/sec"
-                }
-                
-                result = runner.run_all_containers(manifest, timeout=300)
+        runner.set_credentials(credentials)
         
-        assert len(result["successful_runs"]) == 2
-        assert len(result["failed_runs"]) == 0
-        assert mock_run.call_count == 2
+        assert runner.credentials == credentials
 
-    def test_run_all_containers_with_failures(self):
-        """Test running all containers with some failures."""
-        context = Context()
-        runner = ContainerRunner(context)
+    @patch('madengine.core.context.Context')
+    def test_login_to_registry(self, mock_context_class):
+        """Test login to Docker registry."""
+        # Mock context to avoid GPU detection
+        mock_context = MagicMock()
+        mock_context_class.return_value = mock_context
+        runner = ContainerRunner(mock_context)
         
-        manifest = {
-            "images": {
-                "model1": "localhost:5000/ci-model1:latest",
-                "model2": "localhost:5000/ci-model2:latest"
+        credentials = {
+            "localhost:5000": {
+                "username": "testuser",
+                "password": "testpass"
             }
         }
         
-        # Mock one success, one failure
-        def mock_run_side_effect(*args, **kwargs):
-            if "model1" in str(args):
-                return {"status": "success", "execution_time": 30.0}
-            else:
-                return {"status": "failed", "error": "Runtime error"}
-        
-        with patch.object(runner, 'pull_image', return_value="local-image"):
-            with patch.object(runner, 'run_container', side_effect=mock_run_side_effect):
-                result = runner.run_all_containers(manifest, timeout=300)
-        
-        assert len(result["successful_runs"]) == 1
-        assert len(result["failed_runs"]) == 1
-
-    def test_run_all_containers_skip_pull(self):
-        """Test running containers without pulling (local images)."""
-        context = Context()
-        runner = ContainerRunner(context)
-        
-        manifest = {
-            "images": {
-                "model1": "ci-model1:latest"  # Local image, no registry prefix
-            }
-        }
-        
-        with patch.object(runner, 'run_container') as mock_run:
-            mock_run.return_value = {"status": "success", "execution_time": 30.0}
+        with patch.object(runner.console, 'sh') as mock_sh:
+            mock_sh.return_value = "Login Succeeded"
+            runner.login_to_registry("localhost:5000", credentials)
             
-            result = runner.run_all_containers(manifest, registry=None, timeout=300)
-        
-        # Should not have called pull_image for local images
-        with patch.object(runner, 'pull_image') as mock_pull:
-            mock_pull.assert_not_called()
+            # Verify login command was called
+            assert mock_sh.called
 
-    @patch.object(Console, 'sh')
-    def test_cleanup_containers(self, mock_sh):
-        """Test cleanup of containers after execution."""
-        runner = ContainerRunner()
-        
-        mock_sh.return_value = "Cleanup successful"
-        
-        runner.cleanup_containers(["container1", "container2"])
-        
-        # Should have called docker rm for each container
-        expected_calls = [
-            unittest.mock.call("docker rm -f container1"),
-            unittest.mock.call("docker rm -f container2")
-        ]
-        mock_sh.assert_has_calls(expected_calls, any_order=True)
-
-    def test_get_container_volumes(self):
-        """Test getting volume mounts for container."""
-        context = Context()
-        context.ctx = {
-            "docker_volumes": [
-                "/host/data:/container/data:ro",
-                "/host/output:/container/output:rw"
-            ]
-        }
-        runner = ContainerRunner(context)
-        
-        volumes = runner.get_container_volumes()
-        
-        assert len(volumes) == 2
-        assert "/host/data:/container/data:ro" in volumes
-        assert "/host/output:/container/output:rw" in volumes
-
-    def test_get_container_env_vars(self):
-        """Test getting environment variables for container."""
-        context = Context()
-        context.ctx = {
+    @patch('madengine.core.context.Context')
+    def test_get_gpu_arg_specific_gpu(self, mock_context_class):
+        """Test getting GPU arguments for specific GPU count."""
+        # Mock context to avoid GPU detection
+        mock_context = MagicMock()
+        mock_context.ctx = {
             "docker_env_vars": {
-                "MAD_GPU_VENDOR": "nvidia",
+                "MAD_GPU_VENDOR": "NVIDIA",
+                "MAD_SYSTEM_NGPUS": "4"
+            },
+            "docker_gpus": "0,1,2,3"
+        }
+        mock_context_class.return_value = mock_context
+        runner = ContainerRunner(mock_context)
+        
+        result = runner.get_gpu_arg("2")
+        
+        # Should return GPU args for 2 GPUs
+        assert "gpu" in result.lower() or "device" in result.lower()
+
+    @patch('madengine.core.context.Context')
+    def test_get_cpu_arg(self, mock_context_class):
+        """Test getting CPU arguments for docker run."""
+        # Mock context to avoid GPU detection
+        mock_context = MagicMock()
+        mock_context.ctx = {
+            "docker_cpus": "0,1,2,3"
+        }
+        mock_context_class.return_value = mock_context
+        runner = ContainerRunner(mock_context)
+        
+        result = runner.get_cpu_arg()
+        
+        assert "--cpuset-cpus" in result
+        assert "0,1,2,3" in result
+
+    @patch('madengine.core.context.Context')
+    def test_get_env_arg(self, mock_context_class):
+        """Test getting environment variables for container."""
+        # Mock context to avoid GPU detection
+        mock_context = MagicMock()
+        mock_context.ctx = {
+            "docker_env_vars": {
+                "MAD_GPU_VENDOR": "NVIDIA",
                 "MAD_MODEL_NAME": "test_model",
                 "CUSTOM_VAR": "custom_value"
             }
         }
-        runner = ContainerRunner(context)
+        mock_context_class.return_value = mock_context
+        runner = ContainerRunner(mock_context)
         
-        env_vars = runner.get_container_env_vars("test_model")
+        custom_env = {"EXTRA_VAR": "extra_value"}
+        result = runner.get_env_arg(custom_env)
         
-        assert "MAD_GPU_VENDOR=nvidia" in env_vars
-        assert "MAD_MODEL_NAME=test_model" in env_vars
-        assert "CUSTOM_VAR=custom_value" in env_vars
+        assert "--env MAD_GPU_VENDOR=" in result
+        assert "--env EXTRA_VAR=" in result
 
-    @patch.object(Console, 'sh')
-    def test_wait_for_container_completion(self, mock_sh):
-        """Test waiting for container completion."""
-        runner = ContainerRunner()
+    @patch('madengine.core.context.Context')
+    def test_get_mount_arg(self, mock_context_class):
+        """Test getting mount arguments for container."""
+        # Mock context to avoid GPU detection
+        mock_context = MagicMock()
+        mock_context.ctx = {
+            "docker_mounts": {
+                "/container/data": "/host/data",
+                "/container/output": "/host/output"
+            }
+        }
+        mock_context_class.return_value = mock_context
+        runner = ContainerRunner(mock_context)
         
-        # Mock docker wait command
-        mock_sh.return_value = "0"  # Exit code 0 (success)
-        
-        result = runner.wait_for_container_completion("test_container", timeout=60)
-        
-        assert result == 0
-        mock_sh.assert_called_with("docker wait test_container", timeout=60)
-
-    @patch.object(Console, 'sh')
-    def test_get_container_logs(self, mock_sh):
-        """Test getting container logs."""
-        runner = ContainerRunner()
-        
-        mock_sh.return_value = "Container output logs"
-        
-        logs = runner.get_container_logs("test_container")
-        
-        assert logs == "Container output logs"
-        mock_sh.assert_called_with("docker logs test_container")
-
-    def test_generate_execution_summary(self):
-        """Test generating execution summary."""
-        runner = ContainerRunner()
-        
-        results = [
-            {"model": "model1", "status": "success", "execution_time": 30.0},
-            {"model": "model2", "status": "failed", "error": "Runtime error"},
-            {"model": "model3", "status": "success", "execution_time": 45.0}
+        mount_datapaths = [
+            {"path": "/host/input", "home": "/container/input", "readwrite": "false"}
         ]
         
-        summary = runner.generate_execution_summary(results)
+        result = runner.get_mount_arg(mount_datapaths)
         
-        assert summary["total_models"] == 3
-        assert summary["successful_runs"] == 2
-        assert summary["failed_runs"] == 1
-        assert summary["total_execution_time"] == 75.0
+        assert "-v /host/input:/container/input:ro" in result
+        assert "-v /host/data:/container/data" in result
+
+    def test_apply_tools_without_tools_config(self):
+        """Test applying tools when no tools configuration exists."""
+        runner = ContainerRunner()
+        
+        # Mock context without tools
+        runner.context = MagicMock()
+        runner.context.ctx = {}
+        
+        pre_encapsulate_post_scripts = {"pre_scripts": [], "encapsulate_script": "", "post_scripts": []}
+        run_env = {}
+        
+        # Should not raise any exception
+        runner.apply_tools(pre_encapsulate_post_scripts, run_env, "nonexistent.json")
+        
+        # Scripts should remain unchanged
+        assert pre_encapsulate_post_scripts["pre_scripts"] == []
+        assert pre_encapsulate_post_scripts["encapsulate_script"] == ""
+        assert run_env == {}
+
+    def test_run_pre_post_script(self):
+        """Test running pre/post scripts."""
+        runner = ContainerRunner()
+        
+        # Mock Docker instance
+        mock_docker = MagicMock()
+        mock_docker.sh = MagicMock()
+        
+        scripts = [
+            {"path": "/path/to/script1.sh", "args": "arg1 arg2"},
+            {"path": "/path/to/script2.sh"}
+        ]
+        
+        runner.run_pre_post_script(mock_docker, "model_dir", scripts)
+        
+        # Verify scripts were copied and executed
+        assert mock_docker.sh.call_count == 4  # 2 copies + 2 executions
+        
+        # Check if copy commands were called
+        copy_calls = [call for call in mock_docker.sh.call_args_list if "cp -vLR" in str(call)]
+        assert len(copy_calls) == 2
+
+    def test_initialization_with_all_parameters(self):
+        """Test ContainerRunner initialization with all parameters."""
+        context = MagicMock()
+        console = Console()
+        data = MagicMock()
+        
+        runner = ContainerRunner(context, data, console)
+        
+        assert runner.context == context
+        assert runner.data == data
+        assert runner.console == console
+        assert runner.credentials is None

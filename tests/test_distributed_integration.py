@@ -51,16 +51,28 @@ class TestDistributedIntegration:
             }
         ]
 
-        # Mock manifest data
-        test_manifest = {
-            "images": {
-                "test_model_1": "localhost:5000/ci-test_model_1:latest",
-                "test_model_2": "localhost:5000/ci-test_model_2:latest"
+        # Mock manifest data with proper built_images structure
+        test_manifest_for_run = {
+            "built_images": {
+                "ci-test_model_1_dockerfile": {
+                    "docker_image": "ci-test_model_1_dockerfile",
+                    "dockerfile": "./docker/Dockerfile",
+                    "base_docker": "ubuntu:20.04",
+                    "build_duration": 60.0,
+                    "registry_image": "localhost:5000/ci-test_model_1:latest"
+                },
+                "ci-test_model_2_dockerfile": {
+                    "docker_image": "ci-test_model_2_dockerfile", 
+                    "dockerfile": "./docker/Dockerfile",
+                    "base_docker": "ubuntu:20.04",
+                    "build_duration": 60.5,
+                    "registry_image": "localhost:5000/ci-test_model_2:latest"
+                }
             },
-            "metadata": {
-                "build_time": "2023-01-01T12:00:00Z",
-                "registry": "localhost:5000",
-                "total_models": 2
+            "context": {
+                "docker_env_vars": {},
+                "docker_mounts": {},
+                "docker_build_arg": {}
             }
         }
 
@@ -82,14 +94,30 @@ class TestDistributedIntegration:
                     mock_builder.return_value = mock_builder_instance
                     mock_builder_instance.build_all_models.return_value = {
                         "successful_builds": ["test_model_1", "test_model_2"],
-                        "failed_builds": []
+                        "failed_builds": [],
+                        "total_build_time": 120.5
                     }
-                    mock_builder_instance.get_build_manifest.return_value = test_manifest
+                    mock_builder_instance.get_build_manifest.return_value = test_manifest_for_run
 
                     # Setup container runner mock
                     mock_runner_instance = MagicMock()
                     mock_runner.return_value = mock_runner_instance
-                    mock_runner_instance.load_build_manifest.return_value = test_manifest
+                    mock_runner_instance.load_build_manifest.return_value = test_manifest_for_run
+                    
+                    # Mock run_container to return proper dict structure
+                    def mock_run_container(model_info, *args, **kwargs):
+                        return {
+                            "model": model_info["name"],
+                            "status": "SUCCESS",
+                            "test_duration": 30.0,
+                            "performance": "100 fps",
+                            "metric": "fps"
+                        }
+                    mock_runner_instance.run_container.side_effect = mock_run_container
+                    
+                    # Mock pull_image to return image name
+                    mock_runner_instance.pull_image.return_value = "pulled_image_name"
+                    
                     mock_runner_instance.run_all_containers.return_value = {
                         "successful_runs": ["test_model_1", "test_model_2"],
                         "failed_runs": []
@@ -108,28 +136,34 @@ class TestDistributedIntegration:
                         assert len(build_result["successful_builds"]) == 2
                         assert len(build_result["failed_builds"]) == 0
 
-                        # Test run phase
-                        run_result = orchestrator.run_phase(
-                            manifest_file="test_manifest.json",
-                            registry="localhost:5000",
-                            timeout=1800
-                        )
+                        # Test run phase - mock file operations for manifest loading
+                        with patch('os.path.exists', return_value=True):
+                            with patch('builtins.open', mock_open(read_data=json.dumps(test_manifest_for_run))):
+                                with patch('json.load', return_value=test_manifest_for_run):
+                                    run_result = orchestrator.run_phase(
+                                        manifest_file="test_manifest.json",
+                                        registry="localhost:5000",
+                                        timeout=1800
+                                    )
                         
                         # Verify run phase results
                         assert len(run_result["successful_runs"]) == 2
                         assert len(run_result["failed_runs"]) == 0
 
-                        # Test full workflow
-                        full_result = orchestrator.full_workflow(
-                            registry="localhost:5000",
-                            clean_cache=True,
-                            timeout=3600
-                        )
+                        # Test full workflow - mock file operations again
+                        with patch('os.path.exists', return_value=True):
+                            with patch('builtins.open', mock_open(read_data=json.dumps(test_manifest_for_run))):
+                                with patch('json.load', return_value=test_manifest_for_run):
+                                    full_result = orchestrator.full_workflow(
+                                        registry="localhost:5000",
+                                        clean_cache=True,
+                                        timeout=3600
+                                    )
                         
                         # Verify full workflow results
                         assert full_result["overall_success"] is True
-                        assert "build_summary" in full_result
-                        assert "execution_summary" in full_result
+                        assert "build_phase" in full_result
+                        assert "run_phase" in full_result
 
     def test_cli_build_run_integration(self):
         """Test CLI build and run command integration."""
@@ -262,7 +296,8 @@ class TestDistributedIntegration:
                 mock_builder.return_value = mock_builder_instance
                 mock_builder_instance.build_all_models.return_value = {
                     "successful_builds": [],
-                    "failed_builds": ["failing_model"]
+                    "failed_builds": ["failing_model"],
+                    "total_build_time": 0.0
                 }
 
                 with patch.object(orchestrator, '_copy_scripts'):
@@ -294,7 +329,7 @@ class TestDistributedIntegration:
         }
 
         # Test Ansible generation
-        with patch('madengine.tools.distributed_orchestrator.create_ansible_playbook') as mock_ansible:
+        with patch('madengine.tools.distributed_cli.create_ansible_playbook') as mock_ansible:
             distributed_cli.generate_ansible_command(MagicMock(
                 manifest_file="test_manifest.json",
                 execution_config="test_config.json", 
@@ -308,7 +343,7 @@ class TestDistributedIntegration:
             )
 
         # Test Kubernetes generation
-        with patch('madengine.tools.distributed_orchestrator.create_kubernetes_manifests') as mock_k8s:
+        with patch('madengine.tools.distributed_cli.create_kubernetes_manifests') as mock_k8s:
             distributed_cli.generate_k8s_command(MagicMock(
                 manifest_file="test_manifest.json",
                 execution_config="test_config.json",
@@ -341,7 +376,11 @@ class TestDistributedIntegration:
                 with patch.object(builder, 'get_context_path', return_value="./docker"):
                     mock_sh.return_value = "Success"
                     
-                    result = builder.build_image(model_info, dockerfile, registry=registry)
+                    # Test build image (without registry)
+                    build_result = builder.build_image(model_info, dockerfile)
+                    
+                    # Test push to registry
+                    registry_image = builder.push_image(build_result["docker_image"], registry)
                     
                     # Should have built and pushed to registry
                     build_calls = [call for call in mock_sh.call_args_list if 'docker build' in str(call)]
@@ -349,11 +388,12 @@ class TestDistributedIntegration:
                     
                     assert len(build_calls) >= 1
                     assert len(push_calls) >= 1
+                    assert registry_image == f"{registry}/{build_result['docker_image']}"
 
         # Test ContainerRunner with registry pull
         runner = ContainerRunner(context)
         
-        with patch.object(console, 'sh') as mock_sh:
+        with patch.object(runner.console, 'sh') as mock_sh:
             mock_sh.return_value = "Pull successful"
             
             result = runner.pull_image("localhost:5000/test:latest", "local-test")

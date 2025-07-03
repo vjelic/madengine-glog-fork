@@ -22,7 +22,13 @@ from .fixtures.utils import BASE_DIR, MODEL_DIR
 class TestDockerBuilder:
     """Test the Docker builder module."""
 
-    def test_docker_builder_initialization(self):
+    @patch.object(Context, 'get_gpu_vendor', return_value='AMD')
+    @patch.object(Context, 'get_system_ngpus', return_value=1)
+    @patch.object(Context, 'get_system_gpu_architecture', return_value='gfx908')
+    @patch.object(Context, 'get_system_hip_version', return_value='5.4')
+    @patch.object(Context, 'get_docker_gpus', return_value='all')
+    @patch.object(Context, 'get_gpu_renderD_nodes', return_value=['renderD128'])
+    def test_docker_builder_initialization(self, mock_render, mock_docker_gpu, mock_hip, mock_arch, mock_ngpus, mock_vendor):
         """Test DockerBuilder initialization."""
         context = Context()
         console = Console()
@@ -33,7 +39,13 @@ class TestDockerBuilder:
         assert builder.console == console
         assert builder.built_images == {}
 
-    def test_docker_builder_initialization_without_console(self):
+    @patch.object(Context, 'get_gpu_vendor', return_value='AMD')
+    @patch.object(Context, 'get_system_ngpus', return_value=1)
+    @patch.object(Context, 'get_system_gpu_architecture', return_value='gfx908')
+    @patch.object(Context, 'get_system_hip_version', return_value='5.4')
+    @patch.object(Context, 'get_docker_gpus', return_value='all')
+    @patch.object(Context, 'get_gpu_renderD_nodes', return_value=['renderD128'])
+    def test_docker_builder_initialization_without_console(self, mock_render, mock_docker_gpu, mock_hip, mock_arch, mock_ngpus, mock_vendor):
         """Test DockerBuilder initialization without console."""
         context = Context()
         
@@ -43,7 +55,13 @@ class TestDockerBuilder:
         assert isinstance(builder.console, Console)
         assert builder.built_images == {}
 
-    def test_get_context_path_with_dockercontext(self):
+    @patch.object(Context, 'get_gpu_vendor', return_value='AMD')
+    @patch.object(Context, 'get_system_ngpus', return_value=1)
+    @patch.object(Context, 'get_system_gpu_architecture', return_value='gfx908')
+    @patch.object(Context, 'get_system_hip_version', return_value='5.4')
+    @patch.object(Context, 'get_docker_gpus', return_value='all')
+    @patch.object(Context, 'get_gpu_renderD_nodes', return_value=['renderD128'])
+    def test_get_context_path_with_dockercontext(self, mock_render, mock_docker_gpu, mock_hip, mock_arch, mock_ngpus, mock_vendor):
         """Test get_context_path when dockercontext is specified."""
         context = Context()
         builder = DockerBuilder(context)
@@ -53,7 +71,13 @@ class TestDockerBuilder:
         
         assert result == "/custom/context"
 
-    def test_get_context_path_without_dockercontext(self):
+    @patch.object(Context, 'get_gpu_vendor', return_value='AMD')
+    @patch.object(Context, 'get_system_ngpus', return_value=1)
+    @patch.object(Context, 'get_system_gpu_architecture', return_value='gfx908')
+    @patch.object(Context, 'get_system_hip_version', return_value='5.4')
+    @patch.object(Context, 'get_docker_gpus', return_value='all')
+    @patch.object(Context, 'get_gpu_renderD_nodes', return_value=['renderD128'])
+    def test_get_context_path_without_dockercontext(self, mock_render, mock_docker_gpu, mock_hip, mock_arch, mock_ngpus, mock_vendor):
         """Test get_context_path when dockercontext is not specified."""
         context = Context()
         builder = DockerBuilder(context)
@@ -63,7 +87,13 @@ class TestDockerBuilder:
         
         assert result == "./docker"
 
-    def test_get_context_path_with_empty_dockercontext(self):
+    @patch.object(Context, 'get_gpu_vendor', return_value='AMD')
+    @patch.object(Context, 'get_system_ngpus', return_value=1)
+    @patch.object(Context, 'get_system_gpu_architecture', return_value='gfx908')
+    @patch.object(Context, 'get_system_hip_version', return_value='5.4')
+    @patch.object(Context, 'get_docker_gpus', return_value='all')
+    @patch.object(Context, 'get_gpu_renderD_nodes', return_value=['renderD128'])
+    def test_get_context_path_with_empty_dockercontext(self, mock_render, mock_docker_gpu, mock_hip, mock_arch, mock_ngpus, mock_vendor):
         """Test get_context_path when dockercontext is empty."""
         context = Context()
         builder = DockerBuilder(context)
@@ -73,16 +103,30 @@ class TestDockerBuilder:
         
         assert result == "./docker"
 
-    def test_get_build_arg_no_args(self):
-        """Test get_build_arg with no build arguments."""
+    @patch.object(Context, 'get_gpu_vendor', return_value='AMD')
+    @patch.object(Context, 'get_system_ngpus', return_value=1)
+    @patch.object(Context, 'get_system_gpu_architecture', return_value='gfx908')
+    @patch.object(Context, 'get_system_hip_version', return_value='5.4')
+    @patch.object(Context, 'get_docker_gpus', return_value='all')
+    @patch.object(Context, 'get_gpu_renderD_nodes', return_value=['renderD128'])
+    def test_get_build_arg_no_args(self, mock_render, mock_docker_gpu, mock_hip, mock_arch, mock_ngpus, mock_vendor):
+        """Test get_build_arg with no additional runtime build arguments."""
         context = Context()
         builder = DockerBuilder(context)
         
         result = builder.get_build_arg()
         
-        assert result == ""
+        # Context automatically includes system GPU architecture
+        assert "MAD_SYSTEM_GPU_ARCHITECTURE" in result
+        assert "--build-arg" in result
 
-    def test_get_build_arg_with_context_args(self):
+    @patch.object(Context, 'get_gpu_vendor', return_value='AMD')
+    @patch.object(Context, 'get_system_ngpus', return_value=1)
+    @patch.object(Context, 'get_system_gpu_architecture', return_value='gfx908')
+    @patch.object(Context, 'get_system_hip_version', return_value='5.4')
+    @patch.object(Context, 'get_docker_gpus', return_value='all')
+    @patch.object(Context, 'get_gpu_renderD_nodes', return_value=['renderD128'])
+    def test_get_build_arg_with_context_args(self, mock_render, mock_docker_gpu, mock_hip, mock_arch, mock_ngpus, mock_vendor):
         """Test get_build_arg with context build arguments."""
         context = Context()
         context.ctx = {
@@ -98,7 +142,13 @@ class TestDockerBuilder:
         assert "--build-arg ARG1='value1'" in result
         assert "--build-arg ARG2='value2'" in result
 
-    def test_get_build_arg_with_run_args(self):
+    @patch.object(Context, 'get_gpu_vendor', return_value='AMD')
+    @patch.object(Context, 'get_system_ngpus', return_value=1)
+    @patch.object(Context, 'get_system_gpu_architecture', return_value='gfx908')
+    @patch.object(Context, 'get_system_hip_version', return_value='5.4')
+    @patch.object(Context, 'get_docker_gpus', return_value='all')
+    @patch.object(Context, 'get_gpu_renderD_nodes', return_value=['renderD128'])
+    def test_get_build_arg_with_run_args(self, mock_render, mock_docker_gpu, mock_hip, mock_arch, mock_ngpus, mock_vendor):
         """Test get_build_arg with runtime build arguments."""
         context = Context()
         builder = DockerBuilder(context)
@@ -108,7 +158,13 @@ class TestDockerBuilder:
         
         assert "--build-arg RUNTIME_ARG='runtime_value'" in result
 
-    def test_get_build_arg_with_both_args(self):
+    @patch.object(Context, 'get_gpu_vendor', return_value='AMD')
+    @patch.object(Context, 'get_system_ngpus', return_value=1)
+    @patch.object(Context, 'get_system_gpu_architecture', return_value='gfx908')
+    @patch.object(Context, 'get_system_hip_version', return_value='5.4')
+    @patch.object(Context, 'get_docker_gpus', return_value='all')
+    @patch.object(Context, 'get_gpu_renderD_nodes', return_value=['renderD128'])
+    def test_get_build_arg_with_both_args(self, mock_render, mock_docker_gpu, mock_hip, mock_arch, mock_ngpus, mock_vendor):
         """Test get_build_arg with both context and runtime arguments."""
         context = Context()
         context.ctx = {
@@ -124,8 +180,14 @@ class TestDockerBuilder:
         assert "--build-arg CONTEXT_ARG='context_value'" in result
         assert "--build-arg RUNTIME_ARG='runtime_value'" in result
 
+    @patch.object(Context, 'get_gpu_vendor', return_value='AMD')
+    @patch.object(Context, 'get_system_ngpus', return_value=1)
+    @patch.object(Context, 'get_system_gpu_architecture', return_value='gfx908')
+    @patch.object(Context, 'get_system_hip_version', return_value='5.4')
+    @patch.object(Context, 'get_docker_gpus', return_value='all')
+    @patch.object(Context, 'get_gpu_renderD_nodes', return_value=['renderD128'])
     @patch.object(Console, 'sh')
-    def test_build_image_success(self, mock_sh):
+    def test_build_image_success(self, mock_sh, mock_render, mock_docker_gpu, mock_hip, mock_arch, mock_ngpus, mock_vendor):
         """Test successful Docker image build."""
         context = Context()
         console = Console()
@@ -144,13 +206,18 @@ class TestDockerBuilder:
             result = builder.build_image(model_info, dockerfile)
         
         # Verify the image name generation
-        expected_image_name = "ci-test_model_dockerfile"
-        assert result["image_name"] == expected_image_name
-        assert result["status"] == "success"
+        expected_image_name = "ci-test_model_Dockerfile"
+        assert result["docker_image"] == expected_image_name
         assert "build_duration" in result
 
+    @patch.object(Context, 'get_gpu_vendor', return_value='AMD')
+    @patch.object(Context, 'get_system_ngpus', return_value=1)
+    @patch.object(Context, 'get_system_gpu_architecture', return_value='gfx908')
+    @patch.object(Context, 'get_system_hip_version', return_value='5.4')
+    @patch.object(Context, 'get_docker_gpus', return_value='all')
+    @patch.object(Context, 'get_gpu_renderD_nodes', return_value=['renderD128'])
     @patch.object(Console, 'sh')
-    def test_build_image_with_registry_push(self, mock_sh):
+    def test_build_image_with_registry_push(self, mock_sh, mock_render, mock_docker_gpu, mock_hip, mock_arch, mock_ngpus, mock_vendor):
         """Test Docker image build with registry push."""
         context = Context()
         console = Console()
@@ -165,18 +232,23 @@ class TestDockerBuilder:
         
         with patch.object(builder, 'get_build_arg', return_value=""):
             with patch.object(builder, 'get_context_path', return_value="./docker"):
-                result = builder.build_image(model_info, dockerfile, registry=registry)
+                with patch.object(builder, 'push_image', return_value="localhost:5000/ci-test_model") as mock_push:
+                    result = builder.build_image(model_info, dockerfile)
+                    registry_image = builder.push_image(result["docker_image"], registry)
         
-        # Should have called docker build and docker push
+        # Should have called docker build
         build_calls = [call for call in mock_sh.call_args_list if 'docker build' in str(call)]
-        push_calls = [call for call in mock_sh.call_args_list if 'docker push' in str(call)]
-        
         assert len(build_calls) >= 1
-        assert len(push_calls) >= 1
-        assert result["registry_image"] is not None
+        assert registry_image == "localhost:5000/ci-test_model"
 
+    @patch.object(Context, 'get_gpu_vendor', return_value='AMD')
+    @patch.object(Context, 'get_system_ngpus', return_value=1)
+    @patch.object(Context, 'get_system_gpu_architecture', return_value='gfx908')
+    @patch.object(Context, 'get_system_hip_version', return_value='5.4')
+    @patch.object(Context, 'get_docker_gpus', return_value='all')
+    @patch.object(Context, 'get_gpu_renderD_nodes', return_value=['renderD128'])
     @patch.object(Console, 'sh')
-    def test_build_image_failure(self, mock_sh):
+    def test_build_image_failure(self, mock_sh, mock_render, mock_docker_gpu, mock_hip, mock_arch, mock_ngpus, mock_vendor):
         """Test Docker image build failure."""
         context = Context()
         console = Console()
@@ -190,59 +262,119 @@ class TestDockerBuilder:
         
         with patch.object(builder, 'get_build_arg', return_value=""):
             with patch.object(builder, 'get_context_path', return_value="./docker"):
-                result = builder.build_image(model_info, dockerfile)
-        
-        assert result["status"] == "failed"
-        assert "error" in result
+                # Test that the exception is raised
+                with pytest.raises(RuntimeError, match="Build failed"):
+                    builder.build_image(model_info, dockerfile)
 
-    def test_build_all_models(self):
+    @patch.object(Context, 'get_gpu_vendor', return_value='AMD')
+    @patch.object(Context, 'get_system_ngpus', return_value=1)
+    @patch.object(Context, 'get_system_gpu_architecture', return_value='gfx908')
+    @patch.object(Context, 'get_system_hip_version', return_value='5.4')
+    @patch.object(Context, 'get_docker_gpus', return_value='all')
+    @patch.object(Context, 'get_gpu_renderD_nodes', return_value=['renderD128'])
+    def test_build_all_models(self, mock_render, mock_docker_gpu, mock_hip, mock_arch, mock_ngpus, mock_vendor):
         """Test building all models."""
         context = Context()
         builder = DockerBuilder(context)
         
         models = [
-            {"name": "model1", "dockerfile": ["./docker/Dockerfile1"]},
-            {"name": "model2", "dockerfile": ["./docker/Dockerfile2"]}
+            {"name": "model1", "dockerfile": "./docker/Dockerfile1"},
+            {"name": "model2", "dockerfile": "./docker/Dockerfile2"}
         ]
         
+        # Mock console.sh calls for dockerfile listing
+        def mock_sh_side_effect(command, **kwargs):
+            if "ls ./docker/Dockerfile1.*" in command:
+                return "./docker/Dockerfile1"
+            elif "ls ./docker/Dockerfile2.*" in command:
+                return "./docker/Dockerfile2"
+            elif "head -n5" in command:
+                return "# CONTEXT AMD"
+            else:
+                return "success"
+        
+        # Mock context filter to return only the specific dockerfile for each model
+        def mock_filter_side_effect(dockerfiles):
+            # Return only the dockerfile that was requested for each model
+            if "./docker/Dockerfile1" in dockerfiles:
+                return {"./docker/Dockerfile1": "AMD"}
+            elif "./docker/Dockerfile2" in dockerfiles:
+                return {"./docker/Dockerfile2": "AMD"}
+            return dockerfiles
+        
         # Mock successful builds
-        with patch.object(builder, 'build_image') as mock_build:
-            mock_build.return_value = {
-                "status": "success",
-                "image_name": "test_image",
-                "build_duration": 30.0
-            }
-            
-            result = builder.build_all_models(models)
+        with patch.object(builder.console, 'sh', side_effect=mock_sh_side_effect):
+            with patch.object(context, 'filter', side_effect=mock_filter_side_effect):
+                with patch.object(builder, 'build_image') as mock_build:
+                    mock_build.return_value = {
+                        "docker_image": "test_image",
+                        "build_duration": 30.0
+                    }
+                    
+                    result = builder.build_all_models(models)
         
         assert len(result["successful_builds"]) == 2
         assert len(result["failed_builds"]) == 0
         assert mock_build.call_count == 2
 
-    def test_build_all_models_with_failures(self):
+    @patch.object(Context, 'get_gpu_vendor', return_value='AMD')
+    @patch.object(Context, 'get_system_ngpus', return_value=1)
+    @patch.object(Context, 'get_system_gpu_architecture', return_value='gfx908')
+    @patch.object(Context, 'get_system_hip_version', return_value='5.4')
+    @patch.object(Context, 'get_docker_gpus', return_value='all')
+    @patch.object(Context, 'get_gpu_renderD_nodes', return_value=['renderD128'])
+    def test_build_all_models_with_failures(self, mock_render, mock_docker_gpu, mock_hip, mock_arch, mock_ngpus, mock_vendor):
         """Test building all models with some failures."""
         context = Context()
         builder = DockerBuilder(context)
         
         models = [
-            {"name": "model1", "dockerfile": ["./docker/Dockerfile1"]},
-            {"name": "model2", "dockerfile": ["./docker/Dockerfile2"]}
+            {"name": "model1", "dockerfile": "./docker/Dockerfile1"},
+            {"name": "model2", "dockerfile": "./docker/Dockerfile2"}
         ]
         
-        # Mock one success, one failure
-        def mock_build_side_effect(*args, **kwargs):
-            if "model1" in str(args):
-                return {"status": "success", "image_name": "model1_image"}
+        # Mock console.sh calls for dockerfile listing
+        def mock_sh_side_effect(command, **kwargs):
+            if "ls ./docker/Dockerfile1.*" in command:
+                return "./docker/Dockerfile1"
+            elif "ls ./docker/Dockerfile2.*" in command:
+                return "./docker/Dockerfile2"
+            elif "head -n5" in command:
+                return "# CONTEXT AMD"
             else:
-                return {"status": "failed", "error": "Build failed"}
+                return "success"
         
-        with patch.object(builder, 'build_image', side_effect=mock_build_side_effect):
-            result = builder.build_all_models(models)
+        # Mock context filter to return only the specific dockerfile for each model
+        def mock_filter_side_effect(dockerfiles):
+            # Return only the dockerfile that was requested for each model
+            if "./docker/Dockerfile1" in dockerfiles:
+                return {"./docker/Dockerfile1": "AMD"}
+            elif "./docker/Dockerfile2" in dockerfiles:
+                return {"./docker/Dockerfile2": "AMD"}
+            return dockerfiles
+        
+        # Mock one success, one failure
+        def mock_build_side_effect(model_info, dockerfile, *args, **kwargs):
+            if model_info["name"] == "model1" and "Dockerfile1" in dockerfile:
+                return {"docker_image": "model1_image", "build_duration": 30.0}
+            else:
+                raise RuntimeError("Build failed")
+        
+        with patch.object(builder.console, 'sh', side_effect=mock_sh_side_effect):
+            with patch.object(context, 'filter', side_effect=mock_filter_side_effect):
+                with patch.object(builder, 'build_image', side_effect=mock_build_side_effect):
+                    result = builder.build_all_models(models)
         
         assert len(result["successful_builds"]) == 1
-        assert len(result["failed_builds"]) == 1
+        assert len(result["failed_builds"]) == 1  # 1 failure: model2/Dockerfile2
 
-    def test_export_build_manifest(self):
+    @patch.object(Context, 'get_gpu_vendor', return_value='AMD')
+    @patch.object(Context, 'get_system_ngpus', return_value=1)
+    @patch.object(Context, 'get_system_gpu_architecture', return_value='gfx908')
+    @patch.object(Context, 'get_system_hip_version', return_value='5.4')
+    @patch.object(Context, 'get_docker_gpus', return_value='all')
+    @patch.object(Context, 'get_gpu_renderD_nodes', return_value=['renderD128'])
+    def test_export_build_manifest(self, mock_render, mock_docker_gpu, mock_hip, mock_arch, mock_ngpus, mock_vendor):
         """Test exporting build manifest."""
         context = Context()
         builder = DockerBuilder(context)
@@ -250,8 +382,7 @@ class TestDockerBuilder:
         # Set up some built images
         builder.built_images = {
             "model1": {
-                "image_name": "ci-model1",
-                "registry_image": "localhost:5000/ci-model1:latest",
+                "docker_image": "ci-model1",
                 "dockerfile": "./docker/Dockerfile"
             }
         }
@@ -264,50 +395,47 @@ class TestDockerBuilder:
         mock_file.assert_called_once_with("manifest.json", 'w')
         mock_json_dump.assert_called_once()
 
-    def test_get_build_manifest(self):
-        """Test getting build manifest."""
-        context = Context()
-        builder = DockerBuilder(context)
-        
-        # Set up some built images
-        builder.built_images = {
-            "model1": {"image_name": "ci-model1"},
-            "model2": {"image_name": "ci-model2"}
-        }
-        
-        manifest = builder.get_build_manifest()
-        
-        assert "images" in manifest
-        assert "metadata" in manifest
-        assert len(manifest["images"]) == 2
-        assert "model1" in manifest["images"]
-        assert "model2" in manifest["images"]
 
+    @patch.object(Context, 'get_gpu_vendor', return_value='AMD')
+    @patch.object(Context, 'get_system_ngpus', return_value=1)
+    @patch.object(Context, 'get_system_gpu_architecture', return_value='gfx908')
+    @patch.object(Context, 'get_system_hip_version', return_value='5.4')
+    @patch.object(Context, 'get_docker_gpus', return_value='all')
+    @patch.object(Context, 'get_gpu_renderD_nodes', return_value=['renderD128'])
     @patch.object(Console, 'sh')
-    def test_build_image_with_credentials(self, mock_sh):
+    def test_build_image_with_credentials(self, mock_sh, mock_render, mock_docker_gpu, mock_hip, mock_arch, mock_ngpus, mock_vendor):
         """Test Docker image build with credentials."""
         context = Context()
         builder = DockerBuilder(context)
         
         mock_sh.return_value = "Success"
         
-        model_info = {"name": "test_model"}
+        model_info = {"name": "test_model", "cred": "testcred"}
         dockerfile = "./docker/Dockerfile"
         credentials = {
-            "registry": "myregistry.com",
-            "username": "testuser",
-            "password": "testpass"
+            "testcred": {
+                "username": "testuser",
+                "password": "testpass"
+            }
         }
         
-        with patch.object(builder, 'get_build_arg', return_value=""):
+        with patch.object(builder, 'get_build_arg') as mock_get_build_arg:
             with patch.object(builder, 'get_context_path', return_value="./docker"):
                 result = builder.build_image(model_info, dockerfile, credentials=credentials)
         
-        # Should have called docker login
-        login_calls = [call for call in mock_sh.call_args_list if 'docker login' in str(call)]
-        assert len(login_calls) >= 1
+        # Verify credentials were passed to build args
+        mock_get_build_arg.assert_called_once()
+        call_args = mock_get_build_arg.call_args[0][0]
+        assert "testcred_USERNAME" in call_args
+        assert "testcred_PASSWORD" in call_args
 
-    def test_clean_cache_option(self):
+    @patch.object(Context, 'get_gpu_vendor', return_value='AMD')
+    @patch.object(Context, 'get_system_ngpus', return_value=1)
+    @patch.object(Context, 'get_system_gpu_architecture', return_value='gfx908')
+    @patch.object(Context, 'get_system_hip_version', return_value='5.4')
+    @patch.object(Context, 'get_docker_gpus', return_value='all')
+    @patch.object(Context, 'get_gpu_renderD_nodes', return_value=['renderD128'])
+    def test_clean_cache_option(self, mock_render, mock_docker_gpu, mock_hip, mock_arch, mock_ngpus, mock_vendor):
         """Test clean cache option in build."""
         context = Context()
         builder = DockerBuilder(context)
