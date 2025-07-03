@@ -53,6 +53,7 @@ Command-line interface for distributed operations:
 - `build` - Build images and create manifest
 - `run` - Execute containers using manifest
 - `full` - Complete build + run workflow
+- `export-config` - Export execution configuration for external tools
 - `generate-ansible` - Create Ansible playbooks
 - `generate-k8s` - Create Kubernetes manifests
 
@@ -65,7 +66,7 @@ Command-line interface for distributed operations:
 # Build all models and push to registry
 python -m madengine.tools.distributed_cli build \
     --registry localhost:5000 \
-    --clean-cache \
+    --clean-docker-cache \
     --manifest-output build_manifest.json
 
 # This creates:
@@ -84,13 +85,16 @@ python -m madengine.tools.distributed_cli run \
 
 ### 2. Ansible Deployment
 
-**Generate Ansible playbook:**
+**Export execution configuration:**
 ```bash
-# Export execution configuration
+# Export execution configuration for external tools
 python -m madengine.tools.distributed_cli export-config \
     --output execution_config.json
+```
 
-# Generate Ansible playbook
+**Generate Ansible playbook:**
+```bash
+# Generate Ansible playbook using the manifest and config
 python -m madengine.tools.distributed_cli generate-ansible \
     --manifest-file build_manifest.json \
     --execution-config execution_config.json \
@@ -105,6 +109,13 @@ ansible-playbook -i gpu_inventory madengine_distributed.yml
 
 ### 3. Kubernetes Deployment
 
+**Export execution configuration:**
+```bash
+# Export execution configuration for external tools
+python -m madengine.tools.distributed_cli export-config \
+    --output execution_config.json
+```
+
 **Generate K8s manifests:**
 ```bash
 python -m madengine.tools.distributed_cli generate-k8s \
@@ -117,6 +128,128 @@ python -m madengine.tools.distributed_cli generate-k8s \
 ```bash
 kubectl apply -f k8s-madengine-configmap.yaml
 kubectl apply -f k8s-madengine-job.yaml
+```
+
+**Note**: The generated Kubernetes manifests are templates that should be customized for your environment:
+- Update the `nodeSelector` to match your GPU node labels
+- Adjust resource requests/limits based on model requirements  
+- Modify the container image to use your actual distributed runner image
+- Update GPU resource types (nvidia.com/gpu vs amd.com/gpu) based on your hardware
+- Update the command to use the correct distributed CLI: `python3 -m madengine.tools.distributed_cli run --manifest-file=/config/manifest.json`
+
+### 4. Configuration Export
+
+The `export-config` command allows you to export execution configurations that can be used by external orchestration tools:
+
+```bash
+# Export configuration with specific tags
+python -m madengine.tools.distributed_cli export-config \
+    --tags llama bert \
+    --output execution_config.json
+
+# Export configuration for all discovered models
+python -m madengine.tools.distributed_cli export-config \
+    --output execution_config.json
+```
+
+The exported configuration includes:
+- Model discovery information
+- Required credentials
+- Docker environment variables and mounts
+- GPU configuration details
+
+This is useful for integrating MADEngine with external tools like CI/CD pipelines, monitoring systems, or custom orchestration frameworks.
+
+### 5. CLI Examples Summary
+
+Here are some comprehensive examples of using the distributed CLI:
+
+```bash
+# Build models with specific tags and push to registry
+python -m madengine.tools.distributed_cli build \
+    --tags llama bert --registry localhost:5000 --clean-docker-cache
+
+# Run models using pre-built manifest with custom timeout
+python -m madengine.tools.distributed_cli run \
+    --manifest-file build_manifest.json --timeout 3600
+
+# Complete workflow with specific tags and registry
+python -m madengine.tools.distributed_cli full \
+    --tags resnet --registry localhost:5000 --timeout 3600 --live-output
+
+# Export configuration for external orchestration tools
+python -m madengine.tools.distributed_cli export-config \
+    --tags llama --output execution_config.json
+
+# Generate Ansible playbook for distributed execution
+python -m madengine.tools.distributed_cli generate-ansible \
+    --manifest-file build_manifest.json \
+    --execution-config execution_config.json \
+    --output madengine.yml
+
+# Generate Kubernetes manifests with custom namespace
+python -m madengine.tools.distributed_cli generate-k8s \
+    --namespace madengine-prod --tags llama
+```
+
+### 6. Advanced CLI Usage
+
+The distributed CLI supports all standard MADEngine arguments for model filtering and execution control:
+
+#### Model Selection and Filtering
+```bash
+# Build specific models by tags
+python -m madengine.tools.distributed_cli build \
+    --tags llama bert resnet \
+    --registry localhost:5000
+
+# Build with additional context for custom base images
+python -m madengine.tools.distributed_cli build \
+    --additional-context "{'docker_build_arg':{'BASE_DOCKER':'custom:latest'}}" \
+    --registry localhost:5000
+
+# Build with context file
+python -m madengine.tools.distributed_cli build \
+    --additional-context-file context.json \
+    --registry localhost:5000
+```
+
+#### Execution Control
+```bash
+# Run with custom timeout and keep containers alive for debugging
+python -m madengine.tools.distributed_cli run \
+    --manifest-file build_manifest.json \
+    --timeout 7200 \
+    --keep-alive \
+    --live-output
+
+# Run specific tags only (filters from manifest)
+python -m madengine.tools.distributed_cli run \
+    --manifest-file build_manifest.json \
+    --tags llama \
+    --timeout 3600
+```
+
+#### Data Configuration
+```bash
+# Use custom data configuration
+python -m madengine.tools.distributed_cli full \
+    --data-config-file-name custom_data.json \
+    --force-mirror-local /shared/data \
+    --registry localhost:5000
+```
+
+#### Build Optimization
+```bash
+# Clean build without cache for reproducible images
+python -m madengine.tools.distributed_cli build \
+    --clean-docker-cache \
+    --registry localhost:5000
+
+# Save detailed build and execution summaries
+python -m madengine.tools.distributed_cli full \
+    --registry localhost:5000 \
+    --summary-output full_workflow_summary.json
 ```
 
 ## Integration with Existing MADEngine
@@ -136,184 +269,303 @@ The solution maintains compatibility with existing MADEngine components:
 2. **Gradual**: Migrate existing workflows to use distributed orchestrator
 3. **Full Integration**: Replace `run_models.py` with distributed orchestrator
 
-## Build Manifest Format
+## Step-by-Step: Building and Running a Single Model
 
-The build manifest contains all information needed for distributed execution:
+This section provides a complete walkthrough for building and running a single model (`dummy`) in a distributed scenario, from initial setup to deployment on GPU nodes.
 
-```json
-{
-  "built_images": {
-    "ci-model1_ubuntu_amd": {
-      "docker_image": "ci-model1_ubuntu_amd",
-      "dockerfile": "model1.ubuntu.amd.Dockerfile", 
-      "base_docker": "ubuntu:20.04",
-      "docker_sha": "sha256:abc123...",
-      "build_duration": 120.5,
-      "registry_image": "localhost:5000/ci-model1_ubuntu_amd"
-    }
-  },
-  "context": {
-    "docker_env_vars": {...},
-    "docker_mounts": {...},
-    "docker_build_arg": {...}
-  }
-}
-```
+### Prerequisites
 
-## Benefits
+1. **Docker Registry**: A accessible Docker registry (local or remote)
+2. **GPU Node(s)**: Target machines with GPU drivers and Docker installed
+3. **Network Access**: GPU nodes can access the Docker registry
+4. **MADEngine**: Installed on build machine and GPU nodes
 
-### 1. Resource Optimization
-- Build once, run multiple times
-- Separate build infrastructure from GPU nodes
-- Parallel execution across multiple nodes
+### Phase 1: Build and Prepare (Central Build Machine)
 
-### 2. Scalability
-- Easy horizontal scaling with Kubernetes
-- Support for heterogeneous GPU clusters
-- Independent scaling of build vs execution
-
-### 3. Reliability
-- Immutable image artifacts
-- Reproducible executions across environments
-- Better error isolation between phases
-
-### 4. DevOps Integration
-- CI/CD friendly with separate phases
-- Integration with container orchestrators
-- Support for automated deployments
-
-## Configuration Management
-
-### Context Handling
-The solution preserves MADEngine's context system:
-- Docker environment variables
-- GPU configurations
-- Mount points and volumes
-- Build arguments and credentials
-
-### Credential Management
-Secure handling of credentials across distributed environments:
-- **Build-time credentials**: For private repositories and base images
-- **Runtime credentials**: For model execution and data access  
-- **Registry credentials**: For image distribution (see Registry Configuration section)
-
-Registry credentials are automatically used during build phase for:
-- Docker login to private registries
-- Image pushing with proper authentication
-- Secure image distribution across nodes
-
-## Performance Considerations
-
-### Build Phase Optimizations
-- Layer caching across builds
-- Parallel building of independent models
-- Registry-based image distribution
-
-### Run Phase Optimizations  
-- Pre-pulling images during idle time
-- Shared data mounting across nodes
-- GPU resource scheduling and allocation
-
-## Security Considerations
-
-### Image Security
-- Signed images with attestation
-- Vulnerability scanning integration
-- Base image security updates
-
-### Network Security
-- Private registry support
-- TLS/SSL for image distribution
-- Network policies for pod-to-pod communication
-
-## Monitoring and Observability
-
-### Build Metrics
-- Build success/failure rates
-- Build duration trends
-- Image size optimization
-
-### Execution Metrics
-- Performance metrics collection
-- Resource utilization tracking
-- Error rate monitoring across nodes
-
-## Future Enhancements
-
-### 1. Advanced Scheduling
-- GPU affinity and topology awareness
-- Cost-based scheduling for cloud environments
-- Priority-based execution queues
-
-### 2. Auto-scaling
-- Dynamic node scaling based on queue depth
-- Preemptible instance support
-- Cost optimization strategies
-
-### 3. Advanced Monitoring
-- Real-time performance dashboards
-- Alerting and notification systems
-- Historical trend analysis
-
-## Registry Configuration
-
-### Supported Registry Types
-
-The distributed solution supports multiple registry types:
-
-1. **DockerHub** - Public or private repositories
-2. **Local Registry** - Self-hosted Docker registry
-3. **Cloud Registries** - AWS ECR, Azure ACR, Google GCR
-4. **Enterprise Registries** - Harbor, Nexus, etc.
-
-### Registry Authentication
-
-Create a `credential.json` file for registry authentication:
-
-```json
-{
-  "dockerhub": {
-    "username": "your-dockerhub-username",
-    "password": "your-dockerhub-token"
-  },
-  "localhost:5000": {
-    "username": "admin",
-    "password": "registry-password"
-  },
-  "your-registry.com": {
-    "username": "registry-user",
-    "password": "registry-token"
-  }
-}
-```
-
-### Registry Usage Examples
-
-**DockerHub (public):**
+#### Step 1: Navigate to MADEngine Directory
 ```bash
-python -m madengine.tools.distributed_cli build \
-    --registry docker.io \
-    --manifest-output build_manifest.json
+cd /path/to/madengine
 ```
 
-**DockerHub (private with authentication):**
+#### Step 2: Build the Dummy Model
 ```bash
-# Requires credential.json with "dockerhub" entry
+# Build just the dummy model and push to registry
 python -m madengine.tools.distributed_cli build \
-    --registry dockerhub \
-    --manifest-output build_manifest.json
-```
-
-**Local Registry:**
-```bash
-python -m madengine.tools.distributed_cli build \
+    --tags dummy \
     --registry localhost:5000 \
-    --manifest-output build_manifest.json
+    --manifest-output dummy_build_manifest.json \
+    --summary-output dummy_build_summary.json
 ```
 
-**Cloud Registry (AWS ECR):**
+This will:
+- Discover models with the "dummy" tag
+- Build Docker images for the dummy model variants
+- Push images to the registry at `localhost:5000`
+- Create `dummy_build_manifest.json` with build metadata
+- Generate `dummy_build_summary.json` with build status
+
+#### Step 3: Verify Build Results
 ```bash
-python -m madengine.tools.distributed_cli build \
-    --registry 123456789012.dkr.ecr.us-west-2.amazonaws.com \
-    --manifest-output build_manifest.json
+# Check build summary for any failures
+cat dummy_build_summary.json
+
+# Example successful output:
+{
+  "successful_builds": [
+    {
+      "model_name": "dummy",
+      "image_tag": "localhost:5000/madengine/dummy:latest",
+      "build_time": "2024-01-15T10:30:00Z",
+      "image_size": "1.2GB"
+    }
+  ],
+  "failed_builds": [],
+  "total_build_time": 180.5,
+  "registry_url": "localhost:5000"
+}
 ```
+
+#### Step 4: Export Execution Configuration (Optional)
+```bash
+# Export configuration for external orchestration tools
+python -m madengine.tools.distributed_cli export-config \
+    --tags dummy \
+    --output dummy_execution_config.json
+```
+
+### Phase 2: Manual Deployment to GPU Node
+
+#### Step 5: Transfer Manifest to GPU Node
+```bash
+# Copy manifest to GPU node (replace gpu-node-01 with actual hostname/IP)
+scp dummy_build_manifest.json user@gpu-node-01:/home/user/madengine/
+```
+
+#### Step 6: Run on GPU Node
+```bash
+# SSH to GPU node
+ssh user@gpu-node-01
+
+# Navigate to MADEngine directory on GPU node
+cd /home/user/madengine
+
+# Run the dummy model using the manifest
+python -m madengine.tools.distributed_cli run \
+    --manifest-file dummy_build_manifest.json \
+    --registry localhost:5000 \
+    --timeout 1800 \
+    --live-output \
+    --summary-output dummy_execution_summary.json
+```
+
+#### Step 7: Verify Execution Results
+```bash
+# Check execution summary
+cat dummy_execution_summary.json
+
+# Example successful output:
+{
+  "successful_runs": [
+    {
+      "model_name": "dummy",
+      "execution_time": 45.2,
+      "gpu_used": "GPU-0",
+      "peak_gpu_memory": "2.1GB",
+      "exit_code": 0,
+      "output_file": "perf.csv"
+    }
+  ],
+  "failed_runs": [],
+  "total_execution_time": 45.2,
+  "gpu_node": "gpu-node-01"
+}
+
+# Check performance results
+head perf.csv
+```
+
+### Phase 3: Automated Deployment with Ansible
+
+#### Step 8: Generate Ansible Playbook
+```bash
+# Back on build machine - generate Ansible playbook
+python -m madengine.tools.distributed_cli generate-ansible \
+    --manifest-file dummy_build_manifest.json \
+    --execution-config dummy_execution_config.json \
+    --output dummy_ansible_playbook.yml
+```
+
+#### Step 9: Create Ansible Inventory
+```bash
+# Create inventory file for your GPU nodes
+cat > gpu_inventory << EOF
+[gpu_nodes]
+gpu-node-01 ansible_host=192.168.1.101 ansible_user=madengine
+gpu-node-02 ansible_host=192.168.1.102 ansible_user=madengine
+
+[gpu_nodes:vars]
+madengine_path=/home/madengine/madengine
+registry_url=localhost:5000
+EOF
+```
+
+#### Step 10: Deploy with Ansible
+```bash
+# Run Ansible playbook to deploy to all GPU nodes
+ansible-playbook -i gpu_inventory dummy_ansible_playbook.yml
+
+# Check results on all nodes
+ansible gpu_nodes -i gpu_inventory -m shell -a "cat /home/madengine/madengine/perf.csv | head -5"
+```
+
+### Phase 4: Kubernetes Deployment
+
+#### Step 11: Generate Kubernetes Manifests
+```bash
+# Generate K8s manifests for the dummy model
+python -m madengine.tools.distributed_cli generate-k8s \
+    --manifest-file dummy_build_manifest.json \
+    --execution-config dummy_execution_config.json \
+    --namespace madengine-dummy
+```
+
+#### Step 12: Customize Kubernetes Manifests
+```bash
+# Edit the generated manifests to match your cluster
+# Update k8s-madengine-job.yaml:
+# - nodeSelector for GPU nodes
+# - Resource requests/limits  
+# - GPU resource type (nvidia.com/gpu or amd.com/gpu)
+# - Image registry URLs
+
+vim k8s-madengine-job.yaml
+```
+
+#### Step 13: Deploy to Kubernetes
+```bash
+# Create namespace
+kubectl create namespace madengine-dummy
+
+# Apply manifests
+kubectl apply -f k8s-madengine-configmap.yaml
+kubectl apply -f k8s-madengine-job.yaml
+
+# Monitor job progress
+kubectl get jobs -n madengine-dummy
+kubectl get pods -n madengine-dummy
+kubectl logs -n madengine-dummy job/madengine-dummy-job
+
+# Get results
+kubectl get configmap madengine-results -n madengine-dummy -o yaml
+```
+
+### Key Benefits of This Workflow
+
+1. **Separation of Concerns**: Build once on a central machine, run anywhere
+2. **Resource Efficiency**: GPU nodes don't need build dependencies  
+3. **Scalability**: Easy to run on multiple nodes simultaneously
+4. **Reproducibility**: Same Docker images ensure consistent results
+5. **Integration**: Works with existing orchestration tools (Ansible, K8s)
+
+### Troubleshooting Single Model Deployment
+
+#### Common Issues and Solutions
+
+**Build Phase Issues:**
+```bash
+# Check Docker registry connectivity
+docker login localhost:5000
+docker images | grep dummy
+
+# Verify model discovery
+python -m madengine.tools.discover_models --tags dummy
+```
+
+**Run Phase Issues:**
+```bash
+# Check image pull from registry
+docker pull localhost:5000/madengine/dummy:latest
+
+# Verify GPU availability
+nvidia-smi  # or rocm-smi for AMD GPUs
+
+# Check Docker GPU runtime
+docker run --rm --gpus all nvidia/cuda:11.0-base-ubuntu20.04 nvidia-smi
+```
+
+**Network Issues:**
+```bash
+# Test registry connectivity from GPU node
+curl -v http://localhost:5000/v2/_catalog
+
+# Check firewall rules for registry port
+sudo ufw status | grep 5000
+```
+
+### Performance Considerations for Single Model
+
+1. **Image Size**: The dummy model image is relatively small (~1.2GB), making it ideal for testing
+2. **Runtime**: Typical execution time is 30-60 seconds
+3. **Memory**: Requires ~2GB GPU memory
+4. **Network**: Image transfer time depends on registry bandwidth
+
+This single-model workflow serves as a foundation for scaling up to multi-model, multi-node distributed execution scenarios.
+
+## Quick Reference: Minimal Single-Model Workflow
+
+For quick deployment of a single model in a distributed scenario, here's the minimal command sequence:
+
+### Manual Deployment (Build Machine → GPU Node)
+
+**Build Phase:**
+```bash
+# 1. Build and push model
+python -m madengine.tools.distributed_cli build --tags dummy --registry localhost:5000
+
+# 2. Transfer manifest
+scp build_manifest.json user@gpu-node:/path/to/madengine/
+```
+
+**Run Phase (on GPU node):**
+```bash
+# 3. Run model
+python -m madengine.tools.distributed_cli run --manifest-file build_manifest.json --registry localhost:5000
+```
+
+### Ansible Deployment (Build Machine → Multiple GPU Nodes)
+
+```bash
+# 1. Build and export config
+python -m madengine.tools.distributed_cli build --tags dummy --registry localhost:5000
+python -m madengine.tools.distributed_cli export-config --tags dummy
+
+# 2. Generate and run Ansible playbook
+python -m madengine.tools.distributed_cli generate-ansible
+ansible-playbook -i gpu_inventory madengine_distributed.yml
+```
+
+### Kubernetes Deployment (CI/CD → K8s Cluster)
+
+```bash
+# 1. Build and export config (in CI/CD)
+python -m madengine.tools.distributed_cli build --tags dummy --registry my-registry.com
+python -m madengine.tools.distributed_cli export-config --tags dummy
+
+# 2. Generate and deploy K8s manifests
+python -m madengine.tools.distributed_cli generate-k8s --namespace madengine-prod
+kubectl apply -f k8s-madengine-configmap.yaml
+kubectl apply -f k8s-madengine-job.yaml
+```
+
+**Key Files Generated:**
+- `build_manifest.json` - Contains built image metadata and execution info
+- `execution_config.json` - Runtime configuration for external tools  
+- `*_summary.json` - Build/execution status and metrics
+- `madengine_distributed.yml` - Ansible playbook
+- `k8s-madengine-*.yaml` - Kubernetes manifests
+
+**Next Steps:**
+- Scale to multiple models by using different `--tags` filters
+- Integrate with your existing CI/CD pipeline using the `export-config` command
+- Monitor execution using the summary JSON files for automated reporting
+- Customize Ansible/K8s templates for your infrastructure requirements
