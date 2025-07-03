@@ -22,7 +22,7 @@ def build_command(args):
     
     build_summary = orchestrator.build_phase(
         registry=args.registry,
-        clean_cache=args.clean_cache,
+        clean_cache=args.clean_docker_cache,
         manifest_output=args.manifest_output
     )
     
@@ -61,7 +61,7 @@ def full_command(args):
     
     workflow_summary = orchestrator.full_workflow(
         registry=args.registry,
-        clean_cache=args.clean_cache,
+        clean_cache=args.clean_docker_cache,
         timeout=args.timeout,
         keep_alive=args.keep_alive
     )
@@ -115,38 +115,56 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Build all models and push to registry
-  %(prog)s build --registry localhost:5000 --clean-cache
+  # Build models with specific tags and push to registry
+  %(prog)s build --tags llama bert --registry localhost:5000 --clean-docker-cache
   
-  # Run models using pre-built manifest
-  %(prog)s run --manifest-file build_manifest.json
+  # Run models using pre-built manifest with custom timeout
+  %(prog)s run --manifest-file build_manifest.json --timeout 3600
   
-  # Complete workflow with registry
-  %(prog)s full --registry localhost:5000 --timeout 3600
+  # Complete workflow with specific tags and registry
+  %(prog)s full --tags resnet --registry localhost:5000 --timeout 3600 --live-output
   
-  # Generate Ansible playbook
+  # Generate Ansible playbook for distributed execution
   %(prog)s generate-ansible --output madengine.yml
   
-  # Generate Kubernetes manifests
-  %(prog)s generate-k8s --namespace madengine-prod
+  # Generate Kubernetes manifests with custom namespace
+  %(prog)s generate-k8s --namespace madengine-prod --tags llama
         """
     )
     
-    # Common arguments
-    parser.add_argument('--live-output', action='store_true', default=True,
-                       help='Enable live output (default: True)')
-    parser.add_argument('--additional-context', type=str,
-                       help='Additional context string')
-    parser.add_argument('--additional-context-file', type=str,
-                       help='Additional context file')
-    parser.add_argument('--data-config-file-name', type=str, default='data.json',
-                       help='Data configuration file (default: data.json)')
-    parser.add_argument('--force-mirror-local', action='store_true',
-                       help='Force local mirroring of data')
-    parser.add_argument('--model', type=str, 
-                       help='Specific model to process')
-    parser.add_argument('--dockerfile', type=str,
-                       help='Dockerfile pattern to use')
+    # Common arguments - aligned with mad.py run command
+    parser.add_argument('--tags', nargs='+', default=[], 
+                       help="tags to run (can be multiple).")
+    parser.add_argument('--ignore-deprecated-flag', action='store_true', 
+                       help="Force run deprecated models even if marked deprecated.")
+    parser.add_argument('--timeout', type=int, default=-1, 
+                       help="time out for model run in seconds; Overrides per-model timeout if specified or default timeout of 7200 (2 hrs). Timeout of 0 will never timeout.")
+    parser.add_argument('--live-output', action='store_true', 
+                       help="prints output in real-time directly on STDOUT")
+    parser.add_argument('--clean-docker-cache', action='store_true', 
+                       help="rebuild docker image without using cache")
+    parser.add_argument('--additional-context-file', default=None, 
+                       help="additonal context, as json file, to filter behavior of workloads. Overrides detected contexts.")
+    parser.add_argument('--additional-context', default='{}', 
+                       help="additional context, as string representation of python dict, to filter behavior of workloads. Overrides detected contexts and additional-context-file.")
+    parser.add_argument('--data-config-file-name', default="data.json", 
+                       help="custom data configuration file.")
+    parser.add_argument('--tools-json-file-name', default="./scripts/common/tools.json", 
+                       help="custom tools json configuration file.")
+    parser.add_argument('--generate-sys-env-details', default=True, 
+                       help='generate system config env details by default')
+    parser.add_argument('--force-mirror-local', default=None, 
+                       help="Path to force all relevant dataproviders to mirror data locally on.")
+    parser.add_argument('--keep-alive', action='store_true', 
+                       help="keep Docker container alive after run; will keep model directory after run")
+    parser.add_argument('--keep-model-dir', action='store_true', 
+                       help="keep model directory after run")
+    parser.add_argument('--skip-model-run', action='store_true', 
+                       help="skips running the model; will not keep model directory after run unless specified through keep-alive or keep-model-dir")
+    parser.add_argument('--disable-skip-gpu-arch', action='store_true', 
+                       help="disables skipping model based on gpu architecture")
+    parser.add_argument('-o', '--output', default='perf.csv', 
+                       help='output file')
     
     # Subcommands
     subparsers = parser.add_subparsers(dest='command', help='Available commands')
@@ -155,8 +173,6 @@ Examples:
     build_parser = subparsers.add_parser('build', help='Build Docker images for models')
     build_parser.add_argument('--registry', type=str,
                              help='Docker registry to push images to')
-    build_parser.add_argument('--clean-cache', action='store_true',
-                             help='Use --no-cache for Docker builds')
     build_parser.add_argument('--manifest-output', type=str, default='build_manifest.json',
                              help='Output file for build manifest (default: build_manifest.json)')
     build_parser.add_argument('--summary-output', type=str,
@@ -168,10 +184,6 @@ Examples:
                            help='Build manifest file (default: build_manifest.json)')
     run_parser.add_argument('--registry', type=str,
                            help='Docker registry to pull images from')
-    run_parser.add_argument('--timeout', type=int, default=7200,
-                           help='Execution timeout per model in seconds (default: 7200)')
-    run_parser.add_argument('--keep-alive', action='store_true',
-                           help='Keep containers alive after execution')
     run_parser.add_argument('--summary-output', type=str,
                            help='Output file for execution summary JSON')
     
@@ -179,12 +191,6 @@ Examples:
     full_parser = subparsers.add_parser('full', help='Run complete build and execution workflow')
     full_parser.add_argument('--registry', type=str,
                             help='Docker registry for image distribution')
-    full_parser.add_argument('--clean-cache', action='store_true',
-                            help='Use --no-cache for Docker builds')
-    full_parser.add_argument('--timeout', type=int, default=7200,
-                            help='Execution timeout per model in seconds (default: 7200)')
-    full_parser.add_argument('--keep-alive', action='store_true',
-                            help='Keep containers alive after execution')
     full_parser.add_argument('--summary-output', type=str,
                             help='Output file for complete workflow summary JSON')
     

@@ -61,7 +61,7 @@ class TestDistributedCLI:
         # Mock args
         mock_args = MagicMock()
         mock_args.registry = "localhost:5000"
-        mock_args.clean_cache = True
+        mock_args.clean_docker_cache = True
         mock_args.manifest_output = "test_manifest.json"
         mock_args.summary_output = "test_summary.json"
 
@@ -92,7 +92,7 @@ class TestDistributedCLI:
         """Test the build_command function with build failures."""
         mock_args = MagicMock()
         mock_args.registry = None
-        mock_args.clean_cache = False
+        mock_args.clean_docker_cache = False
         mock_args.manifest_output = "manifest.json"
         mock_args.summary_output = None
 
@@ -142,7 +142,7 @@ class TestDistributedCLI:
         """Test the full_command function."""
         mock_args = MagicMock()
         mock_args.registry = "localhost:5000"
-        mock_args.clean_cache = True
+        mock_args.clean_docker_cache = True
         mock_args.timeout = 1800
         mock_args.keep_alive = True
         mock_args.summary_output = None

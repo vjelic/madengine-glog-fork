@@ -361,7 +361,9 @@ class TestDistributedIntegration:
         from madengine.core.context import Context
         from madengine.core.console import Console
         
-        context = Context()
+        # Mock the Context to avoid hardware-specific initialization issues
+        with patch('madengine.core.context.Context.get_gpu_renderD_nodes', return_value=[]):
+            context = Context()
         console = Console()
         
         # Test DockerBuilder with registry
