@@ -3,7 +3,7 @@
 
 # Configuration
 MODEL="pyt_megatron_lm_train_llama2_7b"
-NODES="10.194.128.135,10.194.129.35"
+NODES="192.168.0.1,192.168.0.2"
 MASTER_ADDR="10.227.23.63"
 MASTER_PORT="4000"
 SSH_USER="username"  # Replace with your SSH username
