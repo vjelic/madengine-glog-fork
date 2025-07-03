@@ -1,0 +1,491 @@
+#!/usr/bin/env python3
+"""
+Docker Container Runner Module for MADEngine
+
+This module handles the Docker container execution phase separately from building,
+enabling distributed workflows where containers are run on remote nodes
+using pre-built images.
+"""
+
+import os
+import time
+import json
+import typing
+import warnings
+import re
+from madengine.core.console import Console
+from madengine.core.context import Context
+from madengine.core.docker import Docker
+from madengine.core.timeout import Timeout
+from madengine.core.dataprovider import Data
+
+
+class ContainerRunner:
+    """Class responsible for running Docker containers with models."""
+    
+    def __init__(self, context: Context = None, data: Data = None, console: Console = None):
+        """Initialize the Container Runner.
+        
+        Args:
+            context: The MADEngine context
+            data: The data provider instance
+            console: Optional console instance
+        """
+        self.context = context
+        self.data = data
+        self.console = console or Console()
+        self.credentials = None
+        
+    def load_build_manifest(self, manifest_file: str = "build_manifest.json") -> typing.Dict:
+        """Load build manifest from file.
+        
+        Args:
+            manifest_file: Path to build manifest file
+            
+        Returns:
+            dict: Build manifest data
+        """
+        with open(manifest_file, 'r') as f:
+            manifest = json.load(f)
+        
+        print(f"Loaded build manifest from: {manifest_file}")
+        return manifest
+    
+    def login_to_registry(self, registry: str, credentials: typing.Dict = None) -> None:
+        """Login to a Docker registry for pulling images.
+        
+        Args:
+            registry: Registry URL (e.g., "localhost:5000", "docker.io")
+            credentials: Optional credentials dictionary containing username/password
+        """
+        if not credentials:
+            print("No credentials provided for registry login")
+            return
+            
+        # Check if registry credentials are available
+        registry_key = registry if registry else "dockerhub"
+        
+        if registry_key not in credentials:
+            print(f"No credentials found for registry: {registry_key}")
+            return
+            
+        creds = credentials[registry_key]
+        
+        if "username" not in creds or "password" not in creds:
+            print(f"Invalid credentials format for registry: {registry_key}")
+            return
+            
+        # Perform docker login
+        login_command = f"echo '{creds['password']}' | docker login"
+        
+        if registry and registry != "docker.io":
+            login_command += f" {registry}"
+            
+        login_command += f" --username {creds['username']} --password-stdin"
+        
+        try:
+            self.console.sh(login_command, secret=True)
+            print(f"Successfully logged in to registry: {registry or 'DockerHub'}")
+        except Exception as e:
+            print(f"Failed to login to registry {registry}: {e}")
+            # Don't raise exception here, as public images might still be pullable
+
+    def pull_image(self, registry_image: str, local_name: str = None, 
+                   registry: str = None, credentials: typing.Dict = None) -> str:
+        """Pull an image from registry.
+        
+        Args:
+            registry_image: Full registry image name
+            local_name: Optional local name to tag the image
+            registry: Optional registry URL for authentication
+            credentials: Optional credentials dictionary for authentication
+            
+        Returns:
+            str: Local image name
+        """
+        # Login to registry if credentials are provided
+        if registry and credentials:
+            self.login_to_registry(registry, credentials)
+        
+        print(f"Pulling image: {registry_image}")
+        try:
+            self.console.sh(f"docker pull {registry_image}")
+            
+            if local_name:
+                self.console.sh(f"docker tag {registry_image} {local_name}")
+                print(f"Tagged as: {local_name}")
+                return local_name
+            
+            return registry_image
+            
+        except Exception as e:
+            print(f"Failed to pull image {registry_image}: {e}")
+            raise
+    
+    def get_gpu_arg(self, requested_gpus: str) -> str:
+        """Get the GPU arguments for docker run.
+        
+        Args:
+            requested_gpus: The requested GPUs.
+            
+        Returns:
+            str: The GPU arguments.
+        """
+        gpu_arg = ""
+        gpu_vendor = self.context.ctx["docker_env_vars"]["MAD_GPU_VENDOR"]
+        n_system_gpus = self.context.ctx['docker_env_vars']['MAD_SYSTEM_NGPUS']
+        gpu_strings = self.context.ctx["docker_gpus"].split(",")
+
+        # Parse GPU string, example: '{0-4}' -> [0,1,2,3,4]
+        docker_gpus = []
+        for gpu_string in gpu_strings:
+            if '-' in gpu_string:
+                gpu_range = gpu_string.split('-')
+                docker_gpus += [item for item in range(int(gpu_range[0]), int(gpu_range[1])+1)]
+            else:
+                docker_gpus.append(int(gpu_string))
+        docker_gpus.sort()
+
+        # Check GPU range is valid for system
+        if requested_gpus == "-1":
+            print("NGPUS requested is ALL (" + ','.join(map(str, docker_gpus)) + ").")
+            requested_gpus = len(docker_gpus)
+
+        print("NGPUS requested is " + str(requested_gpus) + " out of " + str(n_system_gpus))
+
+        if int(requested_gpus) > int(n_system_gpus) or int(requested_gpus) > len(docker_gpus):
+            raise RuntimeError(f"Too many gpus requested({requested_gpus}). System has {n_system_gpus} gpus. Context has {len(docker_gpus)} gpus.")
+
+        # Expose number of requested gpus
+        self.context.ctx['docker_env_vars']['MAD_RUNTIME_NGPUS'] = str(requested_gpus)
+
+        # Create docker arg to assign requested GPUs
+        if gpu_vendor.find("AMD") != -1:
+            gpu_arg = '--device=/dev/kfd '
+            gpu_renderDs = self.context.ctx['gpu_renderDs']
+            if gpu_renderDs is not None:
+                for idx in range(0, int(requested_gpus)):
+                    gpu_arg += f"--device=/dev/dri/renderD{gpu_renderDs[docker_gpus[idx]]} "
+
+        elif gpu_vendor.find("NVIDIA") != -1:
+            gpu_str = ""
+            for idx in range(0, int(requested_gpus)):
+                gpu_str += str(docker_gpus[idx]) + ","
+            gpu_arg += f"--gpus '\"device={gpu_str}\"' "
+        else:
+            raise RuntimeError("Unable to determine gpu vendor.")
+
+        print(f"GPU arguments: {gpu_arg}")
+        return gpu_arg
+
+    def get_cpu_arg(self) -> str:
+        """Get the CPU arguments for docker run."""
+        if "docker_cpus" not in self.context.ctx:
+            return ""
+        cpus = self.context.ctx["docker_cpus"].replace(" ", "")
+        return f"--cpuset-cpus {cpus} "
+
+    def get_env_arg(self, run_env: typing.Dict) -> str:
+        """Get the environment arguments for docker run."""
+        env_args = ""
+
+        # Add custom environment variables
+        if run_env:
+            for env_arg in run_env:
+                env_args += f"--env {env_arg}='{str(run_env[env_arg])}' "
+
+        # Add context environment variables
+        if "docker_env_vars" in self.context.ctx:
+            for env_arg in self.context.ctx["docker_env_vars"].keys():
+                env_args += f"--env {env_arg}='{str(self.context.ctx['docker_env_vars'][env_arg])}' "
+
+        print(f"Env arguments: {env_args}")
+        return env_args
+
+    def get_mount_arg(self, mount_datapaths: typing.List) -> str:
+        """Get the mount arguments for docker run."""
+        mount_args = ""
+        
+        # Mount data paths
+        if mount_datapaths:
+            for mount_datapath in mount_datapaths:
+                if mount_datapath:
+                    mount_args += f"-v {mount_datapath['path']}:{mount_datapath['home']}"
+                    if "readwrite" in mount_datapath and mount_datapath["readwrite"] == 'true':
+                        mount_args += " "
+                    else:
+                        mount_args += ":ro "
+
+        # Mount context paths
+        if "docker_mounts" in self.context.ctx:
+            for mount_arg in self.context.ctx["docker_mounts"].keys():
+                mount_args += f"-v {self.context.ctx['docker_mounts'][mount_arg]}:{mount_arg} "
+
+        return mount_args
+    
+    def apply_tools(self, pre_encapsulate_post_scripts: typing.Dict, run_env: typing.Dict, tools_json_file: str) -> None:
+        """Apply tools configuration to the runtime environment."""
+        if "tools" not in self.context.ctx:
+            return
+
+        # Read tool settings from tools.json
+        with open(tools_json_file) as f:
+            tool_file = json.load(f)
+
+        # Iterate over tools in context, apply tool settings
+        for ctx_tool_config in self.context.ctx["tools"]:
+            tool_name = ctx_tool_config["name"]
+            tool_config = tool_file["tools"][tool_name]
+
+            if "cmd" in ctx_tool_config:
+                tool_config.update({"cmd": ctx_tool_config["cmd"]})
+
+            if "env_vars" in ctx_tool_config:
+                for env_var in ctx_tool_config["env_vars"]:
+                    tool_config["env_vars"].update({env_var: ctx_tool_config["env_vars"][env_var]})
+
+            print(f"Selected Tool, {tool_name}. Configuration : {str(tool_config)}.")
+
+            # Setup tool before other existing scripts
+            if "pre_scripts" in tool_config:
+                pre_encapsulate_post_scripts["pre_scripts"] = (
+                    tool_config["pre_scripts"] + pre_encapsulate_post_scripts["pre_scripts"]
+                )
+            # Cleanup tool after other existing scripts
+            if "post_scripts" in tool_config:
+                pre_encapsulate_post_scripts["post_scripts"] += tool_config["post_scripts"]
+            # Update environment variables
+            if "env_vars" in tool_config:
+                run_env.update(tool_config["env_vars"])
+            if "cmd" in tool_config:
+                # Prepend encapsulate cmd
+                pre_encapsulate_post_scripts["encapsulate_script"] = (
+                    tool_config["cmd"] + " " + pre_encapsulate_post_scripts["encapsulate_script"]
+                )
+    
+    def run_pre_post_script(self, model_docker: Docker, model_dir: str, pre_post: typing.List) -> None:
+        """Run pre/post scripts in the container."""
+        for script in pre_post:
+            script_path = script["path"].strip()
+            model_docker.sh(f"cp -vLR --preserve=all {script_path} {model_dir}", timeout=600)
+            script_name = os.path.basename(script_path)
+            script_args = ""
+            if "args" in script:
+                script_args = script["args"].strip()
+            model_docker.sh(f"cd {model_dir} && bash {script_name} {script_args}", timeout=600)
+    
+    def run_container(self, model_info: typing.Dict, docker_image: str, 
+                     build_info: typing.Dict = None, keep_alive: bool = False,
+                     timeout: int = 7200, tools_json_file: str = "scripts/common/tools.json") -> typing.Dict:
+        """Run a model in a Docker container.
+        
+        Args:
+            model_info: Model information dictionary
+            docker_image: Docker image name to run
+            build_info: Optional build information from manifest
+            keep_alive: Whether to keep container alive after execution
+            timeout: Execution timeout in seconds
+            tools_json_file: Path to tools configuration file
+            
+        Returns:
+            dict: Execution results including performance metrics
+        """
+        print(f"Running model {model_info['name']} in container {docker_image}")
+        
+        # Initialize results
+        run_results = {
+            "model": model_info["name"],
+            "docker_image": docker_image,
+            "status": "FAILURE",
+            "performance": "",
+            "metric": "",
+            "test_duration": 0,
+            "machine_name": self.console.sh("hostname")
+        }
+        
+        # If build info provided, merge it
+        if build_info:
+            run_results.update(build_info)
+        
+        # Prepare docker run options
+        gpu_vendor = self.context.ctx["gpu_vendor"]
+        docker_options = ""
+
+        if gpu_vendor.find("AMD") != -1:
+            docker_options = ("--network host -u root --group-add video "
+                            "--cap-add=SYS_PTRACE --cap-add SYS_ADMIN --device /dev/fuse "
+                            "--security-opt seccomp=unconfined --security-opt apparmor=unconfined --ipc=host ")
+        elif gpu_vendor.find("NVIDIA") != -1:
+            docker_options = ("--cap-add=SYS_PTRACE --cap-add SYS_ADMIN --cap-add SYS_NICE --device /dev/fuse "
+                            "--security-opt seccomp=unconfined --security-opt apparmor=unconfined "
+                            "--network host -u root --ipc=host ")
+        else:
+            raise RuntimeError("Unable to determine gpu vendor.")
+
+        # Initialize scripts
+        pre_encapsulate_post_scripts = {"pre_scripts": [], "encapsulate_script": "", "post_scripts": []}
+
+        if "pre_scripts" in self.context.ctx:
+            pre_encapsulate_post_scripts["pre_scripts"] = self.context.ctx["pre_scripts"]
+        if "post_scripts" in self.context.ctx:
+            pre_encapsulate_post_scripts["post_scripts"] = self.context.ctx["post_scripts"]
+        if "encapsulate_script" in self.context.ctx:
+            pre_encapsulate_post_scripts["encapsulate_script"] = self.context.ctx["encapsulate_script"]
+
+        # Add environment variables
+        docker_options += f"--env MAD_MODEL_NAME='{model_info['name']}' "
+        docker_options += f"--env JENKINS_BUILD_NUMBER='{os.environ.get('BUILD_NUMBER','0')}' "
+
+        # Gather data and environment
+        run_env = {}
+        mount_datapaths = None
+
+        if "data" in model_info and model_info["data"] != "" and self.data:
+            mount_datapaths = self.data.get_mountpaths(model_info["data"])
+            model_dataenv = self.data.get_env(model_info["data"])
+            if model_dataenv is not None:
+                run_env.update(model_dataenv)
+            run_env["MAD_DATANAME"] = model_info["data"]
+
+        # Add credentials to environment
+        if "cred" in model_info and model_info["cred"] != "" and self.credentials:
+            if model_info["cred"] not in self.credentials:
+                raise RuntimeError(f"Credentials({model_info['cred']}) not found")
+            for key_cred, value_cred in self.credentials[model_info["cred"]].items():
+                run_env[model_info["cred"] + "_" + key_cred.upper()] = value_cred
+
+        # Apply tools if configured
+        if os.path.exists(tools_json_file):
+            self.apply_tools(pre_encapsulate_post_scripts, run_env, tools_json_file)
+
+        # Build docker options
+        docker_options += self.get_gpu_arg(model_info["n_gpus"])
+        docker_options += self.get_cpu_arg()
+        docker_options += self.get_env_arg(run_env)
+        docker_options += self.get_mount_arg(mount_datapaths)
+        docker_options += f" {model_info.get('additional_docker_run_options', '')}"
+
+        # Generate container name
+        container_name = "container_" + re.sub('.*:', '', docker_image.replace("/", "_").replace(":", "_"))
+
+        print(f"Docker options: {docker_options}")
+
+        # Run the container
+        with Timeout(timeout):
+            model_docker = Docker(docker_image, container_name, docker_options, 
+                                keep_alive=keep_alive, console=self.console)
+            
+            # Check user
+            whoami = model_docker.sh("whoami")
+            print(f"USER is {whoami}")
+
+            # Show GPU info
+            if gpu_vendor.find("AMD") != -1:
+                model_docker.sh("/opt/rocm/bin/rocm-smi || true")
+            elif gpu_vendor.find("NVIDIA") != -1:
+                model_docker.sh("/usr/bin/nvidia-smi || true")
+
+            # Prepare model directory
+            model_dir = "run_directory"
+            if "url" in model_info and model_info["url"] != "":
+                model_dir = model_info['url'].rstrip('/').split('/')[-1]
+                
+                # Validate model_dir
+                special_char = r'[^a-zA-Z0-9\-\_]'
+                if re.search(special_char, model_dir) is not None:
+                    warnings.warn("Model url contains special character. Fix url.")
+
+            model_docker.sh(f"rm -rf {model_dir}", timeout=240)
+            model_docker.sh("git config --global --add safe.directory /myworkspace")
+
+            # Clone model repo if needed
+            if "url" in model_info and model_info["url"] != "":
+                if "cred" in model_info and model_info["cred"] != "" and self.credentials:
+                    print(f"Using credentials for {model_info['cred']}")
+                    
+                    if model_info['url'].startswith('ssh://'):
+                        model_docker.sh(
+                            f"git -c core.sshCommand='ssh -l {self.credentials[model_info['cred']]['username']} "
+                            f"-i {self.credentials[model_info['cred']]['ssh_key_file']} -o IdentitiesOnly=yes "
+                            f"-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no' "
+                            f"clone {model_info['url']}", timeout=240
+                        )
+                    else:  # http or https
+                        model_docker.sh(
+                            f"git clone -c credential.helper='!f() {{ echo username={self.credentials[model_info['cred']]['username']}; "
+                            f"echo password={self.credentials[model_info['cred']]['password']}; }};f' "
+                            f"{model_info['url']}", timeout=240, secret=f"git clone {model_info['url']}"
+                        )
+                else:
+                    model_docker.sh(f"git clone {model_info['url']}", timeout=240)
+
+                model_docker.sh(f"git config --global --add safe.directory /myworkspace/{model_dir}")
+                run_results["git_commit"] = model_docker.sh(f"cd {model_dir} && git rev-parse HEAD")
+                model_docker.sh(f"cd {model_dir}; git submodule update --init --recursive")
+            else:
+                model_docker.sh(f"mkdir -p {model_dir}")
+
+            # Run pre-scripts
+            if pre_encapsulate_post_scripts["pre_scripts"]:
+                self.run_pre_post_script(model_docker, model_dir, pre_encapsulate_post_scripts["pre_scripts"])
+
+            # Prepare script execution
+            scripts_arg = model_info['scripts']
+            if scripts_arg.endswith(".sh"):
+                dir_path = os.path.dirname(scripts_arg)
+                script_name = "bash " + os.path.basename(scripts_arg)
+            else:
+                dir_path = model_info['scripts']
+                script_name = "bash run.sh"
+
+            # Add script prepend command
+            script_name = pre_encapsulate_post_scripts["encapsulate_script"] + " " + script_name
+
+            # Copy scripts to model directory
+            model_docker.sh(f"cp -vLR --preserve=all {dir_path}/. {model_dir}/")
+
+            # Prepare data if needed
+            if 'data' in model_info and model_info['data'] != "" and self.data:
+                self.data.prepare_data(model_info['data'], model_docker)
+
+            # Set permissions
+            model_docker.sh(f"chmod -R a+rw {model_dir}")
+
+            # Run the model
+            test_start_time = time.time()
+            print("Running model...")
+            
+            model_args = self.context.ctx.get("model_args", model_info["args"])
+            model_docker.sh(f"cd {model_dir} && {script_name} {model_args}", timeout=None)
+            
+            run_results["test_duration"] = time.time() - test_start_time
+            print(f"Test Duration: {run_results['test_duration']} seconds")
+
+            # Run post-scripts
+            if pre_encapsulate_post_scripts["post_scripts"]:
+                self.run_pre_post_script(model_docker, model_dir, pre_encapsulate_post_scripts["post_scripts"])
+
+            # Extract performance metrics from logs
+            # This would need to be adapted based on your log format
+            # For now, mark as success if we got here
+            run_results["status"] = "SUCCESS"
+
+            # Cleanup if not keeping alive
+            if not keep_alive:
+                model_docker.sh(f"rm -rf {model_dir}", timeout=240)
+            else:
+                model_docker.sh(f"chmod -R a+rw {model_dir}")
+                print(f"keep_alive specified; model_dir({model_dir}) is not removed")
+
+        # Explicitly delete model docker to stop the container
+        del model_docker
+        
+        return run_results
+    
+    def set_credentials(self, credentials: typing.Dict) -> None:
+        """Set credentials for model execution.
+        
+        Args:
+            credentials: Credentials dictionary
+        """
+        self.credentials = credentials
