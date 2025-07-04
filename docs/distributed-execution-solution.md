@@ -1,8 +1,8 @@
-# MADEngine Distributed Execution Solution
+# madengine Distributed Execution Solution
 
 ## Overview
 
-This solution splits the MADEngine `run_models.py` workflow into separate **build** and **run** phases to enable distributed execution scenarios such as:
+This solution splits the madengine `run_models.py` workflow into separate **build** and **run** phases to enable distributed execution scenarios such as:
 
 - **Ansible**: Build images on a central host, distribute and run on multiple GPU nodes
 - **Kubernetes**: Build images in CI/CD, deploy as jobs across GPU clusters
@@ -170,7 +170,7 @@ The exported configuration includes:
 - Docker environment variables and mounts
 - GPU configuration details
 
-This is useful for integrating MADEngine with external tools like CI/CD pipelines, monitoring systems, or custom orchestration frameworks.
+This is useful for integrating madengine with external tools like CI/CD pipelines, monitoring systems, or custom orchestration frameworks.
 
 ### 6. Smart Run Command Behavior
 
@@ -233,7 +233,7 @@ python -m madengine.tools.distributed_cli generate k8s \
 
 ### 8. Advanced CLI Usage
 
-The distributed CLI supports all standard MADEngine arguments for model filtering and execution control:
+The distributed CLI supports all standard madengine arguments for model filtering and execution control:
 
 #### Model Selection and Filtering
 ```bash
@@ -291,11 +291,11 @@ python -m madengine.tools.distributed_cli full \
     --summary-output full_workflow_summary.json
 ```
 
-## Integration with Existing MADEngine
+## Integration with Existing madengine
 
 ### Minimal Changes Required
 
-The solution maintains compatibility with existing MADEngine components:
+The solution maintains compatibility with existing madengine components:
 
 1. **Context System**: Uses existing `Context` class for configuration
 2. **Data Provider**: Integrates with existing `Data` class for data management  
@@ -317,11 +317,11 @@ This section provides a complete walkthrough for building and running a single m
 1. **Docker Registry**: A accessible Docker registry (local or remote)
 2. **GPU Node(s)**: Target machines with GPU drivers and Docker installed
 3. **Network Access**: GPU nodes can access the Docker registry
-4. **MADEngine**: Installed on build machine and GPU nodes
+4. **madengine**: Installed on build machine and GPU nodes
 
 ### Phase 1: Build and Prepare (Central Build Machine)
 
-#### Step 1: Navigate to MADEngine Directory
+#### Step 1: Navigate to madengine Directory
 ```bash
 cd /path/to/madengine
 ```
@@ -385,7 +385,7 @@ scp dummy_build_manifest.json user@gpu-node-01:/home/user/madengine/
 # SSH to GPU node
 ssh user@gpu-node-01
 
-# Navigate to MADEngine directory on GPU node
+# Navigate to madengine directory on GPU node
 cd /home/user/madengine
 
 # Run the dummy model using the manifest
