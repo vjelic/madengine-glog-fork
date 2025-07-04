@@ -152,6 +152,7 @@ class TestDistributedCLI:
         mock_args.keep_alive = True
         mock_args.summary_output = None
         mock_args.manifest_output = "build_manifest.json"
+        mock_args.clean_docker_cache = False
 
         # Mock that manifest file doesn't exist (complete workflow mode)
         mock_exists.return_value = False
@@ -229,10 +230,16 @@ class TestDistributedCLI:
         assert result == distributed_cli.EXIT_SUCCESS
 
     @patch('madengine.tools.distributed_cli.DistributedOrchestrator')
-    def test_export_config_function(self, mock_orchestrator):
+    @patch('madengine.tools.discover_models.DiscoverModels')
+    def test_export_config_function(self, mock_discover_models, mock_orchestrator):
         """Test the export_config function."""
         mock_args = MagicMock()
         mock_args.output = "config.json"
+
+        # Mock DiscoverModels to return a list of models
+        mock_discover_instance = MagicMock()
+        mock_discover_models.return_value = mock_discover_instance
+        mock_discover_instance.run.return_value = ["model1", "model2"]
 
         mock_instance = MagicMock()
         mock_orchestrator.return_value = mock_instance
@@ -241,7 +248,33 @@ class TestDistributedCLI:
         result = distributed_cli.export_config(mock_args)
         
         mock_orchestrator.assert_called_once_with(mock_args)
-        mock_instance.export_execution_config.assert_called_once_with("config.json")
+        mock_discover_models.assert_called_once_with(args=mock_args)
+        mock_discover_instance.run.assert_called_once()
+        mock_instance.export_execution_config.assert_called_once_with(["model1", "model2"], "config.json")
+        assert result == distributed_cli.EXIT_SUCCESS
+
+    @patch('madengine.tools.distributed_cli.DistributedOrchestrator')
+    @patch('madengine.tools.discover_models.DiscoverModels')
+    def test_export_config_function_no_models(self, mock_discover_models, mock_orchestrator):
+        """Test the export_config function when no models are discovered."""
+        mock_args = MagicMock()
+        mock_args.output = "config.json"
+
+        # Mock DiscoverModels to return an empty list
+        mock_discover_instance = MagicMock()
+        mock_discover_models.return_value = mock_discover_instance
+        mock_discover_instance.run.return_value = []
+
+        mock_instance = MagicMock()
+        mock_orchestrator.return_value = mock_instance
+        mock_instance.export_execution_config.return_value = True
+
+        result = distributed_cli.export_config(mock_args)
+        
+        mock_orchestrator.assert_called_once_with(mock_args)
+        mock_discover_models.assert_called_once_with(args=mock_args)
+        mock_discover_instance.run.assert_called_once()
+        mock_instance.export_execution_config.assert_called_once_with([], "config.json")
         assert result == distributed_cli.EXIT_SUCCESS
 
     @patch('madengine.tools.distributed_cli.DistributedOrchestrator')
@@ -255,6 +288,7 @@ class TestDistributedCLI:
         mock_args.keep_alive = False
         mock_args.summary_output = None
         mock_args.manifest_output = "build_manifest.json"
+        mock_args.clean_docker_cache = False
 
         # Mock that manifest file doesn't exist (complete workflow mode)
         mock_exists.return_value = False
