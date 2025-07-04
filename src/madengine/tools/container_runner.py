@@ -13,27 +13,31 @@ import json
 import typing
 import warnings
 import re
+from contextlib import redirect_stdout, redirect_stderr
 from madengine.core.console import Console
 from madengine.core.context import Context
 from madengine.core.docker import Docker
 from madengine.core.timeout import Timeout
 from madengine.core.dataprovider import Data
+from madengine.utils.ops import PythonicTee
 
 
 class ContainerRunner:
     """Class responsible for running Docker containers with models."""
     
-    def __init__(self, context: Context = None, data: Data = None, console: Console = None):
+    def __init__(self, context: Context = None, data: Data = None, console: Console = None, live_output: bool = False):
         """Initialize the Container Runner.
         
         Args:
             context: The MADEngine context
             data: The data provider instance
             console: Optional console instance
+            live_output: Whether to show live output
         """
         self.context = context
         self.data = data
-        self.console = console or Console()
+        self.console = console or Console(live_output=live_output)
+        self.live_output = live_output
         self.credentials = None
         
     def load_build_manifest(self, manifest_file: str = "build_manifest.json") -> typing.Dict:
@@ -276,7 +280,8 @@ class ContainerRunner:
     
     def run_container(self, model_info: typing.Dict, docker_image: str, 
                      build_info: typing.Dict = None, keep_alive: bool = False,
-                     timeout: int = 7200, tools_json_file: str = "scripts/common/tools.json") -> typing.Dict:
+                     timeout: int = 7200, tools_json_file: str = "scripts/common/tools.json",
+                     phase_suffix: str = "") -> typing.Dict:
         """Run a model in a Docker container.
         
         Args:
@@ -286,11 +291,30 @@ class ContainerRunner:
             keep_alive: Whether to keep container alive after execution
             timeout: Execution timeout in seconds
             tools_json_file: Path to tools configuration file
+            phase_suffix: Suffix for log file name (e.g., ".run" or "")
             
         Returns:
             dict: Execution results including performance metrics
         """
         print(f"Running model {model_info['name']} in container {docker_image}")
+        
+        # Create log file for this run
+        docker_file_basename = docker_image.replace("ci-", "").replace("_", "")
+        log_file_path = (
+            model_info["name"]
+            + "_"
+            + docker_file_basename
+            + phase_suffix
+            + ".live.log"
+        )
+        # Replace / with _ in log file path for models from discovery which use '/' as a separator
+        log_file_path = log_file_path.replace("/", "_")
+        
+        print(f"Run log will be written to: {log_file_path}")
+        
+        # get machine name
+        machine_name = self.console.sh("hostname")
+        print(f"MACHINE NAME is {machine_name}")
         
         # Initialize results
         run_results = {
@@ -300,7 +324,8 @@ class ContainerRunner:
             "performance": "",
             "metric": "",
             "test_duration": 0,
-            "machine_name": self.console.sh("hostname")
+            "machine_name": machine_name,
+            "log_file": log_file_path
         }
         
         # If build info provided, merge it
@@ -369,116 +394,156 @@ class ContainerRunner:
         container_name = "container_" + re.sub('.*:', '', docker_image.replace("/", "_").replace(":", "_"))
 
         print(f"Docker options: {docker_options}")
+        
+        # set timeout
+        print(f"Setting timeout to {str(timeout)} seconds.")
 
-        # Run the container
-        with Timeout(timeout):
-            model_docker = Docker(docker_image, container_name, docker_options, 
-                                keep_alive=keep_alive, console=self.console)
+        # Run the container with logging
+        try:
+            with open(log_file_path, mode="w", buffering=1) as outlog:
+                with redirect_stdout(PythonicTee(outlog, self.live_output)), redirect_stderr(PythonicTee(outlog, self.live_output)):
+                    with Timeout(timeout):
+                        model_docker = Docker(docker_image, container_name, docker_options, 
+                                            keep_alive=keep_alive, console=self.console)
+                        
+                        # Check user
+                        whoami = model_docker.sh("whoami")
+                        print(f"USER is {whoami}")
+
+                        # Show GPU info
+                        if gpu_vendor.find("AMD") != -1:
+                            smi = model_docker.sh("/opt/rocm/bin/rocm-smi || true")
+                            print(smi)
+                        elif gpu_vendor.find("NVIDIA") != -1:
+                            smi = model_docker.sh("/usr/bin/nvidia-smi || true")
+                            print(smi)
+
+                        # Prepare model directory
+                        model_dir = "run_directory"
+                        if "url" in model_info and model_info["url"] != "":
+                            model_dir = model_info['url'].rstrip('/').split('/')[-1]
+                            
+                            # Validate model_dir
+                            special_char = r'[^a-zA-Z0-9\-\_]'
+                            if re.search(special_char, model_dir) is not None:
+                                warnings.warn("Model url contains special character. Fix url.")
+
+                        model_docker.sh(f"rm -rf {model_dir}", timeout=240)
+                        model_docker.sh("git config --global --add safe.directory /myworkspace")
+
+                        # Clone model repo if needed
+                        if "url" in model_info and model_info["url"] != "":
+                            if "cred" in model_info and model_info["cred"] != "" and self.credentials:
+                                print(f"Using credentials for {model_info['cred']}")
+                                
+                                if model_info['url'].startswith('ssh://'):
+                                    model_docker.sh(
+                                        f"git -c core.sshCommand='ssh -l {self.credentials[model_info['cred']]['username']} "
+                                        f"-i {self.credentials[model_info['cred']]['ssh_key_file']} -o IdentitiesOnly=yes "
+                                        f"-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no' "
+                                        f"clone {model_info['url']}", timeout=240
+                                    )
+                                else:  # http or https
+                                    model_docker.sh(
+                                        f"git clone -c credential.helper='!f() {{ echo username={self.credentials[model_info['cred']]['username']}; "
+                                        f"echo password={self.credentials[model_info['cred']]['password']}; }};f' "
+                                        f"{model_info['url']}", timeout=240, secret=f"git clone {model_info['url']}"
+                                    )
+                            else:
+                                model_docker.sh(f"git clone {model_info['url']}", timeout=240)
+
+                            model_docker.sh(f"git config --global --add safe.directory /myworkspace/{model_dir}")
+                            run_results["git_commit"] = model_docker.sh(f"cd {model_dir} && git rev-parse HEAD")
+                            print(f"MODEL GIT COMMIT is {run_results['git_commit']}")
+                            model_docker.sh(f"cd {model_dir}; git submodule update --init --recursive")
+                        else:
+                            model_docker.sh(f"mkdir -p {model_dir}")
+
+                        # Run pre-scripts
+                        if pre_encapsulate_post_scripts["pre_scripts"]:
+                            self.run_pre_post_script(model_docker, model_dir, pre_encapsulate_post_scripts["pre_scripts"])
+
+                        # Prepare script execution
+                        scripts_arg = model_info['scripts']
+                        if scripts_arg.endswith(".sh"):
+                            dir_path = os.path.dirname(scripts_arg)
+                            script_name = "bash " + os.path.basename(scripts_arg)
+                        else:
+                            dir_path = model_info['scripts']
+                            script_name = "bash run.sh"
+
+                        # Add script prepend command
+                        script_name = pre_encapsulate_post_scripts["encapsulate_script"] + " " + script_name
+
+                        # print repo hash
+                        commit = model_docker.sh(f"cd {dir_path}; git rev-parse HEAD || true")
+                        print("======================================================")
+                        print("MODEL REPO COMMIT: ", commit)
+                        print("======================================================")
+
+                        # Copy scripts to model directory
+                        model_docker.sh(f"cp -vLR --preserve=all {dir_path}/. {model_dir}/")
+
+                        # Prepare data if needed
+                        if 'data' in model_info and model_info['data'] != "" and self.data:
+                            self.data.prepare_data(model_info['data'], model_docker)
+
+                        # Set permissions
+                        model_docker.sh(f"chmod -R a+rw {model_dir}")
+
+                        # Run the model
+                        test_start_time = time.time()
+                        print("Running model...")
+                        
+                        model_args = self.context.ctx.get("model_args", model_info["args"])
+                        model_docker.sh(f"cd {model_dir} && {script_name} {model_args}", timeout=None)
+                        
+                        run_results["test_duration"] = time.time() - test_start_time
+                        print(f"Test Duration: {run_results['test_duration']} seconds")
+
+                        # Run post-scripts
+                        if pre_encapsulate_post_scripts["post_scripts"]:
+                            self.run_pre_post_script(model_docker, model_dir, pre_encapsulate_post_scripts["post_scripts"])
+
+                        # Extract performance metrics from logs
+                        # Look for performance data in the log output similar to original run_models.py
+                        try:
+                            # Check if this follows the same pattern as original run_models
+                            perf_regex = ".*performance:\\s*\\([+|-]\?[0-9]*[.]\\?[0-9]*\(e[+|-]\?[0-9]\+\)\?\\)\\s*.*\\s*"
+                            metric_regex = ".*performance:\\s*[+|-]\?[0-9]*[.]\\?[0-9]*\(e[+|-]\?[0-9]\+\)\?\\s*\\(\\w*\\)\\s*"
+                            
+                            # Extract from log file
+                            try:
+                                run_results["performance"] = self.console.sh("cat " + log_file_path +
+                                                            " | sed -n 's/" + perf_regex + "/\\1/p'")
+                                run_results["metric"] = self.console.sh("cat " + log_file_path +
+                                                        " | sed -n 's/" + metric_regex + "/\\2/p'")
+                            except Exception:
+                                pass  # Performance extraction is optional
+                        except Exception as e:
+                            print(f"Warning: Could not extract performance metrics: {e}")
+                        
+                        # For now, mark as success if we got here
+                        run_results["status"] = "SUCCESS"
+                        print(f"{model_info['name']} performance is {run_results.get('performance', 'N/A')} {run_results.get('metric', '')}")
+
+                        # Cleanup if not keeping alive
+                        if not keep_alive:
+                            model_docker.sh(f"rm -rf {model_dir}", timeout=240)
+                        else:
+                            model_docker.sh(f"chmod -R a+rw {model_dir}")
+                            print(f"keep_alive specified; model_dir({model_dir}) is not removed")
+
+                        # Explicitly delete model docker to stop the container
+                        del model_docker
             
-            # Check user
-            whoami = model_docker.sh("whoami")
-            print(f"USER is {whoami}")
-
-            # Show GPU info
-            if gpu_vendor.find("AMD") != -1:
-                model_docker.sh("/opt/rocm/bin/rocm-smi || true")
-            elif gpu_vendor.find("NVIDIA") != -1:
-                model_docker.sh("/usr/bin/nvidia-smi || true")
-
-            # Prepare model directory
-            model_dir = "run_directory"
-            if "url" in model_info and model_info["url"] != "":
-                model_dir = model_info['url'].rstrip('/').split('/')[-1]
-                
-                # Validate model_dir
-                special_char = r'[^a-zA-Z0-9\-\_]'
-                if re.search(special_char, model_dir) is not None:
-                    warnings.warn("Model url contains special character. Fix url.")
-
-            model_docker.sh(f"rm -rf {model_dir}", timeout=240)
-            model_docker.sh("git config --global --add safe.directory /myworkspace")
-
-            # Clone model repo if needed
-            if "url" in model_info and model_info["url"] != "":
-                if "cred" in model_info and model_info["cred"] != "" and self.credentials:
-                    print(f"Using credentials for {model_info['cred']}")
-                    
-                    if model_info['url'].startswith('ssh://'):
-                        model_docker.sh(
-                            f"git -c core.sshCommand='ssh -l {self.credentials[model_info['cred']]['username']} "
-                            f"-i {self.credentials[model_info['cred']]['ssh_key_file']} -o IdentitiesOnly=yes "
-                            f"-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no' "
-                            f"clone {model_info['url']}", timeout=240
-                        )
-                    else:  # http or https
-                        model_docker.sh(
-                            f"git clone -c credential.helper='!f() {{ echo username={self.credentials[model_info['cred']]['username']}; "
-                            f"echo password={self.credentials[model_info['cred']]['password']}; }};f' "
-                            f"{model_info['url']}", timeout=240, secret=f"git clone {model_info['url']}"
-                        )
-                else:
-                    model_docker.sh(f"git clone {model_info['url']}", timeout=240)
-
-                model_docker.sh(f"git config --global --add safe.directory /myworkspace/{model_dir}")
-                run_results["git_commit"] = model_docker.sh(f"cd {model_dir} && git rev-parse HEAD")
-                model_docker.sh(f"cd {model_dir}; git submodule update --init --recursive")
-            else:
-                model_docker.sh(f"mkdir -p {model_dir}")
-
-            # Run pre-scripts
-            if pre_encapsulate_post_scripts["pre_scripts"]:
-                self.run_pre_post_script(model_docker, model_dir, pre_encapsulate_post_scripts["pre_scripts"])
-
-            # Prepare script execution
-            scripts_arg = model_info['scripts']
-            if scripts_arg.endswith(".sh"):
-                dir_path = os.path.dirname(scripts_arg)
-                script_name = "bash " + os.path.basename(scripts_arg)
-            else:
-                dir_path = model_info['scripts']
-                script_name = "bash run.sh"
-
-            # Add script prepend command
-            script_name = pre_encapsulate_post_scripts["encapsulate_script"] + " " + script_name
-
-            # Copy scripts to model directory
-            model_docker.sh(f"cp -vLR --preserve=all {dir_path}/. {model_dir}/")
-
-            # Prepare data if needed
-            if 'data' in model_info and model_info['data'] != "" and self.data:
-                self.data.prepare_data(model_info['data'], model_docker)
-
-            # Set permissions
-            model_docker.sh(f"chmod -R a+rw {model_dir}")
-
-            # Run the model
-            test_start_time = time.time()
-            print("Running model...")
-            
-            model_args = self.context.ctx.get("model_args", model_info["args"])
-            model_docker.sh(f"cd {model_dir} && {script_name} {model_args}", timeout=None)
-            
-            run_results["test_duration"] = time.time() - test_start_time
-            print(f"Test Duration: {run_results['test_duration']} seconds")
-
-            # Run post-scripts
-            if pre_encapsulate_post_scripts["post_scripts"]:
-                self.run_pre_post_script(model_docker, model_dir, pre_encapsulate_post_scripts["post_scripts"])
-
-            # Extract performance metrics from logs
-            # This would need to be adapted based on your log format
-            # For now, mark as success if we got here
-            run_results["status"] = "SUCCESS"
-
-            # Cleanup if not keeping alive
-            if not keep_alive:
-                model_docker.sh(f"rm -rf {model_dir}", timeout=240)
-            else:
-                model_docker.sh(f"chmod -R a+rw {model_dir}")
-                print(f"keep_alive specified; model_dir({model_dir}) is not removed")
-
-        # Explicitly delete model docker to stop the container
-        del model_docker
+        except Exception as e:
+            print("===== EXCEPTION =====")
+            print("Exception: ", e)
+            import traceback
+            traceback.print_exc()
+            print("=============== =====")
+            run_results["status"] = "FAILURE"
         
         return run_results
     

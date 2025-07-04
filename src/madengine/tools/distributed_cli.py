@@ -52,6 +52,9 @@ def build_models(args: argparse.Namespace) -> int:
         logging.info("Starting model build process")
         orchestrator = DistributedOrchestrator(args)
         
+        # Mark this as separate build phase for log naming
+        args._separate_phases = True
+        
         build_summary = orchestrator.build_phase(
             registry=args.registry,
             clean_cache=args.clean_docker_cache,
@@ -106,6 +109,9 @@ def run_models(args: argparse.Namespace) -> int:
             # Run only execution phase using existing manifest
             logging.info(f"Running models using existing manifest: {args.manifest_file}")
             
+            # Mark this as separate run phase for log naming
+            args._separate_phases = True
+            
             try:
                 execution_summary = orchestrator.run_phase(
                     manifest_file=args.manifest_file,
@@ -144,6 +150,9 @@ def run_models(args: argparse.Namespace) -> int:
                 logging.info("No manifest file provided, running complete workflow (build + run)")
             
             try:
+                # Mark this as combined workflow for log naming
+                args._separate_phases = False
+                
                 # Build phase
                 build_summary = orchestrator.build_phase(
                     registry=args.registry,

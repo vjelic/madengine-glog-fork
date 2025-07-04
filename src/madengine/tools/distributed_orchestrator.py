@@ -54,7 +54,7 @@ class DistributedOrchestrator:
             if os.path.exists(credential_file):
                 with open(credential_file) as f:
                     self.credentials = json.load(f)
-                print(f"Loaded credentials: {list(self.credentials.keys())}")
+                print(f"Credentials: {list(self.credentials.keys())}")
         except Exception as e:
             print(f"Warning: Could not load credentials: {e}")
     
@@ -74,6 +74,8 @@ class DistributedOrchestrator:
         print("STARTING BUILD PHASE")
         print("=" * 60)
         
+        print(f"Building models with args {self.args}")
+        
         # Discover models
         discover_models = DiscoverModels(args=self.args)
         models = discover_models.run()
@@ -84,11 +86,14 @@ class DistributedOrchestrator:
         self._copy_scripts()
         
         # Initialize builder
-        builder = DockerBuilder(self.context, self.console)
+        builder = DockerBuilder(self.context, self.console, live_output=getattr(self.args, 'live_output', False))
+        
+        # Determine phase suffix for log files
+        phase_suffix = ".build" if hasattr(self.args, '_separate_phases') and self.args._separate_phases else ""
         
         # Build all images
         build_summary = builder.build_all_models(
-            models, self.credentials, clean_cache, registry
+            models, self.credentials, clean_cache, registry, phase_suffix
         )
         
         # Export build manifest
@@ -101,6 +106,9 @@ class DistributedOrchestrator:
         print(f"  Total build time: {build_summary['total_build_time']:.2f} seconds")
         print(f"  Manifest saved to: {manifest_output}")
         print("=" * 60)
+        
+        # Cleanup scripts
+        self.cleanup()
         
         return build_summary
     
@@ -122,6 +130,23 @@ class DistributedOrchestrator:
         print("STARTING RUN PHASE")
         print("=" * 60)
         
+        print(f"Running models with args {self.args}")
+        
+        self.console.sh("echo 'MAD Run Models'")
+        
+        # show node rocm info
+        host_os = self.context.ctx.get("host_os", "")
+        if host_os.find("HOST_UBUNTU") != -1:
+            print(self.console.sh("apt show rocm-libs -a", canFail=True))
+        elif host_os.find("HOST_CENTOS") != -1:
+            print(self.console.sh("yum info rocm-libs", canFail=True))
+        elif host_os.find("HOST_SLES") != -1:
+            print(self.console.sh("zypper info rocm-libs", canFail=True))
+        elif host_os.find("HOST_AZURE") != -1:
+            print(self.console.sh("tdnf info rocm-libs", canFail=True))
+        else:
+            print("ERROR: Unable to detect host OS.")
+        
         # Load build manifest
         if not os.path.exists(manifest_file):
             raise FileNotFoundError(f"Build manifest not found: {manifest_file}")
@@ -135,8 +160,11 @@ class DistributedOrchestrator:
         self._copy_scripts()
         
         # Initialize runner
-        runner = ContainerRunner(self.context, self.data, self.console)
+        runner = ContainerRunner(self.context, self.data, self.console, live_output=getattr(self.args, 'live_output', False))
         runner.set_credentials(self.credentials)
+        
+        # Determine phase suffix for log files
+        phase_suffix = ".run" if hasattr(self.args, '_separate_phases') and self.args._separate_phases else ""
         
         # Use built models from manifest if available, otherwise discover models
         if "built_models" in manifest and manifest["built_models"]:
@@ -176,7 +204,7 @@ class DistributedOrchestrator:
                         # Run the container
                         run_results = runner.run_container(
                             model_info, actual_image, build_info, 
-                            keep_alive=keep_alive, timeout=timeout
+                            keep_alive=keep_alive, timeout=timeout, phase_suffix=phase_suffix
                         )
                         
                         execution_summary["successful_runs"].append(run_results)
@@ -229,7 +257,7 @@ class DistributedOrchestrator:
                         # Run the container
                         run_results = runner.run_container(
                             model_info, actual_image, build_info, 
-                            keep_alive=keep_alive, timeout=timeout
+                            keep_alive=keep_alive, timeout=timeout, phase_suffix=phase_suffix
                         )
                         
                         execution_summary["successful_runs"].append(run_results)
@@ -251,6 +279,9 @@ class DistributedOrchestrator:
         print(f"  Failed runs: {len(execution_summary['failed_runs'])}")
         print(f"  Total execution time: {execution_summary['total_execution_time']:.2f} seconds")
         print("=" * 60)
+        
+        # Cleanup scripts
+        self.cleanup()
         
         return execution_summary
     
@@ -297,7 +328,8 @@ class DistributedOrchestrator:
     def _copy_scripts(self) -> None:
         """Copy scripts to the current directory."""
         scripts_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "scripts")
-        print(f"Copying scripts from: {scripts_path}")
+        print(f"Package path: {scripts_path}")
+        # copy the scripts to the model directory
         self.console.sh(f"cp -vLR --preserve=all {scripts_path} .")
         print(f"Scripts copied to {os.getcwd()}/scripts")
     
@@ -327,6 +359,31 @@ class DistributedOrchestrator:
             json.dump(config, f, indent=2)
         
         print(f"Execution configuration exported to: {output_file}")
+    
+    def cleanup(self) -> None:
+        """Cleanup the scripts/common directory."""
+        # check the directory exists
+        if os.path.exists("scripts/common"):
+            # check tools.json exists in scripts/common directory
+            if os.path.exists("scripts/common/tools.json"):
+                # remove the scripts/common/tools.json file
+                self.console.sh("rm -rf scripts/common/tools.json")
+            # check test_echo.sh exists in scripts/common directory
+            if os.path.exists("scripts/common/test_echo.sh"):
+                # remove the scripts/common/test_echo.sh file
+                self.console.sh("rm -rf scripts/common/test_echo.sh")
+            # check folder pre_scripts exists in scripts/common directory
+            if os.path.exists("scripts/common/pre_scripts"):
+                # remove the scripts/common/pre_scripts directory
+                self.console.sh("rm -rf scripts/common/pre_scripts")
+            # check folder post_scripts exists in scripts/common directory
+            if os.path.exists("scripts/common/post_scripts"):
+                # remove the scripts/common/post_scripts directory
+                self.console.sh("rm -rf scripts/common/post_scripts")
+            if os.path.exists("scripts/common/tools"):
+                # remove the scripts/common/tools directory
+                self.console.sh("rm -rf scripts/common/tools")
+            print(f"scripts/common directory has been cleaned up.")
 
 
 def create_ansible_playbook(manifest_file: str = "build_manifest.json",

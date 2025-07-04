@@ -11,22 +11,26 @@ import os
 import time
 import json
 import typing
+from contextlib import redirect_stdout, redirect_stderr
 from madengine.core.console import Console
 from madengine.core.context import Context
+from madengine.utils.ops import PythonicTee
 
 
 class DockerBuilder:
     """Class responsible for building Docker images for models."""
     
-    def __init__(self, context: Context, console: Console = None):
+    def __init__(self, context: Context, console: Console = None, live_output: bool = False):
         """Initialize the Docker Builder.
         
         Args:
             context: The MADEngine context
             console: Optional console instance
+            live_output: Whether to show live output
         """
         self.context = context
-        self.console = console or Console()
+        self.console = console or Console(live_output=live_output)
+        self.live_output = live_output
         self.built_images = {}  # Track built images
         self.built_models = {}  # Track built models
         
@@ -73,7 +77,8 @@ class DockerBuilder:
         return build_args
     
     def build_image(self, model_info: typing.Dict, dockerfile: str, 
-                   credentials: typing.Dict = None, clean_cache: bool = False) -> typing.Dict:
+                   credentials: typing.Dict = None, clean_cache: bool = False,
+                   phase_suffix: str = "") -> typing.Dict:
         """Build a Docker image for the given model.
         
         Args:
@@ -81,11 +86,13 @@ class DockerBuilder:
             dockerfile: Path to the Dockerfile
             credentials: Optional credentials dictionary
             clean_cache: Whether to use --no-cache
+            phase_suffix: Suffix for log file name (e.g., ".build" or "")
             
         Returns:
             dict: Build information including image name, build duration, etc.
         """
         print(f"Building Docker image for model {model_info['name']} from {dockerfile}")
+        print(f"Building Docker image...")
         
         # Generate image name
         image_docker_name = (
@@ -95,6 +102,21 @@ class DockerBuilder:
         )
         
         docker_image = "ci-" + image_docker_name
+        
+        # Create log file for this build
+        cur_docker_file_basename = os.path.basename(dockerfile)
+        log_file_path = (
+            model_info["name"]
+            + "_"
+            + cur_docker_file_basename.replace(".Dockerfile", "")
+            + phase_suffix
+            + ".live.log"
+        )
+        # Replace / with _ in log file path for models from discovery which use '/' as a separator
+        log_file_path = log_file_path.replace("/", "_")
+        
+        print(f"Processing Dockerfile: {dockerfile}")
+        print(f"Build log will be written to: {log_file_path}")
         
         # Get docker context
         docker_context = self.get_context_path(model_info)
@@ -114,7 +136,7 @@ class DockerBuilder:
         
         use_cache_str = "--no-cache" if clean_cache else ""
         
-        # Build the image
+        # Build the image with logging
         build_start_time = time.time()
         
         build_command = (
@@ -123,31 +145,40 @@ class DockerBuilder:
             f"{build_args} {docker_context}"
         )
         
-        print(f"Executing: {build_command}")
-        self.console.sh(build_command, timeout=None)
-        
-        build_duration = time.time() - build_start_time
-        
-        # Get base docker info
-        base_docker = ""
-        if (
-            "docker_build_arg" in self.context.ctx
-            and "BASE_DOCKER" in self.context.ctx["docker_build_arg"]
-        ):
-            base_docker = self.context.ctx["docker_build_arg"]["BASE_DOCKER"]
-        else:
-            base_docker = self.console.sh(
-                f"grep '^ARG BASE_DOCKER=' {dockerfile} | sed -E 's/ARG BASE_DOCKER=//g'"
-            )
-        
-        # Get docker SHA
-        docker_sha = ""
-        try:
-            docker_sha = self.console.sh(
-                f"docker manifest inspect {base_docker} | grep digest | head -n 1 | cut -d \\\" -f 4"
-            )
-        except Exception as e:
-            print(f"Warning: Could not get docker SHA: {e}")
+        # Execute build with log redirection
+        with open(log_file_path, mode="w", buffering=1) as outlog:
+            with redirect_stdout(PythonicTee(outlog, self.live_output)), redirect_stderr(PythonicTee(outlog, self.live_output)):
+                print(f"Executing: {build_command}")
+                self.console.sh(build_command, timeout=None)
+                
+                build_duration = time.time() - build_start_time
+                
+                print(f"Build Duration: {build_duration} seconds")
+                print(f"MAD_CONTAINER_IMAGE is {docker_image}")
+                
+                # Get base docker info
+                base_docker = ""
+                if (
+                    "docker_build_arg" in self.context.ctx
+                    and "BASE_DOCKER" in self.context.ctx["docker_build_arg"]
+                ):
+                    base_docker = self.context.ctx["docker_build_arg"]["BASE_DOCKER"]
+                else:
+                    base_docker = self.console.sh(
+                        f"grep '^ARG BASE_DOCKER=' {dockerfile} | sed -E 's/ARG BASE_DOCKER=//g'"
+                    )
+                
+                print(f"BASE DOCKER is {base_docker}")
+                
+                # Get docker SHA
+                docker_sha = ""
+                try:
+                    docker_sha = self.console.sh(
+                        f"docker manifest inspect {base_docker} | grep digest | head -n 1 | cut -d \\\" -f 4"
+                    )
+                    print(f"BASE DOCKER SHA is {docker_sha}")
+                except Exception as e:
+                    print(f"Warning: Could not get docker SHA: {e}")
         
         build_info = {
             "docker_image": docker_image,
@@ -155,7 +186,8 @@ class DockerBuilder:
             "base_docker": base_docker,
             "docker_sha": docker_sha,
             "build_duration": build_duration,
-            "build_command": build_command
+            "build_command": build_command,
+            "log_file": log_file_path
         }
         
         # Store built image info
@@ -165,7 +197,6 @@ class DockerBuilder:
         self.built_models[docker_image] = model_info
         
         print(f"Successfully built image: {docker_image}")
-        print(f"Build Duration: {build_duration} seconds")
         
         return build_info
     
@@ -282,7 +313,8 @@ class DockerBuilder:
     def build_all_models(self, models: typing.List[typing.Dict], 
                         credentials: typing.Dict = None, 
                         clean_cache: bool = False,
-                        registry: str = None) -> typing.Dict:
+                        registry: str = None,
+                        phase_suffix: str = "") -> typing.Dict:
         """Build images for all models.
         
         Args:
@@ -290,6 +322,7 @@ class DockerBuilder:
             credentials: Optional credentials dictionary
             clean_cache: Whether to use --no-cache
             registry: Optional registry to push images to
+            phase_suffix: Suffix for log file name (e.g., ".build" or "")
             
         Returns:
             dict: Summary of all built images
@@ -327,7 +360,7 @@ class DockerBuilder:
                 for dockerfile in dockerfiles.keys():
                     try:
                         build_info = self.build_image(
-                            model_info, dockerfile, credentials, clean_cache
+                            model_info, dockerfile, credentials, clean_cache, phase_suffix
                         )
                         
                         # Push to registry if specified
