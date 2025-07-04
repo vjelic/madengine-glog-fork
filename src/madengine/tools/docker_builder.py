@@ -28,6 +28,7 @@ class DockerBuilder:
         self.context = context
         self.console = console or Console()
         self.built_images = {}  # Track built images
+        self.built_models = {}  # Track built models
         
     def get_context_path(self, info: typing.Dict) -> str:
         """Get the context path for Docker build.
@@ -160,6 +161,9 @@ class DockerBuilder:
         # Store built image info
         self.built_images[docker_image] = build_info
         
+        # Store model info linked to the built image
+        self.built_models[docker_image] = model_info
+        
         print(f"Successfully built image: {docker_image}")
         print(f"Build Duration: {build_duration} seconds")
         
@@ -262,6 +266,7 @@ class DockerBuilder:
         """
         manifest = {
             "built_images": self.built_images,
+            "built_models": self.built_models,  # Include model information
             "context": {
                 "docker_env_vars": self.context.ctx.get("docker_env_vars", {}),
                 "docker_mounts": self.context.ctx.get("docker_mounts", {}),

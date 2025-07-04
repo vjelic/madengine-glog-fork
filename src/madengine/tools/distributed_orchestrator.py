@@ -138,9 +138,15 @@ class DistributedOrchestrator:
         runner = ContainerRunner(self.context, self.data, self.console)
         runner.set_credentials(self.credentials)
         
-        # Discover models (to get execution parameters)
-        discover_models = DiscoverModels(args=self.args)
-        models = discover_models.run()
+        # Use built models from manifest if available, otherwise discover models
+        if "built_models" in manifest and manifest["built_models"]:
+            print("Using model information from build manifest")
+            models = list(manifest["built_models"].values())
+        else:
+            print("No model information in manifest, discovering models from current configuration")
+            # Discover models (to get execution parameters)
+            discover_models = DiscoverModels(args=self.args)
+            models = discover_models.run()
         
         # Create execution summary
         execution_summary = {
@@ -150,54 +156,94 @@ class DistributedOrchestrator:
         }
         
         # Map models to their built images
-        for model_info in models:
-            model_name = model_info["name"]
-            
-            # Find matching built images for this model
-            matching_images = []
+        if "built_models" in manifest and manifest["built_models"]:
+            # Direct mapping from manifest - built_models maps image_name -> model_info
+            print("Using direct model-to-image mapping from manifest")
             for image_name, build_info in manifest["built_images"].items():
-                if model_name.replace("/", "_").lower() in image_name:
-                    matching_images.append((image_name, build_info))
-            
-            if not matching_images:
-                print(f"No built images found for model: {model_name}")
-                execution_summary["failed_runs"].append({
-                    "model": model_name,
-                    "error": "No built images found"
-                })
-                continue
-            
-            # Run each matching image
-            for image_name, build_info in matching_images:
-                try:
-                    print(f"\nRunning model {model_name} with image {image_name}")
-                    
-                    # Pull image if from registry
-                    if registry and "registry_image" in build_info:
-                        actual_image = runner.pull_image(
-                            build_info["registry_image"], image_name, registry, self.credentials
+                if image_name in manifest["built_models"]:
+                    model_info = manifest["built_models"][image_name]
+                    try:
+                        print(f"\nRunning model {model_info['name']} with image {image_name}")
+                        
+                        # Pull image if from registry
+                        if registry and "registry_image" in build_info:
+                            actual_image = runner.pull_image(
+                                build_info["registry_image"], image_name, registry, self.credentials
+                            )
+                        else:
+                            actual_image = image_name
+                        
+                        # Run the container
+                        run_results = runner.run_container(
+                            model_info, actual_image, build_info, 
+                            keep_alive=keep_alive, timeout=timeout
                         )
-                    else:
-                        actual_image = image_name
-                    
-                    # Run the container
-                    run_results = runner.run_container(
-                        model_info, actual_image, build_info, 
-                        keep_alive=keep_alive, timeout=timeout
-                    )
-                    
-                    execution_summary["successful_runs"].append(run_results)
-                    execution_summary["total_execution_time"] += run_results.get("test_duration", 0)
-                    
-                    print(f"Successfully completed: {model_name} -> {run_results['status']}")
-                    
-                except Exception as e:
-                    print(f"Failed to run {model_name} with image {image_name}: {e}")
+                        
+                        execution_summary["successful_runs"].append(run_results)
+                        execution_summary["total_execution_time"] += run_results.get("test_duration", 0)
+                        
+                        print(f"Successfully completed: {model_info['name']} -> {run_results['status']}")
+                        
+                    except Exception as e:
+                        print(f"Failed to run {model_info['name']} with image {image_name}: {e}")
+                        execution_summary["failed_runs"].append({
+                            "model": model_info['name'],
+                            "image": image_name,
+                            "error": str(e)
+                        })
+                else:
+                    print(f"Warning: No model info found for built image: {image_name}")
+        else:
+            # Fallback to name-based matching for backward compatibility
+            print("Using name-based matching (fallback mode)")
+            for model_info in models:
+                model_name = model_info["name"]
+                
+                # Find matching built images for this model
+                matching_images = []
+                for image_name, build_info in manifest["built_images"].items():
+                    if model_name.replace("/", "_").lower() in image_name:
+                        matching_images.append((image_name, build_info))
+                
+                if not matching_images:
+                    print(f"No built images found for model: {model_name}")
                     execution_summary["failed_runs"].append({
                         "model": model_name,
-                        "image": image_name,
-                        "error": str(e)
+                        "error": "No built images found"
                     })
+                    continue
+                
+                # Run each matching image
+                for image_name, build_info in matching_images:
+                    try:
+                        print(f"\nRunning model {model_name} with image {image_name}")
+                        
+                        # Pull image if from registry
+                        if registry and "registry_image" in build_info:
+                            actual_image = runner.pull_image(
+                                build_info["registry_image"], image_name, registry, self.credentials
+                            )
+                        else:
+                            actual_image = image_name
+                        
+                        # Run the container
+                        run_results = runner.run_container(
+                            model_info, actual_image, build_info, 
+                            keep_alive=keep_alive, timeout=timeout
+                        )
+                        
+                        execution_summary["successful_runs"].append(run_results)
+                        execution_summary["total_execution_time"] += run_results.get("test_duration", 0)
+                        
+                        print(f"Successfully completed: {model_name} -> {run_results['status']}")
+                        
+                    except Exception as e:
+                        print(f"Failed to run {model_name} with image {image_name}: {e}")
+                        execution_summary["failed_runs"].append({
+                            "model": model_name,
+                            "image": image_name,
+                            "error": str(e)
+                        })
         
         print("=" * 60)
         print("RUN PHASE COMPLETED")

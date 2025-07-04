@@ -69,7 +69,7 @@ python -m madengine.tools.distributed_cli build \
     --manifest-output build_manifest.json
 
 # This creates:
-# - build_manifest.json (contains image info, build metadata)
+# - build_manifest.json (contains image info, model info, build metadata)
 # - Images pushed to localhost:5000 registry
 ```
 
@@ -80,6 +80,9 @@ python -m madengine.tools.distributed_cli run \
     --manifest-file build_manifest.json \
     --registry localhost:5000 \
     --timeout 3600
+
+# Note: No --tags needed when using manifest file, 
+# as model information is stored in the manifest
 ```
 
 ### 2. Smart Run Command (Complete Workflow)
@@ -184,6 +187,10 @@ python -m madengine.tools.distributed_cli run \
     --manifest-file build_manifest.json \
     --registry localhost:5000 \
     --timeout 3600
+
+# Note: No --tags parameter needed when using manifest file
+# The manifest contains both built images and model information
+# ensuring exact reproduction of the build configuration
 ```
 
 #### Complete Workflow Mode  
@@ -206,9 +213,11 @@ Here are some comprehensive examples of using the distributed CLI:
 ```bash
 # Build models with specific tags and push to registry
 python -m madengine.tools.distributed_cli build \
-    --tags llama bert --registry localhost:5000 --clean-docker-cache
+    --tags llama bert resnet \
+    --registry localhost:5000 --clean-docker-cache
 
 # Run models using pre-built manifest with custom timeout (execution-only)
+# No --tags needed - models and images are defined in the manifest
 python -m madengine.tools.distributed_cli run \
     --manifest-file build_manifest.json --timeout 3600
 
@@ -262,7 +271,7 @@ python -m madengine.tools.distributed_cli run \
     --keep-alive \
     --live-output
 
-# Run specific tags only (filters from manifest)
+# Run specific tags only (fallback mode - when manifest lacks model info)
 python -m madengine.tools.distributed_cli run \
     --manifest-file build_manifest.json \
     --tags llama \
@@ -608,3 +617,63 @@ kubectl apply -f k8s-madengine-job.yaml
 - Integrate with your existing CI/CD pipeline using the `export-config` command
 - Monitor execution using the summary JSON files for automated reporting
 - Customize Ansible/K8s templates for your infrastructure requirements
+
+### 9. Build Manifest Format
+
+The build manifest has been enhanced to ensure reliable execution across distributed environments:
+
+#### Enhanced Manifest Structure
+```json
+{
+  "built_images": {
+    "ci-dummy_ubuntu_amd": {
+      "docker_image": "ci-dummy_ubuntu_amd",
+      "dockerfile": "/path/to/dummy.ubuntu.amd.Dockerfile",
+      "base_docker": "ubuntu:22.04",
+      "build_duration": 45.2,
+      "registry_image": "localhost:5000/ci-dummy_ubuntu_amd"
+    }
+  },
+  "built_models": {
+    "ci-dummy_ubuntu_amd": {
+      "name": "dummy",
+      "path": "/scripts/dummy",
+      "tags": ["dummy", "test"],
+      "dockerfile": "/path/to/dummy.ubuntu.amd.Dockerfile"
+    }
+  },
+  "context": {
+    "docker_env_vars": {},
+    "docker_mounts": {},
+    "docker_build_arg": {}
+  }
+}
+```
+
+#### Key Improvements
+
+1. **Model Information Storage**: The manifest now includes `built_models` that maps each built image to its corresponding model information
+2. **Exact Reproduction**: No need to specify `--tags` during execution when using a manifest file
+3. **Backward Compatibility**: Falls back to name-based matching for older manifest files
+4. **Reliable Matching**: Direct image-to-model mapping eliminates matching errors
+
+#### Execution Behavior
+
+**With Enhanced Manifest (Recommended):**
+```bash
+# Build phase creates enhanced manifest
+python -m madengine.tools.distributed_cli build --tags dummy --registry localhost:5000
+
+# Run phase uses stored model information - no tags needed
+python -m madengine.tools.distributed_cli run --manifest-file build_manifest.json
+```
+
+**Fallback Mode (Legacy Manifests):**
+```bash
+# For older manifests without built_models, uses name-based matching
+python -m madengine.tools.distributed_cli run \
+    --manifest-file legacy_manifest.json \
+    --tags dummy  # May need tags for discovery
+```
+
+This improvement addresses the common issue where models discovered during execution don't match the built images, ensuring consistent and reliable distributed execution.
