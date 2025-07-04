@@ -51,11 +51,10 @@ Coordinates the distributed workflow:
 ### 4. Distributed CLI (`distributed_cli.py`)
 Command-line interface for distributed operations:
 - `build` - Build images and create manifest
-- `run` - Execute containers using manifest
-- `full` - Complete build + run workflow
+- `run` - Smart command that either runs execution-only (if manifest exists) or complete workflow (build + run)
 - `export-config` - Export execution configuration for external tools
-- `generate-ansible` - Create Ansible playbooks
-- `generate-k8s` - Create Kubernetes manifests
+- `generate ansible` - Create Ansible playbooks
+- `generate k8s` - Create Kubernetes manifests
 
 ## Usage Examples
 
@@ -83,7 +82,20 @@ python -m madengine.tools.distributed_cli run \
     --timeout 3600
 ```
 
-### 2. Ansible Deployment
+### 2. Smart Run Command (Complete Workflow)
+
+The `run` command is smart and can automatically detect whether to perform execution-only or complete workflow:
+
+**Complete Workflow (when no manifest exists):**
+```bash
+# Automatically runs build + run phases
+python -m madengine.tools.distributed_cli run \
+    --registry localhost:5000 \
+    --timeout 3600 \
+    --clean-docker-cache
+```
+
+### 3. Ansible Deployment
 
 **Export execution configuration:**
 ```bash
@@ -95,7 +107,7 @@ python -m madengine.tools.distributed_cli export-config \
 **Generate Ansible playbook:**
 ```bash
 # Generate Ansible playbook using the manifest and config
-python -m madengine.tools.distributed_cli generate-ansible \
+python -m madengine.tools.distributed_cli generate ansible \
     --manifest-file build_manifest.json \
     --execution-config execution_config.json \
     --output madengine_distributed.yml
@@ -107,7 +119,7 @@ python -m madengine.tools.distributed_cli generate-ansible \
 ansible-playbook -i gpu_inventory madengine_distributed.yml
 ```
 
-### 3. Kubernetes Deployment
+### 4. Kubernetes Deployment
 
 **Export execution configuration:**
 ```bash
@@ -118,7 +130,7 @@ python -m madengine.tools.distributed_cli export-config \
 
 **Generate K8s manifests:**
 ```bash
-python -m madengine.tools.distributed_cli generate-k8s \
+python -m madengine.tools.distributed_cli generate k8s \
     --manifest-file build_manifest.json \
     --execution-config execution_config.json \
     --namespace madengine-prod
@@ -137,7 +149,7 @@ kubectl apply -f k8s-madengine-job.yaml
 - Update GPU resource types (nvidia.com/gpu vs amd.com/gpu) based on your hardware
 - Update the command to use the correct distributed CLI: `python3 -m madengine.tools.distributed_cli run --manifest-file=/config/manifest.json`
 
-### 4. Configuration Export
+### 5. Configuration Export
 
 The `export-config` command allows you to export execution configurations that can be used by external orchestration tools:
 
@@ -160,7 +172,34 @@ The exported configuration includes:
 
 This is useful for integrating MADEngine with external tools like CI/CD pipelines, monitoring systems, or custom orchestration frameworks.
 
-### 5. CLI Examples Summary
+### 6. Smart Run Command Behavior
+
+The `run` command in the distributed CLI is intelligent and automatically detects the appropriate workflow based on the arguments provided:
+
+#### Execution-Only Mode
+When a `--manifest-file` is provided **and** the file exists:
+```bash
+# Only runs the execution phase using existing manifest
+python -m madengine.tools.distributed_cli run \
+    --manifest-file build_manifest.json \
+    --registry localhost:5000 \
+    --timeout 3600
+```
+
+#### Complete Workflow Mode  
+When **no** `--manifest-file` is provided **or** the manifest file doesn't exist:
+```bash
+# Runs both build and execution phases
+python -m madengine.tools.distributed_cli run \
+    --tags resnet \
+    --registry localhost:5000 \
+    --clean-docker-cache \
+    --timeout 3600
+```
+
+This smart behavior eliminates the need for a separate `full` command and makes the CLI more intuitive to use.
+
+### 7. CLI Examples Summary
 
 Here are some comprehensive examples of using the distributed CLI:
 
@@ -169,12 +208,12 @@ Here are some comprehensive examples of using the distributed CLI:
 python -m madengine.tools.distributed_cli build \
     --tags llama bert --registry localhost:5000 --clean-docker-cache
 
-# Run models using pre-built manifest with custom timeout
+# Run models using pre-built manifest with custom timeout (execution-only)
 python -m madengine.tools.distributed_cli run \
     --manifest-file build_manifest.json --timeout 3600
 
-# Complete workflow with specific tags and registry
-python -m madengine.tools.distributed_cli full \
+# Complete workflow with specific tags and registry (build + run)
+python -m madengine.tools.distributed_cli run \
     --tags resnet --registry localhost:5000 --timeout 3600 --live-output
 
 # Export configuration for external orchestration tools
@@ -182,17 +221,17 @@ python -m madengine.tools.distributed_cli export-config \
     --tags llama --output execution_config.json
 
 # Generate Ansible playbook for distributed execution
-python -m madengine.tools.distributed_cli generate-ansible \
+python -m madengine.tools.distributed_cli generate ansible \
     --manifest-file build_manifest.json \
     --execution-config execution_config.json \
     --output madengine.yml
 
 # Generate Kubernetes manifests with custom namespace
-python -m madengine.tools.distributed_cli generate-k8s \
+python -m madengine.tools.distributed_cli generate k8s \
     --namespace madengine-prod --tags llama
 ```
 
-### 6. Advanced CLI Usage
+### 8. Advanced CLI Usage
 
 The distributed CLI supports all standard MADEngine arguments for model filtering and execution control:
 
@@ -389,7 +428,7 @@ head perf.csv
 #### Step 8: Generate Ansible Playbook
 ```bash
 # Back on build machine - generate Ansible playbook
-python -m madengine.tools.distributed_cli generate-ansible \
+python -m madengine.tools.distributed_cli generate ansible \
     --manifest-file dummy_build_manifest.json \
     --execution-config dummy_execution_config.json \
     --output dummy_ansible_playbook.yml
@@ -423,7 +462,7 @@ ansible gpu_nodes -i gpu_inventory -m shell -a "cat /home/madengine/madengine/pe
 #### Step 11: Generate Kubernetes Manifests
 ```bash
 # Generate K8s manifests for the dummy model
-python -m madengine.tools.distributed_cli generate-k8s \
+python -m madengine.tools.distributed_cli generate k8s \
     --manifest-file dummy_build_manifest.json \
     --execution-config dummy_execution_config.json \
     --namespace madengine-dummy
@@ -540,7 +579,7 @@ python -m madengine.tools.distributed_cli build --tags dummy --registry localhos
 python -m madengine.tools.distributed_cli export-config --tags dummy
 
 # 2. Generate and run Ansible playbook
-python -m madengine.tools.distributed_cli generate-ansible
+python -m madengine.tools.distributed_cli generate ansible
 ansible-playbook -i gpu_inventory madengine_distributed.yml
 ```
 
@@ -552,7 +591,7 @@ python -m madengine.tools.distributed_cli build --tags dummy --registry my-regis
 python -m madengine.tools.distributed_cli export-config --tags dummy
 
 # 2. Generate and deploy K8s manifests
-python -m madengine.tools.distributed_cli generate-k8s --namespace madengine-prod
+python -m madengine.tools.distributed_cli generate k8s --namespace madengine-prod
 kubectl apply -f k8s-madengine-configmap.yaml
 kubectl apply -f k8s-madengine-job.yaml
 ```

@@ -170,7 +170,7 @@ class TestDistributedIntegration:
         # Mock args for build command
         build_args = MagicMock()
         build_args.registry = "localhost:5000"
-        build_args.clean_cache = True
+        build_args.clean_docker_cache = True
         build_args.manifest_output = "integration_manifest.json"
         build_args.summary_output = "build_summary.json"
         build_args.additional_context = None
@@ -203,21 +203,22 @@ class TestDistributedIntegration:
             
             with patch('builtins.open', mock_open()):
                 with patch('json.dump'):
-                    build_result = distributed_cli.build_command(build_args)
+                    build_result = distributed_cli.build_models(build_args)
             
-            assert build_result is True
+            assert build_result == distributed_cli.EXIT_SUCCESS
 
-            # Mock successful run
+            # Mock successful run with existing manifest file
             mock_instance.run_phase.return_value = {
                 "successful_runs": ["model1", "model2"],
                 "failed_runs": []
             }
             
-            with patch('builtins.open', mock_open()):
-                with patch('json.dump'):
-                    run_result = distributed_cli.run_command(run_args)
+            with patch('os.path.exists', return_value=True):
+                with patch('builtins.open', mock_open()):
+                    with patch('json.dump'):
+                        run_result = distributed_cli.run_models(run_args)
             
-            assert run_result is True
+            assert run_result == distributed_cli.EXIT_SUCCESS
 
     def test_manifest_file_handling(self):
         """Test manifest file creation and loading."""
@@ -330,7 +331,7 @@ class TestDistributedIntegration:
 
         # Test Ansible generation
         with patch('madengine.tools.distributed_cli.create_ansible_playbook') as mock_ansible:
-            distributed_cli.generate_ansible_command(MagicMock(
+            distributed_cli.generate_ansible(MagicMock(
                 manifest_file="test_manifest.json",
                 execution_config="test_config.json", 
                 output="test_playbook.yml"
@@ -344,7 +345,7 @@ class TestDistributedIntegration:
 
         # Test Kubernetes generation
         with patch('madengine.tools.distributed_cli.create_kubernetes_manifests') as mock_k8s:
-            distributed_cli.generate_k8s_command(MagicMock(
+            distributed_cli.generate_k8s(MagicMock(
                 manifest_file="test_manifest.json",
                 execution_config="test_config.json",
                 namespace="madengine-test"
@@ -406,3 +407,72 @@ class TestDistributedIntegration:
                 unittest.mock.call("docker tag localhost:5000/test:latest local-test")
             ]
             mock_sh.assert_has_calls(expected_calls)
+
+    def test_smart_run_command_integration(self):
+        """Test the smart run command in both execution-only and complete workflow modes."""
+        # Test execution-only mode (manifest file exists)
+        run_args_execution_only = MagicMock()
+        run_args_execution_only.manifest_file = "existing_manifest.json"
+        run_args_execution_only.registry = "localhost:5000"
+        run_args_execution_only.timeout = 1800
+        run_args_execution_only.keep_alive = False
+        run_args_execution_only.summary_output = None
+        run_args_execution_only.additional_context = None
+        run_args_execution_only.additional_context_file = None
+        run_args_execution_only.data_config_file_name = 'data.json'
+        run_args_execution_only.force_mirror_local = False
+        run_args_execution_only.live_output = True
+
+        with patch('madengine.tools.distributed_cli.DistributedOrchestrator') as mock_orchestrator:
+            with patch('os.path.exists', return_value=True):  # Manifest exists
+                mock_instance = MagicMock()
+                mock_orchestrator.return_value = mock_instance
+                mock_instance.run_phase.return_value = {
+                    "successful_runs": ["model1"],
+                    "failed_runs": []
+                }
+                
+                with patch('builtins.open', mock_open()):
+                    with patch('json.dump'):
+                        result = distributed_cli.run_models(run_args_execution_only)
+                
+                assert result == distributed_cli.EXIT_SUCCESS
+                # Only run phase should be called, not build phase
+                mock_instance.run_phase.assert_called_once()
+                mock_instance.build_phase.assert_not_called()
+
+        # Test complete workflow mode (manifest file doesn't exist)
+        run_args_complete = MagicMock()
+        run_args_complete.manifest_file = None
+        run_args_complete.registry = "localhost:5000" 
+        run_args_complete.timeout = 1800
+        run_args_complete.keep_alive = False
+        run_args_complete.summary_output = None
+        run_args_complete.manifest_output = "build_manifest.json"
+        run_args_complete.additional_context = None
+        run_args_complete.additional_context_file = None
+        run_args_complete.data_config_file_name = 'data.json'
+        run_args_complete.force_mirror_local = False
+        run_args_complete.live_output = True
+
+        with patch('madengine.tools.distributed_cli.DistributedOrchestrator') as mock_orchestrator:
+            with patch('os.path.exists', return_value=False):  # Manifest doesn't exist
+                mock_instance = MagicMock()
+                mock_orchestrator.return_value = mock_instance
+                mock_instance.build_phase.return_value = {
+                    "successful_builds": ["model1"],
+                    "failed_builds": []
+                }
+                mock_instance.run_phase.return_value = {
+                    "successful_runs": ["model1"],
+                    "failed_runs": []
+                }
+                
+                with patch('builtins.open', mock_open()):
+                    with patch('json.dump'):
+                        result = distributed_cli.run_models(run_args_complete)
+                
+                assert result == distributed_cli.EXIT_SUCCESS
+                # Both build and run phases should be called
+                mock_instance.build_phase.assert_called_once()
+                mock_instance.run_phase.assert_called_once()
