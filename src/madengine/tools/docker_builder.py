@@ -104,15 +104,15 @@ class DockerBuilder:
         docker_image = "ci-" + image_docker_name
         
         # Create log file for this build
-        cur_docker_file_basename = os.path.basename(dockerfile)
+        cur_docker_file_basename = os.path.basename(dockerfile).replace(".Dockerfile", "")
         log_file_path = (
-            model_info["name"]
+            model_info["name"].replace("/", "_")
             + "_"
-            + cur_docker_file_basename.replace(".Dockerfile", "")
+            + cur_docker_file_basename
             + phase_suffix
             + ".live.log"
         )
-        # Replace / with _ in log file path for models from discovery which use '/' as a separator
+        # Replace / with _ in log file path (already done above, but keeping for safety)
         log_file_path = log_file_path.replace("/", "_")
         
         print(f"Processing Dockerfile: {dockerfile}")

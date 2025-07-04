@@ -150,8 +150,8 @@ def run_models(args: argparse.Namespace) -> int:
                 logging.info("No manifest file provided, running complete workflow (build + run)")
             
             try:
-                # Mark this as combined workflow for log naming
-                args._separate_phases = False
+                # Always use separate log files for build and run phases
+                args._separate_phases = True
                 
                 # Build phase
                 build_summary = orchestrator.build_phase(

@@ -299,15 +299,24 @@ class ContainerRunner:
         print(f"Running model {model_info['name']} in container {docker_image}")
         
         # Create log file for this run
-        docker_file_basename = docker_image.replace("ci-", "").replace("_", "")
+        # Extract dockerfile part from docker image name (remove "ci-" prefix and model name prefix)
+        image_name_without_ci = docker_image.replace("ci-", "")
+        model_name_clean = model_info["name"].replace("/", "_").lower()
+        
+        # Remove model name from the beginning to get the dockerfile part
+        if image_name_without_ci.startswith(model_name_clean + "_"):
+            dockerfile_part = image_name_without_ci[len(model_name_clean + "_"):]
+        else:
+            dockerfile_part = image_name_without_ci
+        
         log_file_path = (
-            model_info["name"]
+            model_info["name"].replace("/", "_")
             + "_"
-            + docker_file_basename
+            + dockerfile_part
             + phase_suffix
             + ".live.log"
         )
-        # Replace / with _ in log file path for models from discovery which use '/' as a separator
+        # Replace / with _ in log file path (already done above, but keeping for safety)
         log_file_path = log_file_path.replace("/", "_")
         
         print(f"Run log will be written to: {log_file_path}")
