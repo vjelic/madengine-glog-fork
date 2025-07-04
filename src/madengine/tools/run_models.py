@@ -910,8 +910,8 @@ class RunModels:
         run_details.gpu_architecture = self.context.ctx["docker_env_vars"]["MAD_SYSTEM_GPU_ARCHITECTURE"]
 
         # Check the setting of shared memory size
-        if "SHM_SIZE" in self.context.ctx["docker_env_vars"]:
-            shm_size = self.context.ctx["docker_env_vars"]["SHM_SIZE"]
+        if "SHM_SIZE" in self.context.ctx:
+            shm_size = self.context.ctx["SHM_SIZE"]
             if shm_size:
                 run_details.additional_docker_run_options += f" --shm-size={shm_size}"
                 print(f"Using SHM_SIZE from context: {shm_size}")
