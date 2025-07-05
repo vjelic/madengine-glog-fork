@@ -604,17 +604,18 @@ class ContainerRunner:
                                     print(f"Warning: Could not validate multiple results file: {e}")
                                     run_results["performance"] = None
                             else:
-                                # Check if this follows the same pattern as original run_models
-                                # Note: Using double backslashes for proper shell escaping in sed command
-                                perf_regex = ".*performance:\\s*\\([+|-]\\?[0-9]*[.]\\?[0-9]*\\(e[+|-]\\?[0-9]\\+\\)\\?\\)\\s*.*\\s*"
-                                metric_regex = ".*performance:\\s*[+|-]\\?[0-9]*[.]\\?[0-9]*\\(e[+|-]\\?[0-9]\\+\\)\\?\\s*\\(\\w*\\)\\s*"
+                                # Match the actual output format: "performance: 14164 samples_per_second"
+                                # Simple pattern to capture number and metric unit
                                 
                                 # Extract from log file
                                 try:
-                                    run_results["performance"] = self.console.sh("cat " + log_file_path +
-                                                                " | sed -n 's/" + perf_regex + "/\\1/p'")
-                                    run_results["metric"] = self.console.sh("cat " + log_file_path +
-                                                            " | sed -n 's/" + metric_regex + "/\\2/p'")
+                                    # Extract performance number: capture digits (with optional decimal/scientific notation)
+                                    perf_cmd = "cat " + log_file_path + " | grep 'performance:' | sed -n 's/.*performance:[[:space:]]*\\([0-9][0-9.eE+-]*\\)[[:space:]].*/\\1/p'"
+                                    run_results["performance"] = self.console.sh(perf_cmd)
+                                    
+                                    # Extract metric unit: capture the word after the number
+                                    metric_cmd = "cat " + log_file_path + " | grep 'performance:' | sed -n 's/.*performance:[[:space:]]*[0-9][0-9.eE+-]*[[:space:]]*\\([a-zA-Z_][a-zA-Z0-9_]*\\).*/\\1/p'"
+                                    run_results["metric"] = self.console.sh(metric_cmd)
                                 except Exception:
                                     pass  # Performance extraction is optional
                         except Exception as e:
