@@ -605,8 +605,9 @@ class ContainerRunner:
                                     run_results["performance"] = None
                             else:
                                 # Check if this follows the same pattern as original run_models
-                                perf_regex = r".*performance:\s*\([+|-]?[0-9]*[.]?[0-9]*\(e[+|-]?[0-9]\+\)?\)\s*.*\s*"
-                                metric_regex = r".*performance:\s*[+|-]?[0-9]*[.]?[0-9]*\(e[+|-]?[0-9]\+\)?\s*\(\w*\)\s*"
+                                # Note: Using double backslashes for proper shell escaping in sed command
+                                perf_regex = ".*performance:\\s*\\([+|-]\\?[0-9]*[.]\\?[0-9]*\\(e[+|-]\\?[0-9]\\+\\)\\?\\)\\s*.*\\s*"
+                                metric_regex = ".*performance:\\s*[+|-]\\?[0-9]*[.]\\?[0-9]*\\(e[+|-]\\?[0-9]\\+\\)\\?\\s*\\(\\w*\\)\\s*"
                                 
                                 # Extract from log file
                                 try:
