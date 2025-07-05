@@ -163,6 +163,10 @@ class DistributedOrchestrator:
         runner = ContainerRunner(self.context, self.data, self.console, live_output=getattr(self.args, 'live_output', False))
         runner.set_credentials(self.credentials)
         
+        # Set perf.csv output path if specified in args
+        if hasattr(self.args, 'output') and self.args.output:
+            runner.set_perf_csv_path(self.args.output)
+        
         # Determine phase suffix for log files
         phase_suffix = ".run" if hasattr(self.args, '_separate_phases') and self.args._separate_phases else ""
         
@@ -279,6 +283,16 @@ class DistributedOrchestrator:
         print(f"  Failed runs: {len(execution_summary['failed_runs'])}")
         print(f"  Total execution time: {execution_summary['total_execution_time']:.2f} seconds")
         print("=" * 60)
+        
+        # Convert output CSV to HTML like run_models.py does
+        try:
+            from madengine.tools.csv_to_html import convert_csv_to_html
+            perf_csv_path = getattr(self.args, 'output', 'perf.csv')
+            if os.path.exists(perf_csv_path):
+                print("Converting output csv to html...")
+                convert_csv_to_html(file_path=perf_csv_path)
+        except Exception as e:
+            print(f"Warning: Could not convert CSV to HTML: {e}")
         
         # Cleanup scripts
         self.cleanup()

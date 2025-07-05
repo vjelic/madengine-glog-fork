@@ -19,7 +19,8 @@ from madengine.core.context import Context
 from madengine.core.docker import Docker
 from madengine.core.timeout import Timeout
 from madengine.core.dataprovider import Data
-from madengine.utils.ops import PythonicTee
+from madengine.utils.ops import PythonicTee, file_print
+from madengine.tools.update_perf_csv import update_perf_csv, flatten_tags
 
 
 class ContainerRunner:
@@ -39,7 +40,73 @@ class ContainerRunner:
         self.console = console or Console(live_output=live_output)
         self.live_output = live_output
         self.credentials = None
+        self.perf_csv_path = "perf.csv"  # Default output path
         
+    def set_perf_csv_path(self, path: str):
+        """Set the path for the performance CSV output file.
+        
+        Args:
+            path: Path to the performance CSV file
+        """
+        self.perf_csv_path = path
+        
+    def ensure_perf_csv_exists(self):
+        """Ensure the performance CSV file exists with proper headers."""
+        if not os.path.exists(self.perf_csv_path):
+            file_print(
+                "model,n_gpus,training_precision,pipeline,args,tags,docker_file,base_docker,docker_sha,docker_image,git_commit,machine_name,gpu_architecture,performance,metric,relative_change,status,build_duration,test_duration,dataname,data_provider_type,data_size,data_download_duration,build_number,additional_docker_run_options",
+                filename=self.perf_csv_path,
+                mode="w",
+            )
+            print(f"Created performance CSV file: {self.perf_csv_path}")
+    
+    def create_run_details_dict(self, model_info: typing.Dict, build_info: typing.Dict, run_results: typing.Dict) -> typing.Dict:
+        """Create a run details dictionary similar to RunDetails class in run_models.py.
+        
+        Args:
+            model_info: Model information dictionary
+            build_info: Build information from manifest
+            run_results: Container execution results
+            
+        Returns:
+            dict: Run details dictionary for CSV generation
+        """
+        import os
+        
+        # Create run details dict with all required fields
+        run_details = {
+            "model": model_info["name"],
+            "n_gpus": model_info.get("n_gpus", ""),
+            "training_precision": model_info.get("training_precision", ""),
+            "pipeline": os.environ.get("pipeline", ""),
+            "args": model_info.get("args", ""),
+            "tags": model_info.get("tags", ""),
+            "docker_file": build_info.get("dockerfile", ""),
+            "base_docker": build_info.get("base_docker", ""),
+            "docker_sha": build_info.get("docker_sha", ""),
+            "docker_image": build_info.get("image_name", ""),
+            "git_commit": run_results.get("git_commit", ""),
+            "machine_name": run_results.get("machine_name", ""),
+            "gpu_architecture": self.context.ctx["docker_env_vars"]["MAD_SYSTEM_GPU_ARCHITECTURE"] if self.context else "",
+            "performance": run_results.get("performance", ""),
+            "metric": run_results.get("metric", ""),
+            "relative_change": "",
+            "status": run_results.get("status", "FAILURE"),
+            "build_duration": build_info.get("build_duration", ""),
+            "test_duration": run_results.get("test_duration", ""),
+            "dataname": run_results.get("dataname", ""),
+            "data_provider_type": run_results.get("data_provider_type", ""),
+            "data_size": run_results.get("data_size", ""),
+            "data_download_duration": run_results.get("data_download_duration", ""),
+            "build_number": os.environ.get('BUILD_NUMBER', '0'),
+            "additional_docker_run_options": model_info.get("additional_docker_run_options", "")
+        }
+        
+        # Flatten tags if they are in list format
+        flatten_tags(run_details)
+        
+        return run_details
+    
     def load_build_manifest(self, manifest_file: str = "build_manifest.json") -> typing.Dict:
         """Load build manifest from file.
         
@@ -517,24 +584,91 @@ class ContainerRunner:
                         # Extract performance metrics from logs
                         # Look for performance data in the log output similar to original run_models.py
                         try:
-                            # Check if this follows the same pattern as original run_models
-                            perf_regex = ".*performance:\\s*\\([+|-]\?[0-9]*[.]\\?[0-9]*\(e[+|-]\?[0-9]\+\)\?\\)\\s*.*\\s*"
-                            metric_regex = ".*performance:\\s*[+|-]\?[0-9]*[.]\\?[0-9]*\(e[+|-]\?[0-9]\+\)\?\\s*\\(\\w*\\)\\s*"
+                            # Check if multiple results file is specified in model_info
+                            multiple_results = model_info.get("multiple_results", None)
                             
-                            # Extract from log file
-                            try:
-                                run_results["performance"] = self.console.sh("cat " + log_file_path +
-                                                            " | sed -n 's/" + perf_regex + "/\\1/p'")
-                                run_results["metric"] = self.console.sh("cat " + log_file_path +
-                                                        " | sed -n 's/" + metric_regex + "/\\2/p'")
-                            except Exception:
-                                pass  # Performance extraction is optional
+                            if multiple_results:
+                                run_results["performance"] = multiple_results
+                                # Validate multiple results file format
+                                try:
+                                    with open(multiple_results, 'r') as f:
+                                        header = f.readline().strip().split(',')
+                                        for line in f:
+                                            row = line.strip().split(',')
+                                            for col in row:
+                                                if col == '':
+                                                    run_results["performance"] = None
+                                                    print("Error: Performance metric is empty in multiple results file.")
+                                                    break
+                                except Exception as e:
+                                    print(f"Warning: Could not validate multiple results file: {e}")
+                                    run_results["performance"] = None
+                            else:
+                                # Check if this follows the same pattern as original run_models
+                                perf_regex = r".*performance:\s*\([+|-]?[0-9]*[.]?[0-9]*\(e[+|-]?[0-9]\+\)?\)\s*.*\s*"
+                                metric_regex = r".*performance:\s*[+|-]?[0-9]*[.]?[0-9]*\(e[+|-]?[0-9]\+\)?\s*\(\w*\)\s*"
+                                
+                                # Extract from log file
+                                try:
+                                    run_results["performance"] = self.console.sh("cat " + log_file_path +
+                                                                " | sed -n 's/" + perf_regex + "/\\1/p'")
+                                    run_results["metric"] = self.console.sh("cat " + log_file_path +
+                                                            " | sed -n 's/" + metric_regex + "/\\2/p'")
+                                except Exception:
+                                    pass  # Performance extraction is optional
                         except Exception as e:
                             print(f"Warning: Could not extract performance metrics: {e}")
                         
-                        # For now, mark as success if we got here
-                        run_results["status"] = "SUCCESS"
+                        # Set status based on performance
+                        run_results["status"] = 'SUCCESS' if run_results.get("performance") else 'FAILURE'
                         print(f"{model_info['name']} performance is {run_results.get('performance', 'N/A')} {run_results.get('metric', '')}")
+
+                        # Generate performance results and update perf.csv
+                        self.ensure_perf_csv_exists()
+                        try:
+                            # Create run details dictionary for CSV generation
+                            run_details_dict = self.create_run_details_dict(model_info, build_info, run_results)
+                            
+                            # Handle multiple results if specified
+                            multiple_results = model_info.get("multiple_results", None)
+                            if multiple_results and run_results.get("status") == "SUCCESS":
+                                # Generate common info JSON for multiple results
+                                common_info = run_details_dict.copy()
+                                # Remove model-specific fields for common info
+                                for key in ["model", "performance", "metric", "status"]:
+                                    common_info.pop(key, None)
+                                
+                                with open("common_info.json", "w") as f:
+                                    json.dump(common_info, f)
+                                
+                                # Update perf.csv with multiple results
+                                update_perf_csv(
+                                    multiple_results=multiple_results,
+                                    perf_csv=self.perf_csv_path,
+                                    model_name=run_details_dict["model"],
+                                    common_info="common_info.json",
+                                )
+                                print(f"Updated perf.csv with multiple results for {model_info['name']}")
+                            else:
+                                # Generate single result JSON
+                                with open("perf_entry.json", "w") as f:
+                                    json.dump(run_details_dict, f)
+                                
+                                # Update perf.csv with single result
+                                if run_results.get("status") == "SUCCESS":
+                                    update_perf_csv(
+                                        single_result="perf_entry.json",
+                                        perf_csv=self.perf_csv_path,
+                                    )
+                                else:
+                                    update_perf_csv(
+                                        exception_result="perf_entry.json",
+                                        perf_csv=self.perf_csv_path,
+                                    )
+                                print(f"Updated perf.csv with result for {model_info['name']}")
+                                
+                        except Exception as e:
+                            print(f"Warning: Could not update perf.csv: {e}")
 
                         # Cleanup if not keeping alive
                         if not keep_alive:
@@ -553,6 +687,42 @@ class ContainerRunner:
             traceback.print_exc()
             print("=============== =====")
             run_results["status"] = "FAILURE"
+            
+            # Also update perf.csv for failures
+            self.ensure_perf_csv_exists()
+            try:
+                # Create run details dictionary for failed runs
+                run_details_dict = self.create_run_details_dict(model_info, build_info, run_results)
+                
+                # Generate exception result JSON
+                with open("perf_entry.json", "w") as f:
+                    json.dump(run_details_dict, f)
+                
+                # Update perf.csv with exception result
+                update_perf_csv(
+                    exception_result="perf_entry.json",
+                    perf_csv=self.perf_csv_path,
+                )
+                print(f"Updated perf.csv with exception result for {model_info['name']}")
+                
+            except Exception as csv_e:
+                print(f"Warning: Could not update perf.csv with exception: {csv_e}")
+        
+        
+        # Ensure performance CSV exists
+        self.ensure_perf_csv_exists()
+        
+        # Write to performance CSV
+        try:
+            run_details = self.create_run_details_dict(model_info, build_info, run_results)
+            
+            # Convert to CSV row
+            csv_row = ",".join([str(run_details[key]) for key in sorted(run_details.keys())])
+            
+            file_print(csv_row, filename=self.perf_csv_path, mode="a")
+            print(f"Updated performance CSV: {self.perf_csv_path}")
+        except Exception as e:
+            print(f"Warning: Failed to update performance CSV: {e}")
         
         return run_results
     
