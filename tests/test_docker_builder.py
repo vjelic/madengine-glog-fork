@@ -451,3 +451,239 @@ class TestDockerBuilder:
         # Verify --no-cache was used
         build_calls = [call for call in mock_sh.call_args_list if 'docker build' in str(call)]
         assert any('--no-cache' in str(call) for call in build_calls)
+
+    @patch.object(Context, 'get_gpu_vendor', return_value='AMD')
+    @patch.object(Context, 'get_system_ngpus', return_value=1)
+    @patch.object(Context, 'get_system_gpu_architecture', return_value='gfx908')
+    @patch.object(Context, 'get_system_hip_version', return_value='5.4')
+    @patch.object(Context, 'get_docker_gpus', return_value='all')
+    @patch.object(Context, 'get_gpu_renderD_nodes', return_value=['renderD128'])
+    @patch.object(Console, 'sh')
+    def test_push_image_dockerhub_with_repository(self, mock_sh, mock_render, mock_docker_gpu, mock_hip, mock_arch, mock_ngpus, mock_vendor):
+        """Test pushing image to DockerHub with repository specified in credentials."""
+        context = Context()
+        console = Console()
+        builder = DockerBuilder(context, console)
+        
+        docker_image = "ci-dummy_dummy.ubuntu.amd"
+        registry = "dockerhub"
+        credentials = {
+            "dockerhub": {
+                "repository": "your-repository",
+                "username": "your-dockerhub-username",
+                "password": "your-dockerhub-password-or-token"
+            }
+        }
+        
+        # Mock successful operations
+        mock_sh.return_value = "Success"
+        
+        result = builder.push_image(docker_image, registry, credentials)
+        
+        # Verify the correct tag and push commands were called
+        expected_tag = "your-repository:ci-dummy_dummy.ubuntu.amd"
+        tag_calls = [call for call in mock_sh.call_args_list if 'docker tag' in str(call)]
+        push_calls = [call for call in mock_sh.call_args_list if 'docker push' in str(call)]
+        
+        assert len(tag_calls) == 1
+        assert expected_tag in str(tag_calls[0])
+        assert len(push_calls) == 1
+        assert expected_tag in str(push_calls[0])
+        assert result == expected_tag
+
+    @patch.object(Context, 'get_gpu_vendor', return_value='AMD')
+    @patch.object(Context, 'get_system_ngpus', return_value=1)
+    @patch.object(Context, 'get_system_gpu_architecture', return_value='gfx908')
+    @patch.object(Context, 'get_system_hip_version', return_value='5.4')
+    @patch.object(Context, 'get_docker_gpus', return_value='all')
+    @patch.object(Context, 'get_gpu_renderD_nodes', return_value=['renderD128'])
+    @patch.object(Console, 'sh')
+    def test_push_image_local_registry_with_repository(self, mock_sh, mock_render, mock_docker_gpu, mock_hip, mock_arch, mock_ngpus, mock_vendor):
+        """Test pushing image to local registry with repository specified in credentials."""
+        context = Context()
+        console = Console()
+        builder = DockerBuilder(context, console)
+        
+        docker_image = "ci-dummy_dummy.ubuntu.amd"
+        registry = "localhost:5000"
+        credentials = {
+            "localhost:5000": {
+                "repository": "your-repository",
+                "username": "your-local-registry-username",
+                "password": "your-local-registry-password"
+            }
+        }
+        
+        # Mock successful operations
+        mock_sh.return_value = "Success"
+        
+        result = builder.push_image(docker_image, registry, credentials)
+        
+        # Verify the correct tag and push commands were called
+        expected_tag = "localhost:5000/your-repository:ci-dummy_dummy.ubuntu.amd"
+        tag_calls = [call for call in mock_sh.call_args_list if 'docker tag' in str(call)]
+        push_calls = [call for call in mock_sh.call_args_list if 'docker push' in str(call)]
+        
+        assert len(tag_calls) == 1
+        assert expected_tag in str(tag_calls[0])
+        assert len(push_calls) == 1
+        assert expected_tag in str(push_calls[0])
+        assert result == expected_tag
+
+    @patch.object(Context, 'get_gpu_vendor', return_value='AMD')
+    @patch.object(Context, 'get_system_ngpus', return_value=1)
+    @patch.object(Context, 'get_system_gpu_architecture', return_value='gfx908')
+    @patch.object(Context, 'get_system_hip_version', return_value='5.4')
+    @patch.object(Context, 'get_docker_gpus', return_value='all')
+    @patch.object(Context, 'get_gpu_renderD_nodes', return_value=['renderD128'])
+    @patch.object(Console, 'sh')
+    def test_push_image_dockerhub_no_repository(self, mock_sh, mock_render, mock_docker_gpu, mock_hip, mock_arch, mock_ngpus, mock_vendor):
+        """Test pushing image to DockerHub without repository specified in credentials."""
+        context = Context()
+        console = Console()
+        builder = DockerBuilder(context, console)
+        
+        docker_image = "ci-dummy_dummy.ubuntu.amd"
+        registry = "dockerhub"
+        credentials = {
+            "dockerhub": {
+                "username": "your-dockerhub-username",
+                "password": "your-dockerhub-password-or-token"
+            }
+        }
+        
+        # Mock successful operations
+        mock_sh.return_value = "Success"
+        
+        result = builder.push_image(docker_image, registry, credentials)
+        
+        # Should fallback to just the image name
+        push_calls = [call for call in mock_sh.call_args_list if 'docker push' in str(call)]
+        assert len(push_calls) == 1
+        assert docker_image in str(push_calls[0])
+        assert result == docker_image
+
+    @patch.object(Context, 'get_gpu_vendor', return_value='AMD')
+    @patch.object(Context, 'get_system_ngpus', return_value=1)
+    @patch.object(Context, 'get_system_gpu_architecture', return_value='gfx908')
+    @patch.object(Context, 'get_system_hip_version', return_value='5.4')
+    @patch.object(Context, 'get_docker_gpus', return_value='all')
+    @patch.object(Context, 'get_gpu_renderD_nodes', return_value=['renderD128'])
+    @patch.object(Console, 'sh')
+    def test_push_image_local_registry_no_repository(self, mock_sh, mock_render, mock_docker_gpu, mock_hip, mock_arch, mock_ngpus, mock_vendor):
+        """Test pushing image to local registry without repository specified in credentials."""
+        context = Context()
+        console = Console()
+        builder = DockerBuilder(context, console)
+        
+        docker_image = "ci-dummy_dummy.ubuntu.amd"
+        registry = "localhost:5000"
+        credentials = {
+            "localhost:5000": {
+                "username": "your-local-registry-username",
+                "password": "your-local-registry-password"
+            }
+        }
+        
+        # Mock successful operations
+        mock_sh.return_value = "Success"
+        
+        result = builder.push_image(docker_image, registry, credentials)
+        
+        # Should fallback to registry/imagename format
+        expected_tag = "localhost:5000/ci-dummy_dummy.ubuntu.amd"
+        tag_calls = [call for call in mock_sh.call_args_list if 'docker tag' in str(call)]
+        push_calls = [call for call in mock_sh.call_args_list if 'docker push' in str(call)]
+        
+        assert len(tag_calls) == 1
+        assert expected_tag in str(tag_calls[0])
+        assert len(push_calls) == 1
+        assert expected_tag in str(push_calls[0])
+        assert result == expected_tag
+
+    @patch.object(Context, 'get_gpu_vendor', return_value='AMD')
+    @patch.object(Context, 'get_system_ngpus', return_value=1)
+    @patch.object(Context, 'get_system_gpu_architecture', return_value='gfx908')
+    @patch.object(Context, 'get_system_hip_version', return_value='5.4')
+    @patch.object(Context, 'get_docker_gpus', return_value='all')
+    @patch.object(Context, 'get_gpu_renderD_nodes', return_value=['renderD128'])
+    @patch.object(Console, 'sh')
+    def test_push_image_no_registry(self, mock_sh, mock_render, mock_docker_gpu, mock_hip, mock_arch, mock_ngpus, mock_vendor):
+        """Test pushing image with no registry specified."""
+        context = Context()
+        console = Console()
+        builder = DockerBuilder(context, console)
+        
+        docker_image = "ci-dummy_dummy.ubuntu.amd"
+        
+        result = builder.push_image(docker_image)
+        
+        # Should not call docker tag or push commands and return the original image name
+        docker_calls = [call for call in mock_sh.call_args_list if 'docker tag' in str(call) or 'docker push' in str(call)]
+        assert len(docker_calls) == 0
+        assert result == docker_image
+
+    @patch.object(Context, 'get_gpu_vendor', return_value='AMD')
+    @patch.object(Context, 'get_system_ngpus', return_value=1)
+    @patch.object(Context, 'get_system_gpu_architecture', return_value='gfx908')
+    @patch.object(Context, 'get_system_hip_version', return_value='5.4')
+    @patch.object(Context, 'get_docker_gpus', return_value='all')
+    @patch.object(Context, 'get_gpu_renderD_nodes', return_value=['renderD128'])
+    @patch.object(Console, 'sh')
+    def test_build_manifest_with_tagged_image(self, mock_sh, mock_render, mock_docker_gpu, mock_hip, mock_arch, mock_ngpus, mock_vendor):
+        """Test that build manifest includes docker_image_tagged when pushing to registry."""
+        import tempfile
+        import os
+        
+        context = Context()
+        console = Console()
+        builder = DockerBuilder(context, console)
+        
+        # Mock successful operations
+        mock_sh.return_value = "Success"
+        
+        model_info = {"name": "test_model"}
+        dockerfile = "./docker/Dockerfile"
+        registry = "localhost:5000"
+        credentials = {
+            "localhost:5000": {
+                "repository": "test-repository",
+                "username": "test-user",
+                "password": "test-password"
+            }
+        }
+        
+        with patch.object(builder, 'get_build_arg', return_value=""):
+            with patch.object(builder, 'get_context_path', return_value="./docker"):
+                # Build image
+                build_info = builder.build_image(model_info, dockerfile, credentials)
+                local_image = build_info["docker_image"]
+                
+                # Push to registry
+                registry_image = builder.push_image(local_image, registry, credentials)
+                
+                # Update built_images with tagged image (simulating what build_all_models does)
+                if local_image in builder.built_images:
+                    builder.built_images[local_image]["docker_image_tagged"] = registry_image
+                
+                # Export manifest to temporary file
+                with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as tmp_file:
+                    builder.export_build_manifest(tmp_file.name, registry)
+                    
+                    # Read and verify the manifest
+                    with open(tmp_file.name, 'r') as f:
+                        import json
+                        manifest = json.load(f)
+                    
+                    # Clean up
+                    os.unlink(tmp_file.name)
+        
+        # Verify the manifest contains the tagged image
+        assert local_image in manifest["built_images"]
+        assert "docker_image_tagged" in manifest["built_images"][local_image]
+        assert manifest["built_images"][local_image]["docker_image_tagged"] == registry_image
+        assert manifest["registry"] == registry
+        
+        # Verify the tagged image format is correct
+        expected_tagged_image = f"localhost:5000/test-repository:{local_image}"
+        assert registry_image == expected_tagged_image

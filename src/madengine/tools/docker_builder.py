@@ -250,7 +250,7 @@ class DockerBuilder:
         # Perform docker login
         login_command = f"echo '{creds['password']}' | docker login"
         
-        if registry and registry != "docker.io":
+        if registry and registry.lower() not in ["docker.io", "dockerhub"]:
             login_command += f" {registry}"
             
         login_command += f" --username {creds['username']} --password-stdin"
@@ -283,15 +283,20 @@ class DockerBuilder:
         
         # Determine registry image name based on registry type
         if registry.lower() in ["docker.io", "dockerhub"]:
-            # For DockerHub, use format: username/imagename or just imagename
-            # If credentials provided, prepend username
-            if credentials and "dockerhub" in credentials and "username" in credentials["dockerhub"]:
-                registry_image = f"{credentials['dockerhub']['username']}/{docker_image}"
+            # For DockerHub, use format: repository:tag where repository comes from credentials
+            if credentials and "dockerhub" in credentials and "repository" in credentials["dockerhub"]:
+                registry_image = f"{credentials['dockerhub']['repository']}:{docker_image}"
             else:
+                # Fallback to just the image name if no repository specified
                 registry_image = docker_image
         else:
-            # For other registries (local, AWS ECR, etc.), use format: registry/imagename
-            registry_image = f"{registry}/{docker_image}"
+            # For other registries (local, AWS ECR, etc.), use format: registry/repository:tag
+            registry_key = registry
+            if credentials and registry_key in credentials and "repository" in credentials[registry_key]:
+                registry_image = f"{registry}/{credentials[registry_key]['repository']}:{docker_image}"
+            else:
+                # Fallback to just registry/imagename if no repository specified
+                registry_image = f"{registry}/{docker_image}"
         
         try:
             # Tag the image if different from local name
@@ -397,6 +402,10 @@ class DockerBuilder:
                                 build_info["docker_image"], registry, credentials
                             )
                             build_info["registry_image"] = registry_image
+                            
+                            # Add the tagged image name to the built_images entry
+                            if build_info["docker_image"] in self.built_images:
+                                self.built_images[build_info["docker_image"]]["docker_image_tagged"] = registry_image
                         
                         build_summary["successful_builds"].append({
                             "model": model_info["name"],
