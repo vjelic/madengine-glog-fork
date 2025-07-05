@@ -716,8 +716,17 @@ class ContainerRunner:
         try:
             run_details = self.create_run_details_dict(model_info, build_info, run_results)
             
-            # Convert to CSV row
-            csv_row = ",".join([str(run_details[key]) for key in sorted(run_details.keys())])
+            # Define the correct column order to match header
+            column_order = [
+                "model", "n_gpus", "training_precision", "pipeline", "args", "tags",
+                "docker_file", "base_docker", "docker_sha", "docker_image", "git_commit",
+                "machine_name", "gpu_architecture", "performance", "metric", "relative_change",
+                "status", "build_duration", "test_duration", "dataname", "data_provider_type",
+                "data_size", "data_download_duration", "build_number", "additional_docker_run_options"
+            ]
+            
+            # Convert to CSV row using the correct column order
+            csv_row = ",".join([str(run_details.get(key, "")) for key in column_order])
             
             file_print(csv_row, filename=self.perf_csv_path, mode="a")
             print(f"Updated performance CSV: {self.perf_csv_path}")
