@@ -84,7 +84,7 @@ class ContainerRunner:
             "docker_file": build_info.get("dockerfile", ""),
             "base_docker": build_info.get("base_docker", ""),
             "docker_sha": build_info.get("docker_sha", ""),
-            "docker_image": build_info.get("image_name", ""),
+            "docker_image": build_info.get("docker_image", ""),
             "git_commit": run_results.get("git_commit", ""),
             "machine_name": run_results.get("machine_name", ""),
             "gpu_architecture": self.context.ctx["docker_env_vars"]["MAD_SYSTEM_GPU_ARCHITECTURE"] if self.context else "",
