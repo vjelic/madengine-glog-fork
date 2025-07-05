@@ -88,6 +88,7 @@ def run_models(args: argparse.Namespace) -> int:
     """Run model containers in distributed scenarios.
     
     If manifest-file is provided and exists, runs only the execution phase.
+    Registry information is auto-detected from the manifest when available.
     If manifest-file is not provided or doesn't exist, runs the complete workflow.
     
     Args:
@@ -373,8 +374,11 @@ Examples:
   # Run complete workflow (build + run) with specific tags and registry
   %(prog)s run --tags resnet --registry localhost:5000 --timeout 3600 --live-output
   
-  # Run models using pre-built manifest (execution phase only)
+  # Run models using pre-built manifest (execution phase only - registry auto-detected)
   %(prog)s run --manifest-file build_manifest.json --timeout 3600
+  
+  # Run models using pre-built manifest with explicit registry override
+  %(prog)s run --manifest-file build_manifest.json --registry custom-registry.com --timeout 3600
   
   # Generate Ansible playbook for distributed execution
   %(prog)s generate ansible --output madengine.yml
@@ -432,7 +436,7 @@ Examples:
         parser.add_argument('--manifest-file', type=str, default='',
                            help='Build manifest file. If provided and exists, will run execution phase only. If not provided or file does not exist, will run complete workflow (build + run)')
         parser.add_argument('--registry', type=str,
-                           help='Docker registry to push/pull images to/from')
+                           help='Docker registry to push/pull images to/from (optional - can be auto-detected from manifest)')
         parser.add_argument('--timeout', type=int, default=DEFAULT_TIMEOUT, 
                            help="time out for model run in seconds; Overrides per-model timeout if specified or default timeout of 7200 (2 hrs). Timeout of 0 will never timeout.")
         parser.add_argument('--keep-alive', action='store_true', 
@@ -463,7 +467,7 @@ Examples:
 
     # Run command
     parser_run = subparsers.add_parser('run', 
-                                      description="Run model containers in distributed scenarios. If manifest-file is provided and exists, runs execution phase only. Otherwise runs complete workflow (build + run).", 
+                                      description="Run model containers in distributed scenarios. If manifest-file is provided and exists, runs execution phase only (registry auto-detected from manifest). Otherwise runs complete workflow (build + run).", 
                                       help='Run model containers (with optional build phase)')
     add_model_arguments(parser_run)
     add_run_arguments(parser_run)

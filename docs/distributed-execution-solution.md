@@ -78,11 +78,10 @@ python -m madengine.tools.distributed_cli build \
 # Copy build_manifest.json to GPU nodes, then:
 python -m madengine.tools.distributed_cli run \
     --manifest-file build_manifest.json \
-    --registry localhost:5000 \
     --timeout 3600
 
-# Note: No --tags needed when using manifest file, 
-# as model information is stored in the manifest
+# Registry information is automatically detected from the manifest
+# No need to specify --registry parameter unless you want to override
 ```
 
 ### 2. Smart Run Command (Complete Workflow)
@@ -183,9 +182,15 @@ The `run` command in the distributed CLI is intelligent and automatically detect
 When a `--manifest-file` is provided **and** the file exists:
 ```bash
 # Only runs the execution phase using existing manifest
+# Registry is automatically detected from the manifest
 python -m madengine.tools.distributed_cli run \
     --manifest-file build_manifest.json \
-    --registry localhost:5000 \
+    --timeout 3600
+
+# Optional: Override registry from manifest
+python -m madengine.tools.distributed_cli run \
+    --manifest-file build_manifest.json \
+    --registry custom-registry.com \
     --timeout 3600
 
 # Note: No --tags parameter needed when using manifest file
@@ -216,8 +221,8 @@ python -m madengine.tools.distributed_cli build \
     --tags llama bert resnet \
     --registry localhost:5000 --clean-docker-cache
 
-# Run models using pre-built manifest with custom timeout (execution-only)
-# No --tags needed - models and images are defined in the manifest
+# Run models using pre-built manifest with auto-detected registry (execution-only)
+# No --registry needed - registry is auto-detected from the manifest
 python -m madengine.tools.distributed_cli run \
     --manifest-file build_manifest.json --timeout 3600
 
@@ -265,15 +270,17 @@ python -m madengine.tools.distributed_cli build \
 #### Execution Control
 ```bash
 # Run with custom timeout and keep containers alive for debugging
+# Registry auto-detected from manifest
 python -m madengine.tools.distributed_cli run \
     --manifest-file build_manifest.json \
     --timeout 7200 \
     --keep-alive \
     --live-output
 
-# Run specific tags only (fallback mode - when manifest lacks model info)
+# Override registry if needed (fallback mode)
 python -m madengine.tools.distributed_cli run \
     --manifest-file build_manifest.json \
+    --registry custom-registry.com \
     --tags llama \
     --timeout 3600
 ```
@@ -398,9 +405,9 @@ ssh user@gpu-node-01
 cd /home/user/madengine
 
 # Run the dummy model using the manifest
+# Registry is automatically detected from the manifest
 python -m madengine.tools.distributed_cli run \
     --manifest-file dummy_build_manifest.json \
-    --registry localhost:5000 \
     --timeout 1800 \
     --live-output \
     --summary-output dummy_execution_summary.json
@@ -576,8 +583,8 @@ scp build_manifest.json user@gpu-node:/path/to/madengine/
 
 **Run Phase (on GPU node):**
 ```bash
-# 3. Run model
-python -m madengine.tools.distributed_cli run --manifest-file build_manifest.json --registry localhost:5000
+# 3. Run model (registry auto-detected from manifest)
+python -m madengine.tools.distributed_cli run --manifest-file build_manifest.json
 ```
 
 ### Ansible Deployment (Build Machine → Multiple GPU Nodes)
@@ -642,6 +649,7 @@ The build manifest has been enhanced to ensure reliable execution across distrib
       "dockerfile": "/path/to/dummy.ubuntu.amd.Dockerfile"
     }
   },
+  "registry": "localhost:5000",
   "context": {
     "docker_env_vars": {},
     "docker_mounts": {},
@@ -653,18 +661,19 @@ The build manifest has been enhanced to ensure reliable execution across distrib
 #### Key Improvements
 
 1. **Model Information Storage**: The manifest now includes `built_models` that maps each built image to its corresponding model information
-2. **Exact Reproduction**: No need to specify `--tags` during execution when using a manifest file
-3. **Backward Compatibility**: Falls back to name-based matching for older manifest files
-4. **Reliable Matching**: Direct image-to-model mapping eliminates matching errors
+2. **Registry Auto-Detection**: The manifest includes top-level `registry` field for automatic registry detection during execution
+3. **Exact Reproduction**: No need to specify `--tags` or `--registry` during execution when using a manifest file
+4. **Backward Compatibility**: Falls back to name-based matching for older manifest files
+5. **Reliable Matching**: Direct image-to-model mapping eliminates matching errors
 
 #### Execution Behavior
 
 **With Enhanced Manifest (Recommended):**
 ```bash
-# Build phase creates enhanced manifest
+# Build phase creates enhanced manifest with registry information
 python -m madengine.tools.distributed_cli build --tags dummy --registry localhost:5000
 
-# Run phase uses stored model information - no tags needed
+# Run phase uses stored model and registry information - no additional parameters needed
 python -m madengine.tools.distributed_cli run --manifest-file build_manifest.json
 ```
 

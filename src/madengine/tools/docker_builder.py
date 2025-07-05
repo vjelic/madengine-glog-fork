@@ -289,11 +289,12 @@ class DockerBuilder:
             print(f"Failed to push image {docker_image} to registry {registry}: {e}")
             raise
     
-    def export_build_manifest(self, output_file: str = "build_manifest.json") -> None:
+    def export_build_manifest(self, output_file: str = "build_manifest.json", registry: str = None) -> None:
         """Export build information to a manifest file.
         
         Args:
             output_file: Path to output manifest file
+            registry: Registry used for building (added to manifest metadata)
         """
         manifest = {
             "built_images": self.built_images,
@@ -304,6 +305,10 @@ class DockerBuilder:
                 "docker_build_arg": self.context.ctx.get("docker_build_arg", {})
             }
         }
+        
+        # Add registry information to manifest metadata if provided
+        if registry:
+            manifest["registry"] = registry
         
         with open(output_file, 'w') as f:
             json.dump(manifest, f, indent=2)

@@ -96,8 +96,8 @@ class DistributedOrchestrator:
             models, self.credentials, clean_cache, registry, phase_suffix
         )
         
-        # Export build manifest
-        builder.export_build_manifest(manifest_output)
+        # Export build manifest with registry information
+        builder.export_build_manifest(manifest_output, registry)
         
         print("=" * 60)
         print("BUILD PHASE COMPLETED")
@@ -156,6 +156,15 @@ class DistributedOrchestrator:
         
         print(f"Loaded manifest with {len(manifest['built_images'])} images")
         
+        # Auto-detect registry from manifest if not provided via CLI
+        if not registry and "registry" in manifest:
+            registry = manifest["registry"]
+            print(f"Auto-detected registry from manifest: {registry}")
+        elif registry:
+            print(f"Using registry from CLI: {registry}")
+        else:
+            print("No registry specified, will use local images only")
+        
         # Copy scripts for running
         self._copy_scripts()
         
@@ -197,11 +206,25 @@ class DistributedOrchestrator:
                     try:
                         print(f"\nRunning model {model_info['name']} with image {image_name}")
                         
-                        # Pull image if from registry
-                        if registry and "registry_image" in build_info:
-                            actual_image = runner.pull_image(
-                                build_info["registry_image"], image_name, registry, self.credentials
-                            )
+                        # Pull image if from registry (either from CLI arg or manifest)
+                        if "registry_image" in build_info:
+                            # Use registry from CLI if provided, otherwise extract from registry_image
+                            effective_registry = registry
+                            if not effective_registry and build_info["registry_image"]:
+                                # Extract registry from the registry_image format
+                                registry_parts = build_info["registry_image"].split('/')
+                                if len(registry_parts) > 1 and '.' in registry_parts[0]:
+                                    effective_registry = registry_parts[0]
+                                elif build_info["registry_image"].startswith('docker.io/') or '/' in build_info["registry_image"]:
+                                    effective_registry = "docker.io"
+                            
+                            if effective_registry:
+                                actual_image = runner.pull_image(
+                                    build_info["registry_image"], image_name, effective_registry, self.credentials
+                                )
+                            else:
+                                # Registry image exists but no valid registry found, use as-is
+                                actual_image = build_info["registry_image"]
                         else:
                             actual_image = image_name
                         
@@ -250,11 +273,25 @@ class DistributedOrchestrator:
                     try:
                         print(f"\nRunning model {model_name} with image {image_name}")
                         
-                        # Pull image if from registry
-                        if registry and "registry_image" in build_info:
-                            actual_image = runner.pull_image(
-                                build_info["registry_image"], image_name, registry, self.credentials
-                            )
+                        # Pull image if from registry (either from CLI arg or manifest)
+                        if "registry_image" in build_info:
+                            # Use registry from CLI if provided, otherwise extract from registry_image
+                            effective_registry = registry
+                            if not effective_registry and build_info["registry_image"]:
+                                # Extract registry from the registry_image format
+                                registry_parts = build_info["registry_image"].split('/')
+                                if len(registry_parts) > 1 and '.' in registry_parts[0]:
+                                    effective_registry = registry_parts[0]
+                                elif build_info["registry_image"].startswith('docker.io/') or '/' in build_info["registry_image"]:
+                                    effective_registry = "docker.io"
+                            
+                            if effective_registry:
+                                actual_image = runner.pull_image(
+                                    build_info["registry_image"], image_name, effective_registry, self.credentials
+                                )
+                            else:
+                                # Registry image exists but no valid registry found, use as-is
+                                actual_image = build_info["registry_image"]
                         else:
                             actual_image = image_name
                         
