@@ -219,12 +219,34 @@ class DistributedOrchestrator:
                                     effective_registry = "docker.io"
                             
                             if effective_registry:
+                                print(f"Pulling image from registry: {build_info['registry_image']}")
                                 actual_image = runner.pull_image(
                                     build_info["registry_image"], image_name, effective_registry, self.credentials
                                 )
                             else:
                                 # Registry image exists but no valid registry found, use as-is
+                                print(f"Using registry image as-is: {build_info['registry_image']}")
                                 actual_image = build_info["registry_image"]
+                        elif registry:
+                            # Registry specified but no registry_image in manifest - attempt to construct registry image name
+                            # This handles cases where manifest has registry info but images weren't actually pushed
+                            if registry.lower() in ["docker.io", "dockerhub"]:
+                                # For DockerHub, we need username from credentials
+                                if self.credentials and "dockerhub" in self.credentials and "username" in self.credentials["dockerhub"]:
+                                    registry_image_name = f"{self.credentials['dockerhub']['username']}/{image_name}"
+                                else:
+                                    registry_image_name = image_name
+                            else:
+                                registry_image_name = f"{registry}/{image_name}"
+                            
+                            print(f"Attempting to pull constructed registry image: {registry_image_name}")
+                            try:
+                                actual_image = runner.pull_image(
+                                    registry_image_name, image_name, registry, self.credentials
+                                )
+                            except Exception as e:
+                                print(f"Failed to pull from registry, falling back to local image: {e}")
+                                actual_image = image_name
                         else:
                             actual_image = image_name
                         
@@ -286,12 +308,33 @@ class DistributedOrchestrator:
                                     effective_registry = "docker.io"
                             
                             if effective_registry:
+                                print(f"Pulling image from registry: {build_info['registry_image']}")
                                 actual_image = runner.pull_image(
                                     build_info["registry_image"], image_name, effective_registry, self.credentials
                                 )
                             else:
                                 # Registry image exists but no valid registry found, use as-is
+                                print(f"Using registry image as-is: {build_info['registry_image']}")
                                 actual_image = build_info["registry_image"]
+                        elif registry:
+                            # Registry specified but no registry_image in manifest - attempt to construct registry image name
+                            if registry.lower() in ["docker.io", "dockerhub"]:
+                                # For DockerHub, we need username from credentials
+                                if self.credentials and "dockerhub" in self.credentials and "username" in self.credentials["dockerhub"]:
+                                    registry_image_name = f"{self.credentials['dockerhub']['username']}/{image_name}"
+                                else:
+                                    registry_image_name = image_name
+                            else:
+                                registry_image_name = f"{registry}/{image_name}"
+                            
+                            print(f"Attempting to pull constructed registry image: {registry_image_name}")
+                            try:
+                                actual_image = runner.pull_image(
+                                    registry_image_name, image_name, registry, self.credentials
+                                )
+                            except Exception as e:
+                                print(f"Failed to pull from registry, falling back to local image: {e}")
+                                actual_image = image_name
                         else:
                             actual_image = image_name
                         

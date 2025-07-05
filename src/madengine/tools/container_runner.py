@@ -136,15 +136,38 @@ class ContainerRunner:
         # Check if registry credentials are available
         registry_key = registry if registry else "dockerhub"
         
+        # Handle docker.io as dockerhub
+        if registry and registry.lower() == "docker.io":
+            registry_key = "dockerhub"
+        
         if registry_key not in credentials:
-            print(f"No credentials found for registry: {registry_key}")
-            return
+            error_msg = f"No credentials found for registry: {registry_key}"
+            if registry_key == "dockerhub":
+                error_msg += f"\nPlease add dockerhub credentials to credential.json:\n"
+                error_msg += "{\n"
+                error_msg += '  "dockerhub": {\n'
+                error_msg += '    "username": "your-dockerhub-username",\n'
+                error_msg += '    "password": "your-dockerhub-password-or-token"\n'
+                error_msg += "  }\n"
+                error_msg += "}"
+            else:
+                error_msg += f"\nPlease add {registry_key} credentials to credential.json:\n"
+                error_msg += "{\n"
+                error_msg += f'  "{registry_key}": {{\n'
+                error_msg += f'    "username": "your-{registry_key}-username",\n'
+                error_msg += f'    "password": "your-{registry_key}-password"\n'
+                error_msg += "  }\n"
+                error_msg += "}"
+            print(error_msg)
+            raise RuntimeError(error_msg)
             
         creds = credentials[registry_key]
         
         if "username" not in creds or "password" not in creds:
-            print(f"Invalid credentials format for registry: {registry_key}")
-            return
+            error_msg = f"Invalid credentials format for registry: {registry_key}"
+            error_msg += f"\nCredentials must contain 'username' and 'password' fields"
+            print(error_msg)
+            raise RuntimeError(error_msg)
             
         # Perform docker login
         login_command = f"echo '{creds['password']}' | docker login"
@@ -158,6 +181,8 @@ class ContainerRunner:
             self.console.sh(login_command, secret=True)
             print(f"Successfully logged in to registry: {registry or 'DockerHub'}")
         except Exception as e:
+            print(f"Failed to login to registry {registry}: {e}")
+            raise
             print(f"Failed to login to registry {registry}: {e}")
             # Don't raise exception here, as public images might still be pullable
 
