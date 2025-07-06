@@ -25,6 +25,9 @@ dependencies = [
   "typing-extensions",
   "pymongo",
   "toml",
+  "typer[all]>=0.9.0",
+  "rich>=13.0.0",
+  "click>=8.0.0",
 ]
 classifiers = [
   "Programming Language :: Python :: 3",
@@ -34,7 +37,7 @@ classifiers = [
 
 [project.scripts]
 madengine = "madengine.mad:main"
-madengine-cli = "madengine.distributed_cli:main"
+madengine-cli = "madengine.mad_cli:cli_main"
 
 [project.urls]
 Homepage = "https://github.com/ROCm/madengine"
