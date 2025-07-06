@@ -15,7 +15,7 @@ from unittest.mock import patch, MagicMock
 # third-party modules
 import pytest
 # project modules
-from madengine.tools import distributed_cli
+from madengine import distributed_cli
 from madengine.tools.distributed_orchestrator import DistributedOrchestrator
 from .fixtures.utils import BASE_DIR, MODEL_DIR
 
@@ -25,7 +25,7 @@ class TestDistributedCLI:
 
     def test_distributed_cli_help(self):
         """Test the distributed CLI --help command."""
-        script_path = os.path.join(BASE_DIR, "src/madengine/tools", "distributed_cli.py")
+        script_path = os.path.join(BASE_DIR, "src/madengine", "distributed_cli.py")
         result = subprocess.run([sys.executable, script_path, "--help"], 
                               stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         assert result.returncode == 0
@@ -55,7 +55,7 @@ class TestDistributedCLI:
         assert result.returncode == 0
         assert b"generate" in result.stdout
 
-    @patch('madengine.tools.distributed_cli.DistributedOrchestrator')
+    @patch('madengine.distributed_cli.DistributedOrchestrator')
     def test_build_models_function(self, mock_orchestrator):
         """Test the build_models function."""
         # Mock args
@@ -87,7 +87,7 @@ class TestDistributedCLI:
         # Should return EXIT_SUCCESS for successful builds
         assert result == distributed_cli.EXIT_SUCCESS
 
-    @patch('madengine.tools.distributed_cli.DistributedOrchestrator')
+    @patch('madengine.distributed_cli.DistributedOrchestrator')
     def test_build_models_with_failures(self, mock_orchestrator):
         """Test the build_models function with build failures."""
         mock_args = MagicMock()
@@ -108,7 +108,7 @@ class TestDistributedCLI:
         # Should return EXIT_BUILD_FAILURE due to failures
         assert result == distributed_cli.EXIT_BUILD_FAILURE
 
-    @patch('madengine.tools.distributed_cli.DistributedOrchestrator')
+    @patch('madengine.distributed_cli.DistributedOrchestrator')
     @patch('os.path.exists')
     def test_run_models_execution_only(self, mock_exists, mock_orchestrator):
         """Test the run_models function in execution-only mode."""
@@ -141,7 +141,7 @@ class TestDistributedCLI:
         
         assert result == distributed_cli.EXIT_SUCCESS
 
-    @patch('madengine.tools.distributed_cli.DistributedOrchestrator')
+    @patch('madengine.distributed_cli.DistributedOrchestrator')
     @patch('os.path.exists')
     def test_run_models_complete_workflow(self, mock_exists, mock_orchestrator):
         """Test the run_models function in complete workflow mode (build + run)."""
@@ -193,7 +193,7 @@ class TestDistributedCLI:
         
         assert result == distributed_cli.EXIT_SUCCESS
 
-    @patch('madengine.tools.distributed_cli.create_ansible_playbook')
+    @patch('madengine.distributed_cli.create_ansible_playbook')
     def test_generate_ansible_function(self, mock_create_ansible):
         """Test the generate_ansible function."""
         mock_args = MagicMock()
@@ -211,7 +211,7 @@ class TestDistributedCLI:
         
         assert result == distributed_cli.EXIT_SUCCESS
 
-    @patch('madengine.tools.distributed_cli.create_kubernetes_manifests')
+    @patch('madengine.distributed_cli.create_kubernetes_manifests')
     def test_generate_k8s_function(self, mock_create_k8s):
         """Test the generate_k8s function."""
         mock_args = MagicMock()
@@ -229,7 +229,7 @@ class TestDistributedCLI:
         
         assert result == distributed_cli.EXIT_SUCCESS
 
-    @patch('madengine.tools.distributed_cli.DistributedOrchestrator')
+    @patch('madengine.distributed_cli.DistributedOrchestrator')
     @patch('madengine.tools.discover_models.DiscoverModels')
     def test_export_config_function(self, mock_discover_models, mock_orchestrator):
         """Test the export_config function."""
@@ -253,7 +253,7 @@ class TestDistributedCLI:
         mock_instance.export_execution_config.assert_called_once_with(["model1", "model2"], "config.json")
         assert result == distributed_cli.EXIT_SUCCESS
 
-    @patch('madengine.tools.distributed_cli.DistributedOrchestrator')
+    @patch('madengine.distributed_cli.DistributedOrchestrator')
     @patch('madengine.tools.discover_models.DiscoverModels')
     def test_export_config_function_no_models(self, mock_discover_models, mock_orchestrator):
         """Test the export_config function when no models are discovered."""
@@ -277,7 +277,7 @@ class TestDistributedCLI:
         mock_instance.export_execution_config.assert_called_once_with([], "config.json")
         assert result == distributed_cli.EXIT_SUCCESS
 
-    @patch('madengine.tools.distributed_cli.DistributedOrchestrator')
+    @patch('madengine.distributed_cli.DistributedOrchestrator')
     @patch('os.path.exists')
     def test_run_models_with_build_failure(self, mock_exists, mock_orchestrator):
         """Test the run_models function when build phase fails in complete workflow."""
@@ -309,7 +309,7 @@ class TestDistributedCLI:
         mock_instance.build_phase.assert_called_once()
         mock_instance.run_phase.assert_not_called()
 
-    @patch('madengine.tools.distributed_cli.DistributedOrchestrator')
+    @patch('madengine.distributed_cli.DistributedOrchestrator')
     @patch('os.path.exists')
     def test_run_models_with_run_failure(self, mock_exists, mock_orchestrator):
         """Test the run_models function when run phase fails in execution-only mode."""
@@ -335,7 +335,7 @@ class TestDistributedCLI:
         # Should return EXIT_RUN_FAILURE
         assert result == distributed_cli.EXIT_RUN_FAILURE
 
-    @patch('madengine.tools.distributed_cli.DistributedOrchestrator')
+    @patch('madengine.distributed_cli.DistributedOrchestrator')
     def test_run_models_invalid_timeout(self, mock_orchestrator):
         """Test the run_models function with invalid timeout."""
         mock_args = MagicMock()

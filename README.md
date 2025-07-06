@@ -81,7 +81,7 @@ For distributed execution scenarios, use the distributed CLI:
 
 ```shell
 # Distributed CLI for build/run separation
-python -m madengine.tools.distributed_cli --help
+python -m madengine.distributed_cli --help
 
 # Available commands:
 #   build       - Build Docker images for models
@@ -251,17 +251,17 @@ madengine supports distributed execution scenarios where Docker images are built
 
 ### Distributed CLI Commands
 
-The distributed execution functionality is available through the `madengine.tools.distributed_cli` module:
+The distributed execution functionality is available through the `madengine.distributed_cli` module:
 
 ```bash
 # Build Docker images and create manifest
-python -m madengine.tools.distributed_cli build --tags dummy --registry docker.io
+python -m madengine.distributed_cli build --tags dummy --registry docker.io
 
 # Run models using manifest (registry auto-detected)
-python -m madengine.tools.distributed_cli run --manifest-file build_manifest.json
+python -m madengine.distributed_cli run --manifest-file build_manifest.json
 
 # Complete workflow (build + run)
-python -m madengine.tools.distributed_cli run --tags dummy --registry docker.io
+python -m madengine.distributed_cli run --tags dummy --registry docker.io
 ```
 
 ### Registry Auto-Detection
@@ -271,14 +271,14 @@ The distributed CLI automatically detects registry information from build manife
 **Build Phase:**
 ```bash
 # Build and push images to Docker Hub
-python -m madengine.tools.distributed_cli build --tags dummy --registry docker.io
+python -m madengine.distributed_cli build --tags dummy --registry docker.io
 # Creates build_manifest.json with registry information
 ```
 
 **Run Phase:**
 ```bash
 # Registry is automatically detected from manifest
-python -m madengine.tools.distributed_cli run --manifest-file build_manifest.json
+python -m madengine.distributed_cli run --manifest-file build_manifest.json
 # No need to specify --registry parameter
 ```
 
@@ -309,28 +309,28 @@ To use Docker registries, add credentials to `credential.json`:
 **Local Development:**
 ```bash
 # Build without registry (local images only)
-python -m madengine.tools.distributed_cli build --tags dummy
+python -m madengine.distributed_cli build --tags dummy
 
 # Run locally 
-python -m madengine.tools.distributed_cli run --manifest-file build_manifest.json
+python -m madengine.distributed_cli run --manifest-file build_manifest.json
 ```
 
 **Production Deployment:**
 ```bash
 # 1. Build and push to registry (CI server)
-python -m madengine.tools.distributed_cli build --tags dummy --registry docker.io
+python -m madengine.distributed_cli build --tags dummy --registry docker.io
 
 # 2. Transfer manifest to GPU nodes
 scp build_manifest.json user@gpu-node:/path/to/madengine/
 
 # 3. Run on GPU nodes (registry auto-detected)
-python -m madengine.tools.distributed_cli run --manifest-file build_manifest.json
+python -m madengine.distributed_cli run --manifest-file build_manifest.json
 ```
 
 **Multi-Node with Ansible:**
 ```bash
 # Generate Ansible playbook
-python -m madengine.tools.distributed_cli generate ansible \
+python -m madengine.distributed_cli generate ansible \
     --manifest-file build_manifest.json \
     --output madengine_playbook.yml
 

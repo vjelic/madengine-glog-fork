@@ -17,7 +17,7 @@ import pytest
 from madengine.tools.distributed_orchestrator import DistributedOrchestrator
 from madengine.tools.docker_builder import DockerBuilder
 from madengine.tools.container_runner import ContainerRunner
-from madengine.tools import distributed_cli
+from madengine import distributed_cli
 from .fixtures.utils import BASE_DIR, MODEL_DIR, clean_test_temp_files
 
 
@@ -192,7 +192,7 @@ class TestDistributedIntegration:
         run_args.force_mirror_local = False
         run_args.live_output = True
 
-        with patch('madengine.tools.distributed_cli.DistributedOrchestrator') as mock_orchestrator:
+        with patch('madengine.distributed_cli.DistributedOrchestrator') as mock_orchestrator:
             # Mock successful build
             mock_instance = MagicMock()
             mock_orchestrator.return_value = mock_instance
@@ -330,7 +330,7 @@ class TestDistributedIntegration:
         }
 
         # Test Ansible generation
-        with patch('madengine.tools.distributed_cli.create_ansible_playbook') as mock_ansible:
+        with patch('madengine.distributed_cli.create_ansible_playbook') as mock_ansible:
             distributed_cli.generate_ansible(MagicMock(
                 manifest_file="test_manifest.json",
                 execution_config="test_config.json", 
@@ -344,7 +344,7 @@ class TestDistributedIntegration:
             )
 
         # Test Kubernetes generation
-        with patch('madengine.tools.distributed_cli.create_kubernetes_manifests') as mock_k8s:
+        with patch('madengine.distributed_cli.create_kubernetes_manifests') as mock_k8s:
             distributed_cli.generate_k8s(MagicMock(
                 manifest_file="test_manifest.json",
                 execution_config="test_config.json",
@@ -423,7 +423,7 @@ class TestDistributedIntegration:
         run_args_execution_only.force_mirror_local = False
         run_args_execution_only.live_output = True
 
-        with patch('madengine.tools.distributed_cli.DistributedOrchestrator') as mock_orchestrator:
+        with patch('madengine.distributed_cli.DistributedOrchestrator') as mock_orchestrator:
             with patch('os.path.exists', return_value=True):  # Manifest exists
                 mock_instance = MagicMock()
                 mock_orchestrator.return_value = mock_instance
@@ -455,7 +455,7 @@ class TestDistributedIntegration:
         run_args_complete.force_mirror_local = False
         run_args_complete.live_output = True
 
-        with patch('madengine.tools.distributed_cli.DistributedOrchestrator') as mock_orchestrator:
+        with patch('madengine.distributed_cli.DistributedOrchestrator') as mock_orchestrator:
             with patch('os.path.exists', return_value=False):  # Manifest doesn't exist
                 mock_instance = MagicMock()
                 mock_orchestrator.return_value = mock_instance
