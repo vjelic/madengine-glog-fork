@@ -371,6 +371,8 @@ class TestDistributedPrePostProfiling:
         """Test distributed build command with profiling context from file."""
         # Create temporary context file with profiling tools
         profiling_context = {
+            "gpu_vendor": "AMD",
+            "guest_os": "UBUNTU",
             "tools": [
                 {"name": "rocprof", "cmd": "rocprof --timestamp on"}
             ],
@@ -403,7 +405,7 @@ class TestDistributedPrePostProfiling:
                 
                 # Verify context file was used
                 assert result == distributed_cli.EXIT_SUCCESS
-                mock_orchestrator.assert_called_once_with(mock_args)
+                mock_orchestrator.assert_called_once_with(mock_args, build_only_mode=True)
                 
         finally:
             # Clean up temporary file

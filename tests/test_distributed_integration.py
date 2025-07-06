@@ -169,11 +169,12 @@ class TestDistributedIntegration:
         """Test CLI build and run command integration."""
         # Mock args for build command
         build_args = MagicMock()
+        build_args.tags = ["dummy"]
         build_args.registry = "localhost:5000"
         build_args.clean_docker_cache = True
         build_args.manifest_output = "integration_manifest.json"
         build_args.summary_output = "build_summary.json"
-        build_args.additional_context = None
+        build_args.additional_context = '{"gpu_vendor": "AMD", "guest_os": "UBUNTU"}'
         build_args.additional_context_file = None
         build_args.data_config_file_name = 'data.json'
         build_args.force_mirror_local = False
@@ -186,7 +187,7 @@ class TestDistributedIntegration:
         run_args.timeout = 1800
         run_args.keep_alive = False
         run_args.summary_output = "run_summary.json"
-        run_args.additional_context = None
+        run_args.additional_context = '{"gpu_vendor": "AMD", "guest_os": "UBUNTU"}'
         run_args.additional_context_file = None
         run_args.data_config_file_name = 'data.json'
         run_args.force_mirror_local = False
