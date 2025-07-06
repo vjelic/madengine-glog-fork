@@ -42,6 +42,10 @@ class ContainerRunner:
         self.credentials = None
         self.perf_csv_path = "perf.csv"  # Default output path
         
+        # Ensure runtime context is initialized for container operations
+        if self.context:
+            self.context.ensure_runtime_context()
+        
     def set_perf_csv_path(self, path: str):
         """Set the path for the performance CSV output file.
         

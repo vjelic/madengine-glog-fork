@@ -21,19 +21,21 @@ from madengine.tools.container_runner import ContainerRunner
 class DistributedOrchestrator:
     """Orchestrator for distributed MADEngine workflows."""
     
-    def __init__(self, args):
+    def __init__(self, args, build_only_mode: bool = False):
         """Initialize the distributed orchestrator.
         
         Args:
             args: Command-line arguments
+            build_only_mode: Whether running in build-only mode (no GPU detection)
         """
         self.args = args
         self.console = Console(live_output=getattr(args, 'live_output', True))
         
-        # Initialize context
+        # Initialize context with appropriate mode
         self.context = Context(
             additional_context=getattr(args, 'additional_context', None),
             additional_context_file=getattr(args, 'additional_context_file', None),
+            build_only_mode=build_only_mode
         )
         
         # Initialize data provider if data config exists
@@ -62,6 +64,10 @@ class DistributedOrchestrator:
                    manifest_output: str = "build_manifest.json") -> typing.Dict:
         """Execute the build phase - build all Docker images.
         
+        This method supports both build-only mode (for dedicated build nodes) 
+        and full workflow mode. In build-only mode, GPU detection is skipped
+        and docker build args should be provided via --additional-context.
+        
         Args:
             registry: Optional registry to push images to
             clean_cache: Whether to use --no-cache for builds
@@ -72,6 +78,8 @@ class DistributedOrchestrator:
         """
         print("=" * 60)
         print("STARTING BUILD PHASE")
+        if self.context._build_only_mode:
+            print("(Build-only mode - no GPU detection)")
         print("=" * 60)
         
         print(f"Building models with args {self.args}")
@@ -84,6 +92,13 @@ class DistributedOrchestrator:
         
         # Copy scripts for building
         self._copy_scripts()
+        
+        # Validate build context for build-only mode
+        if self.context._build_only_mode:
+            if "MAD_SYSTEM_GPU_ARCHITECTURE" not in self.context.ctx["docker_build_arg"]:
+                print("Warning: MAD_SYSTEM_GPU_ARCHITECTURE not provided in build context.")
+                print("For build-only nodes, please provide GPU architecture via --additional-context:")
+                print('  --additional-context \'{"docker_build_arg": {"MAD_SYSTEM_GPU_ARCHITECTURE": "gfx908"}}\'')
         
         # Initialize builder
         builder = DockerBuilder(self.context, self.console, live_output=getattr(self.args, 'live_output', False))
@@ -117,6 +132,9 @@ class DistributedOrchestrator:
                  keep_alive: bool = False) -> typing.Dict:
         """Execute the run phase - run containers with models.
         
+        This method requires GPU context and will initialize runtime context
+        if not already done. Should only be called on GPU nodes.
+        
         Args:
             manifest_file: Build manifest file from build phase
             registry: Registry to pull images from (if different from build)
@@ -129,6 +147,9 @@ class DistributedOrchestrator:
         print("=" * 60)
         print("STARTING RUN PHASE")
         print("=" * 60)
+
+        # Ensure runtime context is initialized (GPU detection, env vars, etc.)
+        self.context.ensure_runtime_context()
         
         print(f"Running models with args {self.args}")
         

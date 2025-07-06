@@ -42,6 +42,10 @@ EXIT_INVALID_ARGS = 4
 def build_models(args: argparse.Namespace) -> int:
     """Build Docker images for models in distributed scenarios.
     
+    This function supports build-only mode where GPU detection is skipped.
+    Users should provide docker build args via --additional-context for
+    build-only nodes.
+    
     Args:
         args: The command-line arguments.
         
@@ -50,7 +54,9 @@ def build_models(args: argparse.Namespace) -> int:
     """
     try:
         logging.info("Starting model build process")
-        orchestrator = DistributedOrchestrator(args)
+        
+        # Initialize orchestrator in build-only mode
+        orchestrator = DistributedOrchestrator(args, build_only_mode=True)
         
         # Mark this as separate build phase for log naming
         args._separate_phases = True

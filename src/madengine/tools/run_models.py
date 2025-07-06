@@ -155,9 +155,11 @@ class RunModels:
         self.return_status = True
         self.args = args
         self.console = Console(live_output=True)
+        # Initialize context in runtime mode (requires GPU detection)
         self.context = Context(
             additional_context=args.additional_context,
             additional_context_file=args.additional_context_file,
+            build_only_mode=False  # RunModels always needs full runtime context
         )
         # check the data.json file exists
         data_json_file = args.data_config_file_name
