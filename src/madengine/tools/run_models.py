@@ -1032,11 +1032,11 @@ class RunModels:
                                             print("Error: Performance metric is empty in multiple results file.")
                                             break
                         else:
-                            perf_regex = ".*performance:\\s*\\([+|-]\?[0-9]*[.]\\?[0-9]*\(e[+|-]\?[0-9]\+\)\?\\)\\s*.*\\s*"
+                            perf_regex = r".*performance:\s*\([+|-]?[0-9]*[.]?[0-9]*\(e[+|-]?[0-9]\+\)?\)\s*.*\s*"
                             run_details.performance = self.console.sh("cat " + log_file_path +
                                                         " | sed -n 's/" + perf_regex + "/\\1/p'")
 
-                            metric_regex = ".*performance:\\s*[+|-]\?[0-9]*[.]\\?[0-9]*\(e[+|-]\?[0-9]\+\)\?\\s*\\(\\w*\\)\\s*"
+                            metric_regex = r".*performance:\s*[+|-]?[0-9]*[.]?[0-9]*\(e[+|-]?[0-9]\+\)?\s*\(\w*\)\s*"
                             run_details.metric = self.console.sh("cat " + log_file_path +
                                                     " | sed -n 's/" + metric_regex + "/\\2/p'")
 

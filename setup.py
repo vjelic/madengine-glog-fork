@@ -1,41 +1,20 @@
 #!/usr/bin/env python3
 """
-Setup script for madengine
+Simplified setup.py for madengine
 
 This setup.py provides compatibility with environments that require traditional 
 setup.py installations while reading configuration from pyproject.toml.
 
-FEATURES:
-- Reads configuration from pyproject.toml when available
-- Robust fallback configuration for environments without TOML support
-- PEP 440 compliant version generation from git
-- Comprehensive package discovery and data inclusion
-- Enhanced error handling and debugging output
-- Support for both modern and legacy installation methods
-
-USAGE RECOMMENDATIONS:
-
-Modern installations (PREFERRED):
+For modern installations, prefer:
     pip install .
     python -m build
     pip install -e .[dev]
 
-Legacy installations (for compatibility):
+For legacy compatibility:
     python setup.py install
     python setup.py develop
-    python setup.py sdist
-    python setup.py bdist_wheel
 
-This setup.py reads configuration from pyproject.toml and provides the same
-functionality using the traditional setuptools approach. The warnings you see
-about overwritten values are expected since both methods define the same
-configuration.
-
-ENVIRONMENT COMPATIBILITY:
-- CI/CD systems that don't support pyproject.toml
-- Older Python environments
-- Systems requiring setup.py for packaging
-- Development environments with older setuptools
+Copyright (c) Advanced Micro Devices, Inc. All rights reserved.
 """
 
 import sys

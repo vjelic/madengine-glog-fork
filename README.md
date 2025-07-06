@@ -15,43 +15,88 @@ The madengine library is to support AI automation having following features:
 
 madengine is meant to be used in conjunction with [MAD](https://github.com/ROCm/MAD). Below are the steps to set it up and run it using the command line interface (CLI).
 
-## Clone MAD
-```
-git clone git@github.com:ROCm/MAD.git
-cd MAD
-```
+## Prerequisites
+
+- Python 3.8 or higher
+- Git
+- Docker (for running models in containers)
 
 ## Install madengine
 
-### Install from source
+### Install from source (Development)
 
-```
-# Create virtual environment if necessary
+```bash
+# Create virtual environment
 python3 -m venv venv
-
-# Active the virtual environment venv
 source venv/bin/activate
 
 # Clone madengine
 git clone git@github.com:ROCm/madengine.git
-
-# Change current working directory to madengine
 cd madengine
 
-# Install madengine from source:
-pip install .
+# Install in development mode with all dev dependencies
+pip install -e ".[dev]"
 
+# Setup pre-commit hooks (optional but recommended)
+pre-commit install
 ```
 
-### Install from repo
+### Install from source (Production)
+
+```bash
+# Create virtual environment
+python3 -m venv venv
+source venv/bin/activate
+
+# Clone and install
+git clone git@github.com:ROCm/madengine.git
+cd madengine
+
+# Install the package
+pip install .
+```
+
+### Install from repository
 
 You can also install the madengine library directly from the Github repository.
 
-```
+```bash
 pip install git+https://github.com/ROCm/madengine.git@main
 ```
 
-## Clone 
+### Development Setup
+
+For contributors and developers, all tools are configured in `pyproject.toml`:
+
+```bash
+# Everything needed for development
+pip install -e ".[dev]"
+pre-commit install
+
+# Common development tasks:
+pytest              # Run tests
+black src/ tests/   # Format code
+isort src/ tests/   # Sort imports  
+flake8 src/ tests/  # Lint code
+mypy src/madengine  # Type checking
+```
+
+### Modern Python Package Management
+
+This project uses modern Python packaging standards:
+- **`pyproject.toml`** - Single source of truth for dependencies and configuration
+- **No requirements.txt** - Everything is in pyproject.toml
+- **Hatchling build backend** - Modern build system
+- **pip >= 21.3** - Fully supports pyproject.toml installations
+
+## Clone MAD (Optional)
+
+If you need to work with MAD models:
+
+```bash
+git clone git@github.com:ROCm/MAD.git
+cd MAD
+``` 
 
 # Run madengine CLI
 
