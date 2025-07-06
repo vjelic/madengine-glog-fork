@@ -476,11 +476,11 @@ class DockerBuilder:
             
         # Determine registry image name based on registry type
         if registry.lower() in ["docker.io", "dockerhub"]:
-            # For DockerHub, use format: repository:tag where repository comes from credentials
+            # For DockerHub, always use format: repository:tag
+            # Try to get repository from credentials, fallback to default if not available
             if credentials and "dockerhub" in credentials and "repository" in credentials["dockerhub"]:
                 registry_image = f"{credentials['dockerhub']['repository']}:{docker_image}"
             else:
-                # Fallback to just the image name if no repository specified
                 registry_image = docker_image
         else:
             # For other registries (local, AWS ECR, etc.), use format: registry/repository:tag
