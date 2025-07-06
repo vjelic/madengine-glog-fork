@@ -3,6 +3,10 @@
 This module provides end-to-end integration tests that simulate real
 distributed CLI usage scenarios with pre/post scripts and profiling tools.
 
+NOTE: These tests are designed to run on non-GPU environments by mocking
+GPU detection and hardware dependencies. In real distributed deployments,
+these would run on actual GPU nodes with proper hardware detection.
+
 Copyright (c) Advanced Micro Devices, Inc. All rights reserved.
 """
 # built-in modules
@@ -67,9 +71,28 @@ class TestDistributedRealisticIntegration:
 
     @patch('madengine.tools.container_runner.Docker')
     @patch('madengine.core.console.Console.sh')
+    @patch('madengine.tools.distributed_orchestrator.Data')
+    @patch('madengine.tools.distributed_orchestrator.Context')
     @patch('os.path.exists')
-    def test_end_to_end_distributed_run_with_profiling(self, mock_exists, mock_sh, mock_docker):
-        """Test complete distributed run workflow with profiling tools."""
+    def test_end_to_end_distributed_run_with_profiling(self, mock_exists, mock_context, mock_data, mock_sh, mock_docker):
+        """Test complete distributed run workflow with profiling tools.
+        
+        NOTE: This test mocks GPU detection and hardware dependencies since it runs
+        on non-GPU CI environments. In production, this would run on actual GPU nodes.
+        """
+        # Mock Context initialization to avoid GPU detection
+        mock_context_instance = MagicMock()
+        mock_context.return_value = mock_context_instance
+        mock_context_instance.ctx = {
+            "docker_env_vars": {"MAD_GPU_VENDOR": "AMD"},
+            "docker_mounts": {},
+            "gpu_vendor": "AMD"
+        }
+        
+        # Mock Data initialization
+        mock_data_instance = MagicMock()
+        mock_data.return_value = mock_data_instance
+        
         # Mock file system
         def mock_exists_side_effect(path):
             if 'tools.json' in path:
@@ -164,9 +187,24 @@ class TestDistributedRealisticIntegration:
         assert result.returncode == 0
 
     @patch('madengine.tools.distributed_orchestrator.DistributedOrchestrator.run_phase')
+    @patch('madengine.tools.distributed_orchestrator.Data')
+    @patch('madengine.tools.distributed_orchestrator.Context')
     @patch('os.path.exists')
-    def test_distributed_run_with_profiling_context_file(self, mock_exists, mock_run_phase):
+    def test_distributed_run_with_profiling_context_file(self, mock_exists, mock_context, mock_data, mock_run_phase):
         """Test distributed run with profiling context from file."""
+        # Mock Context initialization
+        mock_context_instance = MagicMock()
+        mock_context.return_value = mock_context_instance
+        mock_context_instance.ctx = {
+            "docker_env_vars": {"MAD_GPU_VENDOR": "AMD"},
+            "docker_mounts": {},
+            "gpu_vendor": "AMD"
+        }
+        
+        # Mock Data initialization
+        mock_data_instance = MagicMock()
+        mock_data.return_value = mock_data_instance
+        
         # Mock file existence
         mock_exists.return_value = True
         
@@ -244,9 +282,24 @@ class TestDistributedRealisticIntegration:
 
     @patch('madengine.tools.container_runner.ContainerRunner.run_container')
     @patch('madengine.tools.distributed_orchestrator.DistributedOrchestrator._copy_scripts')
+    @patch('madengine.tools.distributed_orchestrator.Data')
+    @patch('madengine.tools.distributed_orchestrator.Context')
     @patch('os.path.exists')
-    def test_distributed_profiling_tools_integration(self, mock_exists, mock_copy_scripts, mock_run_container):
+    def test_distributed_profiling_tools_integration(self, mock_exists, mock_context, mock_data, mock_copy_scripts, mock_run_container):
         """Test complete profiling tools integration in distributed scenario."""
+        # Mock Context initialization
+        mock_context_instance = MagicMock()
+        mock_context.return_value = mock_context_instance
+        mock_context_instance.ctx = {
+            "docker_env_vars": {"MAD_GPU_VENDOR": "AMD"},
+            "docker_mounts": {},
+            "gpu_vendor": "AMD"
+        }
+        
+        # Mock Data initialization
+        mock_data_instance = MagicMock()
+        mock_data.return_value = mock_data_instance
+        
         # Mock file system
         mock_exists.return_value = True
         
@@ -337,8 +390,23 @@ class TestDistributedRealisticIntegration:
                 assert "name" in str(e).lower() or "model" in str(e).lower()
 
     @patch('madengine.tools.distributed_orchestrator.DistributedOrchestrator.cleanup')
-    def test_distributed_cleanup_after_profiling(self, mock_cleanup):
+    @patch('madengine.tools.distributed_orchestrator.Data')
+    @patch('madengine.tools.distributed_orchestrator.Context')
+    def test_distributed_cleanup_after_profiling(self, mock_context, mock_data, mock_cleanup):
         """Test that cleanup is called after distributed profiling run."""
+        # Mock Context initialization
+        mock_context_instance = MagicMock()
+        mock_context.return_value = mock_context_instance
+        mock_context_instance.ctx = {
+            "docker_env_vars": {"MAD_GPU_VENDOR": "AMD"},
+            "docker_mounts": {},
+            "gpu_vendor": "AMD"
+        }
+        
+        # Mock Data initialization
+        mock_data_instance = MagicMock()
+        mock_data.return_value = mock_data_instance
+        
         import argparse
         args = argparse.Namespace()
         args.live_output = False
