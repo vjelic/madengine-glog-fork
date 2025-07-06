@@ -63,7 +63,8 @@ class TestDistributedOrchestrator:
 
     @patch('madengine.tools.distributed_orchestrator.DiscoverModels')
     @patch('madengine.tools.distributed_orchestrator.DockerBuilder')
-    def test_build_phase(self, mock_docker_builder, mock_discover_models):
+    @patch('madengine.tools.distributed_orchestrator.Context')
+    def test_build_phase(self, mock_context_class, mock_docker_builder, mock_discover_models):
         """Test the build phase functionality."""
         # Setup mocks
         mock_args = MagicMock()
@@ -72,6 +73,10 @@ class TestDistributedOrchestrator:
         mock_args.data_config_file_name = 'data.json'
         mock_args.force_mirror_local = False
         mock_args.live_output = True
+
+        # Mock context
+        mock_context = MagicMock()
+        mock_context_class.return_value = mock_context
 
         # Mock discover models
         mock_discover_instance = MagicMock()
@@ -105,7 +110,7 @@ class TestDistributedOrchestrator:
         mock_discover_instance.run.assert_called_once()
         mock_docker_builder.assert_called_once()
         mock_builder_instance.build_all_models.assert_called_once()
-        mock_builder_instance.export_build_manifest.assert_called_once_with("test_manifest.json")
+        mock_builder_instance.export_build_manifest.assert_called_once_with("test_manifest.json", "localhost:5000")
         
         assert result["successful_builds"] == ["model1", "model2"]
         assert result["failed_builds"] == []
@@ -178,7 +183,8 @@ class TestDistributedOrchestrator:
     @patch('madengine.tools.distributed_orchestrator.DiscoverModels')
     @patch('madengine.tools.distributed_orchestrator.DockerBuilder')
     @patch('madengine.tools.distributed_orchestrator.ContainerRunner')
-    def test_full_workflow(self, mock_container_runner, mock_docker_builder, mock_discover_models):
+    @patch('madengine.tools.distributed_orchestrator.Context')
+    def test_full_workflow(self, mock_context_class, mock_container_runner, mock_docker_builder, mock_discover_models):
         """Test the full workflow functionality."""
         mock_args = MagicMock()
         mock_args.additional_context = None
@@ -186,6 +192,10 @@ class TestDistributedOrchestrator:
         mock_args.data_config_file_name = 'data.json'
         mock_args.force_mirror_local = False
         mock_args.live_output = True
+
+        # Mock context
+        mock_context = MagicMock()
+        mock_context_class.return_value = mock_context
 
         # Mock discover models
         mock_discover_instance = MagicMock()
@@ -208,7 +218,7 @@ class TestDistributedOrchestrator:
         mock_runner_instance = MagicMock()
         mock_container_runner.return_value = mock_runner_instance
         mock_runner_instance.run_container.return_value = {
-            "status": "completed",
+            "status": "SUCCESS",
             "test_duration": 120.5,
             "model": "model1",
             "exit_code": 0
@@ -222,7 +232,7 @@ class TestDistributedOrchestrator:
             orchestrator = DistributedOrchestrator(mock_args)
 
         # Mock manifest file content for run phase
-        manifest_content = '{"built_images": {"model1": {"image": "localhost:5000/model1:latest", "build_time": 120}}}'
+        manifest_content = '''{"built_images": {"model1": {"docker_image": "ci-model1", "build_time": 120}}, "built_models": {"model1": {"name": "model1", "scripts": "scripts/model1/run.sh"}}}'''
         
         with patch.object(orchestrator, '_copy_scripts'), \
              patch('os.path.exists') as mock_exists, \

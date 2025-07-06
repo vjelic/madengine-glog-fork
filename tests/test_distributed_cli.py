@@ -33,7 +33,7 @@ class TestDistributedCLI:
 
     def test_build_command_help(self):
         """Test the build command --help."""
-        script_path = os.path.join(BASE_DIR, "src/madengine/tools", "distributed_cli.py")
+        script_path = os.path.join(BASE_DIR, "src/madengine", "distributed_cli.py")
         result = subprocess.run([sys.executable, script_path, "build", "--help"], 
                               stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         assert result.returncode == 0
@@ -41,7 +41,7 @@ class TestDistributedCLI:
 
     def test_run_command_help(self):
         """Test the run command --help."""
-        script_path = os.path.join(BASE_DIR, "src/madengine/tools", "distributed_cli.py")
+        script_path = os.path.join(BASE_DIR, "src/madengine", "distributed_cli.py")
         result = subprocess.run([sys.executable, script_path, "run", "--help"], 
                               stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         assert result.returncode == 0
@@ -49,7 +49,7 @@ class TestDistributedCLI:
 
     def test_generate_command_help(self):
         """Test the generate command --help."""
-        script_path = os.path.join(BASE_DIR, "src/madengine/tools", "distributed_cli.py")
+        script_path = os.path.join(BASE_DIR, "src/madengine", "distributed_cli.py")
         result = subprocess.run([sys.executable, script_path, "generate", "--help"], 
                               stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         assert result.returncode == 0

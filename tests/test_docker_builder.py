@@ -557,12 +557,11 @@ class TestDockerBuilder:
         
         result = builder.push_image(docker_image, registry, credentials)
         
-        # Should use default repository format for DockerHub
-        expected_tag = "your-repository:ci-dummy_dummy.ubuntu.amd"
+        # DockerHub without repository should just use the image name (no tagging needed)
         push_calls = [call for call in mock_sh.call_args_list if 'docker push' in str(call)]
         assert len(push_calls) == 1
-        assert expected_tag in str(push_calls[0])
-        assert result == expected_tag
+        assert docker_image in str(push_calls[0])
+        assert result == docker_image
 
     @patch.object(Context, 'get_gpu_vendor', return_value='AMD')
     @patch.object(Context, 'get_system_ngpus', return_value=1)

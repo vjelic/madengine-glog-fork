@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Command-line interface for MADEngine Distributed Orchestrator
+Command-line interface for madengine Distributed Orchestrator
 
 This provides CLI commands for building and running models in distributed scenarios.
 """
@@ -364,7 +364,7 @@ def main() -> int:
         int: Exit code
     """
     parser = argparse.ArgumentParser(
-        description="MADEngine Distributed Orchestrator - Build and run models in distributed scenarios.",
+        description="madengine Distributed Orchestrator - Build and run models in distributed scenarios.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:

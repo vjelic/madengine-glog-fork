@@ -232,8 +232,9 @@ class TestContainerRunner:
             with patch.object(runner, 'get_cpu_arg', return_value=""):
                 with patch.object(runner, 'get_env_arg', return_value=""):
                     with patch.object(runner, 'get_mount_arg', return_value=""):
-                        with pytest.raises(TimeoutError):
-                            runner.run_container(model_info, "test-image", timeout=10)
+                        # run_container catches exceptions and returns results with status
+                        result = runner.run_container(model_info, "test-image", timeout=10)
+                        assert result["status"] == "FAILURE"
 
     @patch('madengine.core.context.Context')
     @patch.object(Console, 'sh')
@@ -268,8 +269,9 @@ class TestContainerRunner:
             with patch.object(runner, 'get_cpu_arg', return_value=""):
                 with patch.object(runner, 'get_env_arg', return_value=""):
                     with patch.object(runner, 'get_mount_arg', return_value=""):
-                        with pytest.raises(RuntimeError):
-                            runner.run_container(model_info, "test-image", timeout=300)
+                        # run_container catches exceptions and returns results with status
+                        result = runner.run_container(model_info, "test-image", timeout=300)
+                        assert result["status"] == "FAILURE"
 
     @patch('madengine.core.context.Context')
     def test_load_credentials(self, mock_context_class):
