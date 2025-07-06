@@ -330,7 +330,7 @@ class DockerBuilder:
             if "push_failed" in build_info and build_info["push_failed"]:
                 push_failures.append({
                     "image": image_name,
-                    "intended_registry_image": build_info.get("docker_image_tagged"),
+                    "intended_registry_image": build_info.get("registry_image"),
                     "error": build_info.get("push_error")
                 })
         
@@ -407,9 +407,9 @@ class DockerBuilder:
                             )
                             build_info["registry_image"] = registry_image
                             
-                            # Add the tagged image name to the built_images entry BEFORE push operations
+                            # Add the registry image name to the built_images entry BEFORE push operations
                             if build_info["docker_image"] in self.built_images:
-                                self.built_images[build_info["docker_image"]]["docker_image_tagged"] = registry_image
+                                self.built_images[build_info["docker_image"]]["registry_image"] = registry_image
                             
                             # Now attempt to push to registry
                             try:
@@ -421,10 +421,14 @@ class DockerBuilder:
                                     print(f"Warning: Pushed image name {actual_registry_image} differs from intended {registry_image}")
                             except Exception as push_error:
                                 print(f"Failed to push {build_info['docker_image']} to registry: {push_error}")
-                                # Keep the docker_image_tagged in manifest to show intended registry image
+                                # Keep the registry_image in manifest to show intended registry image
                                 # but mark the build info to indicate push failure
                                 build_info["push_failed"] = True
                                 build_info["push_error"] = str(push_error)
+                                # Also set these fields in the built_images entry for manifest export
+                                if build_info["docker_image"] in self.built_images:
+                                    self.built_images[build_info["docker_image"]]["push_failed"] = True
+                                    self.built_images[build_info["docker_image"]]["push_error"] = str(push_error)
                         
                         build_summary["successful_builds"].append({
                             "model": model_info["name"],

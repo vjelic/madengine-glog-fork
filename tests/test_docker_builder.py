@@ -631,7 +631,7 @@ class TestDockerBuilder:
     @patch.object(Context, 'get_gpu_renderD_nodes', return_value=['renderD128'])
     @patch.object(Console, 'sh')
     def test_build_manifest_with_tagged_image(self, mock_sh, mock_render, mock_docker_gpu, mock_hip, mock_arch, mock_ngpus, mock_vendor):
-        """Test that build manifest includes docker_image_tagged when pushing to registry."""
+        """Test that build manifest includes registry_image when pushing to registry."""
         import tempfile
         import os
         
@@ -664,7 +664,7 @@ class TestDockerBuilder:
                 
                 # Update built_images with tagged image (simulating what build_all_models does)
                 if local_image in builder.built_images:
-                    builder.built_images[local_image]["docker_image_tagged"] = registry_image
+                    builder.built_images[local_image]["registry_image"] = registry_image
                 
                 # Export manifest to temporary file
                 with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as tmp_file:
@@ -680,8 +680,8 @@ class TestDockerBuilder:
         
         # Verify the manifest contains the tagged image
         assert local_image in manifest["built_images"]
-        assert "docker_image_tagged" in manifest["built_images"][local_image]
-        assert manifest["built_images"][local_image]["docker_image_tagged"] == registry_image
+        assert "registry_image" in manifest["built_images"][local_image]
+        assert manifest["built_images"][local_image]["registry_image"] == registry_image
         assert manifest["registry"] == registry
         
         # Verify the tagged image format is correct
