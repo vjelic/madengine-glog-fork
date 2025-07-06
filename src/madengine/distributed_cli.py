@@ -83,7 +83,7 @@ def validate_additional_context(args: argparse.Namespace) -> bool:
             logging.error("")
             logging.error("Required fields in additional context:")
             logging.error("  - gpu_vendor: GPU vendor (e.g., 'AMD', 'NVIDIA', 'INTEL')")
-            logging.error("  - guest_os: Operating system (e.g., 'UBUNTU', 'CENTOS', 'ROCKY')")
+            logging.error("  - guest_os: Operating system (e.g., 'UBUNTU', 'CENTOS')")
             return False
         
         # Validate required fields
