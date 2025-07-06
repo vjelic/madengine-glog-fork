@@ -281,22 +281,8 @@ class DockerBuilder:
         if credentials:
             self.login_to_registry(registry, credentials)
         
-        # Determine registry image name based on registry type
-        if registry.lower() in ["docker.io", "dockerhub"]:
-            # For DockerHub, use format: repository:tag where repository comes from credentials
-            if credentials and "dockerhub" in credentials and "repository" in credentials["dockerhub"]:
-                registry_image = f"{credentials['dockerhub']['repository']}:{docker_image}"
-            else:
-                # Fallback to just the image name if no repository specified
-                registry_image = docker_image
-        else:
-            # For other registries (local, AWS ECR, etc.), use format: registry/repository:tag
-            registry_key = registry
-            if credentials and registry_key in credentials and "repository" in credentials[registry_key]:
-                registry_image = f"{registry}/{credentials[registry_key]['repository']}:{docker_image}"
-            else:
-                # Fallback to just registry/imagename if no repository specified
-                registry_image = f"{registry}/{docker_image}"
+        # Determine registry image name (this should match what was already determined)
+        registry_image = self._determine_registry_image_name(docker_image, registry, credentials)
         
         try:
             # Tag the image if different from local name
@@ -337,11 +323,28 @@ class DockerBuilder:
         # Add registry information to manifest metadata if provided
         if registry:
             manifest["registry"] = registry
+            
+        # Add push failure summary if any pushes failed
+        push_failures = []
+        for image_name, build_info in self.built_images.items():
+            if "push_failed" in build_info and build_info["push_failed"]:
+                push_failures.append({
+                    "image": image_name,
+                    "intended_registry_image": build_info.get("docker_image_tagged"),
+                    "error": build_info.get("push_error")
+                })
+        
+        if push_failures:
+            manifest["push_failures"] = push_failures
         
         with open(output_file, 'w') as f:
             json.dump(manifest, f, indent=2)
         
         print(f"Build manifest exported to: {output_file}")
+        if push_failures:
+            print(f"Warning: {len(push_failures)} image(s) failed to push to registry")
+            for failure in push_failures:
+                print(f"  - {failure['image']} -> {failure['intended_registry_image']}: {failure['error']}")
     
     def build_all_models(self, models: typing.List[typing.Dict], 
                         credentials: typing.Dict = None, 
@@ -396,16 +399,32 @@ class DockerBuilder:
                             model_info, dockerfile, credentials, clean_cache, phase_suffix
                         )
                         
-                        # Push to registry if specified
+                        # Determine registry image name and add to manifest before push operations
                         if registry:
-                            registry_image = self.push_image(
+                            # Determine what the registry image name would be
+                            registry_image = self._determine_registry_image_name(
                                 build_info["docker_image"], registry, credentials
                             )
                             build_info["registry_image"] = registry_image
                             
-                            # Add the tagged image name to the built_images entry
+                            # Add the tagged image name to the built_images entry BEFORE push operations
                             if build_info["docker_image"] in self.built_images:
                                 self.built_images[build_info["docker_image"]]["docker_image_tagged"] = registry_image
+                            
+                            # Now attempt to push to registry
+                            try:
+                                actual_registry_image = self.push_image(
+                                    build_info["docker_image"], registry, credentials
+                                )
+                                # Verify the actual pushed image matches our intended name
+                                if actual_registry_image != registry_image:
+                                    print(f"Warning: Pushed image name {actual_registry_image} differs from intended {registry_image}")
+                            except Exception as push_error:
+                                print(f"Failed to push {build_info['docker_image']} to registry: {push_error}")
+                                # Keep the docker_image_tagged in manifest to show intended registry image
+                                # but mark the build info to indicate push failure
+                                build_info["push_failed"] = True
+                                build_info["push_error"] = str(push_error)
                         
                         build_summary["successful_builds"].append({
                             "model": model_info["name"],
@@ -436,3 +455,36 @@ class DockerBuilder:
         print(f"  Total build time: {build_summary['total_build_time']:.2f} seconds")
         
         return build_summary
+
+    def _determine_registry_image_name(self, docker_image: str, registry: str, credentials: typing.Dict = None) -> str:
+        """Determine the registry image name that would be used for pushing.
+        
+        Args:
+            docker_image: The local docker image name
+            registry: Registry URL (e.g., "localhost:5000", "docker.io", or empty for DockerHub)
+            credentials: Optional credentials dictionary for registry authentication
+            
+        Returns:
+            str: The full registry image name that would be used
+        """
+        if not registry:
+            return docker_image
+            
+        # Determine registry image name based on registry type
+        if registry.lower() in ["docker.io", "dockerhub"]:
+            # For DockerHub, use format: repository:tag where repository comes from credentials
+            if credentials and "dockerhub" in credentials and "repository" in credentials["dockerhub"]:
+                registry_image = f"{credentials['dockerhub']['repository']}:{docker_image}"
+            else:
+                # Fallback to just the image name if no repository specified
+                registry_image = docker_image
+        else:
+            # For other registries (local, AWS ECR, etc.), use format: registry/repository:tag
+            registry_key = registry
+            if credentials and registry_key in credentials and "repository" in credentials[registry_key]:
+                registry_image = f"{registry}/{credentials[registry_key]['repository']}:{docker_image}"
+            else:
+                # Fallback to just registry/imagename if no repository specified
+                registry_image = f"{registry}/{docker_image}"
+        
+        return registry_image
