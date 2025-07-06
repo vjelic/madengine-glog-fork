@@ -29,7 +29,7 @@ class TestDistributedCLI:
         result = subprocess.run([sys.executable, script_path, "--help"], 
                               stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         assert result.returncode == 0
-        assert b"MADEngine Distributed" in result.stdout
+        assert b"madengine Distributed Orchestrator" in result.stdout
 
     def test_build_command_help(self):
         """Test the build command --help."""

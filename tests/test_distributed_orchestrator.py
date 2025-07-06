@@ -22,7 +22,8 @@ from .fixtures.utils import BASE_DIR, MODEL_DIR
 class TestDistributedOrchestrator:
     """Test the distributed orchestrator module."""
 
-    def test_orchestrator_initialization(self):
+    @patch('madengine.tools.distributed_orchestrator.Context')
+    def test_orchestrator_initialization(self, mock_context):
         """Test orchestrator initialization with minimal args."""
         mock_args = MagicMock()
         mock_args.additional_context = None
@@ -31,18 +32,23 @@ class TestDistributedOrchestrator:
         mock_args.force_mirror_local = False
         mock_args.live_output = True
 
+        # Mock context instance
+        mock_context_instance = MagicMock()
+        mock_context.return_value = mock_context_instance
+
         with patch('os.path.exists', return_value=False):
             orchestrator = DistributedOrchestrator(mock_args)
             
         assert orchestrator.args == mock_args
         assert isinstance(orchestrator.console, Console)
-        assert isinstance(orchestrator.context, Context)
+        assert orchestrator.context == mock_context_instance
         assert orchestrator.data is None
         assert orchestrator.credentials is None
 
     @patch('builtins.open', new_callable=mock_open, read_data='{"registry": "test", "token": "abc123"}')
     @patch('os.path.exists')
-    def test_orchestrator_with_credentials(self, mock_exists, mock_file):
+    @patch('madengine.tools.distributed_orchestrator.Context')
+    def test_orchestrator_with_credentials(self, mock_context, mock_exists, mock_file):
         """Test orchestrator initialization with credentials."""
         mock_args = MagicMock()
         mock_args.additional_context = None
@@ -50,6 +56,10 @@ class TestDistributedOrchestrator:
         mock_args.data_config_file_name = 'data.json'
         mock_args.force_mirror_local = False
         mock_args.live_output = True
+
+        # Mock context instance
+        mock_context_instance = MagicMock()
+        mock_context.return_value = mock_context_instance
 
         # Mock credential.json exists
         def exists_side_effect(path):
@@ -117,7 +127,8 @@ class TestDistributedOrchestrator:
 
     @patch('madengine.tools.distributed_orchestrator.ContainerRunner')
     @patch('madengine.tools.distributed_orchestrator.DiscoverModels')
-    def test_run_phase(self, mock_discover_models, mock_container_runner):
+    @patch('madengine.tools.distributed_orchestrator.Context')
+    def test_run_phase(self, mock_context, mock_discover_models, mock_container_runner):
         """Test the run phase functionality."""
         mock_args = MagicMock()
         mock_args.additional_context = None
@@ -125,6 +136,10 @@ class TestDistributedOrchestrator:
         mock_args.data_config_file_name = 'data.json'
         mock_args.force_mirror_local = False
         mock_args.live_output = True
+
+        # Mock context instance
+        mock_context_instance = MagicMock()
+        mock_context.return_value = mock_context_instance
 
         # Mock discover models
         mock_discover_instance = MagicMock()
@@ -255,7 +270,8 @@ class TestDistributedOrchestrator:
         assert "build_phase" in result
         assert "run_phase" in result
 
-    def test_copy_scripts_method(self):
+    @patch('madengine.tools.distributed_orchestrator.Context')
+    def test_copy_scripts_method(self, mock_context):
         """Test the _copy_scripts method."""
         mock_args = MagicMock()
         mock_args.additional_context = None
@@ -263,6 +279,10 @@ class TestDistributedOrchestrator:
         mock_args.data_config_file_name = 'data.json'
         mock_args.force_mirror_local = False
         mock_args.live_output = True
+
+        # Mock context instance
+        mock_context_instance = MagicMock()
+        mock_context.return_value = mock_context_instance
 
         with patch('os.path.exists', return_value=False):
             orchestrator = DistributedOrchestrator(mock_args)
@@ -272,7 +292,8 @@ class TestDistributedOrchestrator:
                 orchestrator._copy_scripts()
                 mock_sh.assert_called_once()
 
-    def test_export_execution_config(self):
+    @patch('madengine.tools.distributed_orchestrator.Context')
+    def test_export_execution_config(self, mock_context):
         """Test the export_execution_config method."""
         mock_args = MagicMock()
         mock_args.additional_context = None
@@ -280,6 +301,16 @@ class TestDistributedOrchestrator:
         mock_args.data_config_file_name = 'data.json'
         mock_args.force_mirror_local = False
         mock_args.live_output = True
+
+        # Mock context instance with proper ctx structure
+        mock_context_instance = MagicMock()
+        mock_context_instance.ctx.get.side_effect = lambda key, default: {
+            "docker_env_vars": {"TEST_ENV": "test_value"},
+            "docker_mounts": {"host": "container"},
+            "gpu_vendor": "AMD",
+            "docker_gpus": "all",
+        }.get(key, default)
+        mock_context.return_value = mock_context_instance
 
         with patch('os.path.exists', return_value=False):
             orchestrator = DistributedOrchestrator(mock_args)
@@ -292,7 +323,9 @@ class TestDistributedOrchestrator:
 
         with patch('builtins.open', mock_open()) as mock_file:
             orchestrator.export_execution_config(test_models, "test_config.json")
-            mock_file.assert_called_once_with("test_config.json", 'w')
+
+        # Verify the file was opened for writing
+        mock_file.assert_called_once_with("test_config.json", 'w')
 
     @patch('madengine.tools.distributed_orchestrator.create_ansible_playbook')
     def test_create_ansible_playbook_integration(self, mock_create_ansible):
