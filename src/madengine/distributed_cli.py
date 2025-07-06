@@ -35,6 +35,101 @@ EXIT_RUN_FAILURE = 3
 EXIT_INVALID_ARGS = 4
 
 # -----------------------------------------------------------------------------
+# Validation functions
+# -----------------------------------------------------------------------------
+
+def validate_additional_context(args: argparse.Namespace) -> bool:
+    """Validate that additional context contains required gpu_vendor and guest_os fields.
+    
+    Args:
+        args: The command-line arguments containing additional_context
+        
+    Returns:
+        bool: True if valid, False otherwise
+    """
+    try:
+        # Parse additional context from string
+        additional_context = {}
+        
+        # Check if additional_context_file is provided
+        if hasattr(args, 'additional_context_file') and args.additional_context_file:
+            try:
+                with open(args.additional_context_file, 'r') as f:
+                    additional_context = json.load(f)
+                logging.info(f"Loaded additional context from file: {args.additional_context_file}")
+            except (FileNotFoundError, json.JSONDecodeError) as e:
+                logging.error(f"Failed to load additional context file {args.additional_context_file}: {e}")
+                return False
+        
+        # Parse additional_context string (this overrides file if both are provided)
+        if hasattr(args, 'additional_context') and args.additional_context and args.additional_context != '{}':
+            try:
+                context_from_string = json.loads(args.additional_context)
+                additional_context.update(context_from_string)
+                logging.info("Loaded additional context from command line parameter")
+            except json.JSONDecodeError as e:
+                logging.error(f"Failed to parse additional context JSON: {e}")
+                logging.error("Please provide valid JSON format for --additional-context")
+                return False
+        
+        # Check if any additional context was provided
+        if not additional_context:
+            logging.error("No additional context provided.")
+            logging.error("For build operations, you must provide additional context with gpu_vendor and guest_os.")
+            logging.error("Example usage:")
+            logging.error("  madengine-cli build --tags dummy --additional-context '{\"gpu_vendor\": \"AMD\", \"guest_os\": \"UBUNTU\"}'")
+            logging.error("  or")
+            logging.error("  madengine-cli build --tags dummy --additional-context-file context.json")
+            logging.error("")
+            logging.error("Required fields in additional context:")
+            logging.error("  - gpu_vendor: GPU vendor (e.g., 'AMD', 'NVIDIA', 'INTEL')")
+            logging.error("  - guest_os: Operating system (e.g., 'UBUNTU', 'CENTOS', 'ROCKY')")
+            return False
+        
+        # Validate required fields
+        required_fields = ['gpu_vendor', 'guest_os']
+        missing_fields = []
+        
+        for field in required_fields:
+            if field not in additional_context:
+                missing_fields.append(field)
+        
+        if missing_fields:
+            logging.error(f"Missing required fields in additional context: {', '.join(missing_fields)}")
+            logging.error("For build operations, you must provide additional context with gpu_vendor and guest_os.")
+            logging.error("Example usage:")
+            logging.error("  madengine-cli build --tags dummy --additional-context '{\"gpu_vendor\": \"AMD\", \"guest_os\": \"UBUNTU\"}'")
+            logging.error("")
+            logging.error("Supported values:")
+            logging.error("  gpu_vendor: AMD, NVIDIA, INTEL")
+            logging.error("  guest_os: UBUNTU, CENTOS, ROCKY")
+            return False
+        
+        # Validate gpu_vendor values
+        valid_gpu_vendors = ['AMD', 'NVIDIA', 'INTEL']
+        gpu_vendor = additional_context['gpu_vendor'].upper()
+        if gpu_vendor not in valid_gpu_vendors:
+            logging.error(f"Invalid gpu_vendor: {additional_context['gpu_vendor']}")
+            logging.error(f"Supported gpu_vendor values: {', '.join(valid_gpu_vendors)}")
+            return False
+        
+        # Validate guest_os values
+        valid_guest_os = ['UBUNTU', 'CENTOS', 'ROCKY']
+        guest_os = additional_context['guest_os'].upper()
+        if guest_os not in valid_guest_os:
+            logging.error(f"Invalid guest_os: {additional_context['guest_os']}")
+            logging.error(f"Supported guest_os values: {', '.join(valid_guest_os)}")
+            return False
+        
+        logging.info(f"Additional context validation passed: gpu_vendor={gpu_vendor}, guest_os={guest_os}")
+        return True
+        
+    except Exception as e:
+        logging.error(f"Error validating additional context: {e}")
+        return False
+
+
+# -----------------------------------------------------------------------------
 # Sub-command functions
 # -----------------------------------------------------------------------------
 # Router of the command-line arguments to the corresponding functions
@@ -50,10 +145,15 @@ def build_models(args: argparse.Namespace) -> int:
         args: The command-line arguments.
         
     Returns:
-        int: Exit code (0 for success, 2 for build failure)
+        int: Exit code (0 for success, 2 for build failure, 4 for invalid arguments)
     """
     try:
         logging.info("Starting model build process")
+        
+        # Validate additional context parameters
+        if not validate_additional_context(args):
+            logging.error("Build process aborted due to invalid additional context")
+            return EXIT_INVALID_ARGS
         
         # Initialize orchestrator in build-only mode
         orchestrator = DistributedOrchestrator(args, build_only_mode=True)
@@ -97,11 +197,13 @@ def run_models(args: argparse.Namespace) -> int:
     Registry information is auto-detected from the manifest when available.
     If manifest-file is not provided or doesn't exist, runs the complete workflow.
     
+    For complete workflow (build + run), GPU and OS are automatically detected on the GPU node.
+    
     Args:
         args: The command-line arguments.
         
     Returns:
-        int: Exit code (0 for success, 2 for build failure, 3 for run failure)
+        int: Exit code (0 for success, 2 for build failure, 3 for run failure, 4 for invalid arguments)
     """
     try:
         # Input validation
@@ -109,12 +211,12 @@ def run_models(args: argparse.Namespace) -> int:
             logging.error("Timeout must be -1 (default) or a positive integer")
             return EXIT_INVALID_ARGS
             
-        orchestrator = DistributedOrchestrator(args)
-        
         # Check if manifest file is provided and exists
         if hasattr(args, 'manifest_file') and args.manifest_file and os.path.exists(args.manifest_file):
-            # Run only execution phase using existing manifest
+            # Run only execution phase using existing manifest - no need to validate additional context
             logging.info(f"Running models using existing manifest: {args.manifest_file}")
+            
+            orchestrator = DistributedOrchestrator(args)
             
             # Mark this as separate run phase for log naming
             args._separate_phases = True
@@ -155,6 +257,9 @@ def run_models(args: argparse.Namespace) -> int:
                 logging.warning(f"Manifest file {args.manifest_file} not found, running complete workflow")
             else:
                 logging.info("No manifest file provided, running complete workflow (build + run)")
+            
+            # For complete workflow, GPU and OS detection is available - no validation needed
+            orchestrator = DistributedOrchestrator(args)
             
             try:
                 # Always use separate log files for build and run phases
@@ -374,10 +479,13 @@ def main() -> int:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Build models with specific tags and push to registry
-  %(prog)s build --tags llama bert --registry localhost:5000 --clean-docker-cache
+  # Build models with specific tags and push to registry (additional context required for build-only operations)
+  %(prog)s build --tags dummy --registry localhost:5000 --clean-docker-cache --additional-context '{"gpu_vendor": "AMD", "guest_os": "UBUNTU"}'
   
-  # Run complete workflow (build + run) with specific tags and registry
+  # Build models with additional context from file
+  %(prog)s build --tags llama bert --registry localhost:5000 --additional-context-file context.json
+  
+  # Run complete workflow (build + run) with automatic GPU/OS detection on GPU nodes
   %(prog)s run --tags resnet --registry localhost:5000 --timeout 3600 --live-output
   
   # Run models using pre-built manifest (execution phase only - registry auto-detected)
@@ -391,6 +499,10 @@ Examples:
   
   # Generate Kubernetes manifests with custom namespace
   %(prog)s generate k8s --namespace madengine-prod
+
+Required additional context for build-only operations:
+  gpu_vendor: AMD, NVIDIA, INTEL
+  guest_os: UBUNTU, CENTOS, ROCKY
         """
     )
     
@@ -404,9 +516,9 @@ Examples:
         parser.add_argument('--ignore-deprecated-flag', action='store_true', 
                            help="Force run deprecated models even if marked deprecated.")
         parser.add_argument('--additional-context-file', default=None, 
-                           help="additional context, as json file, to filter behavior of workloads. Overrides detected contexts.")
+                           help="additional context, as json file, to filter behavior of workloads. Overrides detected contexts. Required for build-only operations: must contain gpu_vendor and guest_os.")
         parser.add_argument('--additional-context', default='{}', 
-                           help="additional context, as string representation of python dict, to filter behavior of workloads. Overrides detected contexts and additional-context-file.")
+                           help="additional context, as string representation of python dict, to filter behavior of workloads. Overrides detected contexts and additional-context-file. Required for build-only operations: must contain gpu_vendor (AMD/NVIDIA/INTEL) and guest_os (UBUNTU/CENTOS/ROCKY).")
         parser.add_argument('--data-config-file-name', default=DEFAULT_DATA_CONFIG, 
                            help="custom data configuration file.")
         parser.add_argument('--tools-json-file-name', default=DEFAULT_TOOLS_CONFIG, 
@@ -530,6 +642,11 @@ Examples:
     # Validate common arguments
     if not validate_common_args(args):
         return EXIT_INVALID_ARGS
+    
+    # Validate additional context only for build command (build-only operations)
+    if args.command == 'build':
+        if not validate_additional_context(args):
+            return EXIT_INVALID_ARGS
     
     try:
         logging.info(f"Starting {args.command} command")
