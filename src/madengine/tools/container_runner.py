@@ -370,10 +370,37 @@ class ContainerRunner:
                 script_args = script["args"].strip()
             model_docker.sh(f"cd {model_dir} && bash {script_name} {script_args}", timeout=600)
     
+    def gather_system_env_details(
+            self,
+            pre_encapsulate_post_scripts: typing.Dict,
+            model_name: str
+        ) -> None:
+        """Gather system environment details.
+
+        Args:
+            pre_encapsulate_post_scripts: The pre, encapsulate and post scripts.
+            model_name: The model name.
+
+        Returns:
+            None
+
+        Raises:
+            Exception: An error occurred while gathering system environment details.
+
+        Note:
+            This function is used to gather system environment details.
+        """
+        # initialize pre_env_details
+        pre_env_details = {}
+        pre_env_details["path"] = "scripts/common/pre_scripts/run_rocenv_tool.sh"
+        pre_env_details["args"] = model_name.replace("/", "_") + "_env"
+        pre_encapsulate_post_scripts["pre_scripts"].append(pre_env_details)
+        print(f"pre encap post scripts: {pre_encapsulate_post_scripts}")
+
     def run_container(self, model_info: typing.Dict, docker_image: str, 
                      build_info: typing.Dict = None, keep_alive: bool = False,
                      timeout: int = 7200, tools_json_file: str = "scripts/common/tools.json",
-                     phase_suffix: str = "") -> typing.Dict:
+                     phase_suffix: str = "", generate_sys_env_details: bool = True) -> typing.Dict:
         """Run a model in a Docker container.
         
         Args:
@@ -384,6 +411,7 @@ class ContainerRunner:
             timeout: Execution timeout in seconds
             tools_json_file: Path to tools configuration file
             phase_suffix: Suffix for log file name (e.g., ".run" or "")
+            generate_sys_env_details: Whether to collect system environment details
             
         Returns:
             dict: Execution results including performance metrics
@@ -483,6 +511,11 @@ class ContainerRunner:
         # Apply tools if configured
         if os.path.exists(tools_json_file):
             self.apply_tools(pre_encapsulate_post_scripts, run_env, tools_json_file)
+
+        # Add system environment collection script to pre_scripts (equivalent to generate_sys_env_details)
+        # This ensures distributed runs have the same system environment logging as standard runs
+        if generate_sys_env_details or self.context.ctx.get("gen_sys_env_details"):
+            self.gather_system_env_details(pre_encapsulate_post_scripts, model_info['name'])
 
         # Build docker options
         docker_options += self.get_gpu_arg(model_info["n_gpus"])

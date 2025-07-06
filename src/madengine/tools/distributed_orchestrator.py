@@ -249,7 +249,8 @@ class DistributedOrchestrator:
                         # Run the container
                         run_results = runner.run_container(
                             model_info, actual_image, build_info, 
-                            keep_alive=keep_alive, timeout=timeout, phase_suffix=phase_suffix
+                            keep_alive=keep_alive, timeout=timeout, phase_suffix=phase_suffix,
+                            generate_sys_env_details=getattr(self.args, 'generate_sys_env_details', True)
                         )
                         
                         execution_summary["successful_runs"].append(run_results)
@@ -334,7 +335,8 @@ class DistributedOrchestrator:
                         # Run the container
                         run_results = runner.run_container(
                             model_info, actual_image, build_info, 
-                            keep_alive=keep_alive, timeout=timeout, phase_suffix=phase_suffix
+                            keep_alive=keep_alive, timeout=timeout, phase_suffix=phase_suffix,
+                            generate_sys_env_details=getattr(self.args, 'generate_sys_env_details', True)
                         )
                         
                         execution_summary["successful_runs"].append(run_results)
