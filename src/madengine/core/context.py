@@ -549,26 +549,37 @@ class Context:
         """Setup multi-node context for build phase.
         
         This method handles multi-node configuration during build phase,
-        storing the configuration in docker_env_vars for inclusion in the manifest
-        without requiring runtime GPU detection.
+        storing the configuration for inclusion in the manifest without requiring 
+        runtime GPU detection. The multi_node_args will be preserved as-is and
+        MAD_MULTI_NODE_RUNNER will be generated at runtime.
         """
         if 'multi_node_args' in self.ctx:
             print("Setting up multi-node context for build phase...")
             
-            # Store multi-node arguments directly in docker_env_vars 
-            # This preserves the structure expected by runtime phase
+            # Store the complete multi_node_args structure (excluding MAD_RUNTIME_NGPUS)
+            # This will be included in build_manifest.json and used at runtime
+            build_multi_node_args = {}
             for key, value in self.ctx['multi_node_args'].items():
                 # Skip MAD_RUNTIME_NGPUS as it's runtime-specific - will be set at runtime
                 if key != 'MAD_RUNTIME_NGPUS':
-                    # Store as MAD_MULTI_NODE_* for environment variable access
-                    env_key = f"MAD_MULTI_NODE_{key}"
-                    self.ctx['docker_env_vars'][env_key] = str(value)
+                    build_multi_node_args[key] = value
             
-            # Create a template-based multi-node runner command that will be resolved at runtime
-            # This uses environment variable substitution for runtime-specific values
-            self.ctx['docker_env_vars']['MAD_MULTI_NODE_RUNNER'] = self._create_build_multi_node_runner_template()
+            # Store the multi_node_args for inclusion in the manifest
+            # This will be accessible in build_manifest.json under context
+            self.ctx['build_multi_node_args'] = build_multi_node_args
             
-            print(f"Multi-node configuration stored in docker_env_vars for runtime: {list(self.ctx['multi_node_args'].keys())}")
+            # Remove any individual MAD_MULTI_NODE_* env vars from docker_env_vars
+            # Only structured multi_node_args should be stored in the manifest
+            env_vars_to_remove = []
+            for env_var in self.ctx.get('docker_env_vars', {}):
+                if env_var.startswith('MAD_MULTI_NODE_') and env_var != 'MAD_MULTI_NODE_RUNNER':
+                    env_vars_to_remove.append(env_var)
+            
+            for env_var in env_vars_to_remove:
+                del self.ctx['docker_env_vars'][env_var]
+                print(f"Removed {env_var} from docker_env_vars - will be reconstructed at runtime")
+            
+            print(f"Multi-node configuration stored for runtime: {list(build_multi_node_args.keys())}")
             print("MAD_RUNTIME_NGPUS will be resolved at runtime phase")
 
     def _create_build_multi_node_runner_template(self) -> str:
@@ -619,31 +630,50 @@ class Context:
         """Setup runtime multi-node context.
         
         This method handles multi-node configuration during runtime phase,
-        setting MAD_RUNTIME_NGPUS and resolving the multi-node runner command.
+        setting MAD_RUNTIME_NGPUS and creating the final MAD_MULTI_NODE_RUNNER.
         """
-        # Set MAD_RUNTIME_NGPUS for runtime
+        # Set MAD_RUNTIME_NGPUS for runtime based on detected GPU count
         if "MAD_RUNTIME_NGPUS" not in self.ctx["docker_env_vars"]:
             runtime_ngpus = self.ctx["docker_env_vars"].get("MAD_SYSTEM_NGPUS", 1)
             self.ctx["docker_env_vars"]["MAD_RUNTIME_NGPUS"] = runtime_ngpus
             print(f"Set MAD_RUNTIME_NGPUS to {runtime_ngpus} for runtime")
         
-        # If multi_node_args exists, ensure MAD_RUNTIME_NGPUS is set there too
+        # If we have multi_node_args from build phase or runtime, ensure MAD_RUNTIME_NGPUS is set
         if 'multi_node_args' in self.ctx:
+            # Add MAD_RUNTIME_NGPUS to multi_node_args if not already present
             if 'MAD_RUNTIME_NGPUS' not in self.ctx['multi_node_args']:
                 self.ctx['multi_node_args']['MAD_RUNTIME_NGPUS'] = self.ctx["docker_env_vars"]["MAD_RUNTIME_NGPUS"]
         
-        # If we don't have a multi-node runner yet (runtime-only mode), create it
-        if 'MAD_MULTI_NODE_RUNNER' not in self.ctx['docker_env_vars'] and 'multi_node_args' in self.ctx:
-            print("Creating multi-node runner for runtime-only mode...")
+        # If we have build_multi_node_args from manifest, reconstruct full multi_node_args
+        elif 'build_multi_node_args' in self.ctx:
+            print("Reconstructing multi_node_args from build manifest...")
+            self.ctx['multi_node_args'] = self.ctx['build_multi_node_args'].copy()
+            self.ctx['multi_node_args']['MAD_RUNTIME_NGPUS'] = self.ctx["docker_env_vars"]["MAD_RUNTIME_NGPUS"]
+        
+        # Generate MAD_MULTI_NODE_RUNNER if we have multi_node_args
+        if 'multi_node_args' in self.ctx:
+            print("Creating MAD_MULTI_NODE_RUNNER with runtime values...")
+            
+            # Set individual MAD_MULTI_NODE_* environment variables for runtime execution
+            # These are needed by the bash scripts that use the template runner command
+            multi_node_mapping = {
+                'NNODES': 'MAD_MULTI_NODE_NNODES',
+                'NODE_RANK': 'MAD_MULTI_NODE_NODE_RANK', 
+                'MASTER_ADDR': 'MAD_MULTI_NODE_MASTER_ADDR',
+                'MASTER_PORT': 'MAD_MULTI_NODE_MASTER_PORT',
+                'NCCL_SOCKET_IFNAME': 'MAD_MULTI_NODE_NCCL_SOCKET_IFNAME',
+                'GLOO_SOCKET_IFNAME': 'MAD_MULTI_NODE_GLOO_SOCKET_IFNAME',
+                'HOST_LIST': 'MAD_MULTI_NODE_HOST_LIST'
+            }
+            
+            for multi_node_key, env_var_name in multi_node_mapping.items():
+                if multi_node_key in self.ctx['multi_node_args']:
+                    self.ctx["docker_env_vars"][env_var_name] = str(self.ctx['multi_node_args'][multi_node_key])
+                    print(f"Set {env_var_name} to {self.ctx['multi_node_args'][multi_node_key]} for runtime")
+            
+            # Generate the MAD_MULTI_NODE_RUNNER command
             self.ctx['docker_env_vars']['MAD_MULTI_NODE_RUNNER'] = self.set_multi_node_runner()
-        elif 'MAD_MULTI_NODE_RUNNER' in self.ctx['docker_env_vars'] and 'multi_node_args' in self.ctx:
-            # Check if we have a template that needs resolution (contains ${} variables)
-            current_runner = self.ctx['docker_env_vars']['MAD_MULTI_NODE_RUNNER']
-            if '${' in current_runner:
-                print("Resolving runtime-specific values in multi-node runner template...")
-                # For runtime, we can use the existing set_multi_node_runner method
-                # which will create the final command with actual values
-                self.ctx['docker_env_vars']['MAD_MULTI_NODE_RUNNER'] = self.set_multi_node_runner()
+            print(f"MAD_MULTI_NODE_RUNNER: {self.ctx['docker_env_vars']['MAD_MULTI_NODE_RUNNER']}")
 
     def filter(self, unfiltered: typing.Dict) -> typing.Dict:
         """Filter the unfiltered dictionary based on the context.

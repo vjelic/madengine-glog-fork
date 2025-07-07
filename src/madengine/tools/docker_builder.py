@@ -320,6 +320,10 @@ class DockerBuilder:
             }
         }
         
+        # Add multi-node args to manifest if present
+        if "build_multi_node_args" in self.context.ctx:
+            manifest["context"]["multi_node_args"] = self.context.ctx["build_multi_node_args"]
+        
         # Add registry information to manifest metadata if provided
         if registry:
             manifest["registry"] = registry
