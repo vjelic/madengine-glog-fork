@@ -223,11 +223,31 @@ def display_results_table(summary: Dict, title: str) -> None:
     successful = summary.get("successful_builds", summary.get("successful_runs", []))
     failed = summary.get("failed_builds", summary.get("failed_runs", []))
     
+    # Helper function to extract display names from items
+    def get_display_names(items, limit=5):
+        if not items:
+            return ""
+        
+        display_items = []
+        for item in items[:limit]:
+            if isinstance(item, dict):
+                # For dictionary items (run results), use model name or name field
+                name = item.get("model", item.get("name", str(item)[:20]))
+                display_items.append(name)
+            else:
+                # For string items (build results), use as-is
+                display_items.append(str(item))
+        
+        result = ", ".join(display_items)
+        if len(items) > limit:
+            result += "..."
+        return result
+    
     if successful:
-        table.add_row("✅ Success", str(len(successful)), ", ".join(successful[:5]) + ("..." if len(successful) > 5 else ""))
+        table.add_row("✅ Success", str(len(successful)), get_display_names(successful))
     
     if failed:
-        table.add_row("❌ Failed", str(len(failed)), ", ".join(failed[:5]) + ("..." if len(failed) > 5 else ""))
+        table.add_row("❌ Failed", str(len(failed)), get_display_names(failed))
     
     if not successful and not failed:
         table.add_row("ℹ️ No items", "0", "")
