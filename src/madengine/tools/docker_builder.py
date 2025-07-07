@@ -304,23 +304,35 @@ class DockerBuilder:
             raise
     
     def export_build_manifest(self, output_file: str = "build_manifest.json", registry: str = None) -> None:
-        """Export build information to a manifest file.
+        """Export enhanced build information to a manifest file.
+        
+        This creates a comprehensive build manifest that includes all necessary
+        information for deployment, reducing the need for separate execution configs.
         
         Args:
             output_file: Path to output manifest file
             registry: Registry used for building (added to manifest metadata)
         """
+        # Extract credentials from models
+        credentials_required = list(set([
+            model.get("cred", "") for model in self.built_models.values() 
+            if model.get("cred", "") != ""
+        ]))
+        
         manifest = {
             "built_images": self.built_images,
-            "built_models": self.built_models,  # Include model information
+            "built_models": self.built_models,
             "context": {
                 "docker_env_vars": self.context.ctx.get("docker_env_vars", {}),
                 "docker_mounts": self.context.ctx.get("docker_mounts", {}),
-                "docker_build_arg": self.context.ctx.get("docker_build_arg", {})
-            }
+                "docker_build_arg": self.context.ctx.get("docker_build_arg", {}),
+                "gpu_vendor": self.context.ctx.get("gpu_vendor", ""),
+                "docker_gpus": self.context.ctx.get("docker_gpus", "")
+            },
+            "credentials_required": credentials_required
         }
         
-        # Add multi-node args to manifest if present
+        # Add multi-node args to context if present
         if "build_multi_node_args" in self.context.ctx:
             manifest["context"]["multi_node_args"] = self.context.ctx["build_multi_node_args"]
         

@@ -497,26 +497,45 @@ class DistributedOrchestrator:
 
 
 def create_ansible_playbook(manifest_file: str = "build_manifest.json",
-                          execution_config: str = "execution_config.json",
+                          execution_config: str = None,
                           playbook_file: str = "madengine_distributed.yml") -> None:
     """Create an Ansible playbook for distributed execution.
     
+    Works directly with the enhanced build manifest structure.
+    
     Args:
-        manifest_file: Build manifest file
-        execution_config: Execution configuration file  
+        manifest_file: Build manifest file (primary source)
+        execution_config: Deprecated - no longer used
         playbook_file: Output Ansible playbook file
     """
+    # Load manifest to extract configuration
+    import json
+    import os
+    
+    try:
+        with open(manifest_file, 'r') as f:
+            manifest = json.load(f)
+    except FileNotFoundError:
+        raise FileNotFoundError(f"Build manifest not found: {manifest_file}")
+    
+    # Extract configuration from manifest
+    context = manifest.get("context", {})
+    gpu_vendor = context.get("gpu_vendor", "")
+    registry = manifest.get("registry", "")
+    
     playbook_content = f"""---
 # MADEngine Distributed Execution Playbook
 # Generated automatically for distributed model execution
+# Primary source: {manifest_file}
 
 - name: MADEngine Distributed Model Execution
   hosts: gpu_nodes
   become: yes
   vars:
     manifest_file: "{manifest_file}"
-    execution_config: "{execution_config}"
     madengine_workspace: "/tmp/madengine_distributed"
+    gpu_vendor: "{gpu_vendor}"
+    registry: "{registry}"
     
   tasks:
     - name: Create MADEngine workspace
@@ -529,11 +548,6 @@ def create_ansible_playbook(manifest_file: str = "build_manifest.json",
       copy:
         src: "{{{{ manifest_file }}}}"
         dest: "{{{{ madengine_workspace }}}}/{{{{ manifest_file }}}}"
-    
-    - name: Copy execution config to nodes  
-      copy:
-        src: "{{{{ execution_config }}}}"
-        dest: "{{{{ madengine_workspace }}}}/{{{{ execution_config }}}}"
     
     - name: Pull Docker images from registry
       shell: |
@@ -591,13 +605,15 @@ def create_ansible_playbook(manifest_file: str = "build_manifest.json",
 
 
 def create_kubernetes_manifests(manifest_file: str = "build_manifest.json",
-                               execution_config: str = "execution_config.json",
+                               execution_config: str = None,
                                namespace: str = "madengine") -> None:
     """Create Kubernetes manifests for distributed execution.
     
+    Works directly with the enhanced build manifest structure.
+    
     Args:
         manifest_file: Build manifest file
-        execution_config: Execution configuration file
+        execution_config: Deprecated - no longer used
         namespace: Kubernetes namespace
     """
     
@@ -610,8 +626,6 @@ metadata:
 data:
   manifest.json: |
     # Content would be loaded from {manifest_file}
-  execution-config.json: |
-    # Content would be loaded from {execution_config}
 ---
 apiVersion: v1
 kind: Namespace

@@ -567,19 +567,19 @@ def run(
 @generate_app.command("ansible")
 def generate_ansible(
     manifest_file: Annotated[str, typer.Option("--manifest-file", "-m", help="Build manifest file")] = DEFAULT_MANIFEST_FILE,
-    execution_config: Annotated[str, typer.Option("--execution-config", "-e", help="Execution config file")] = DEFAULT_EXECUTION_CONFIG,
     output: Annotated[str, typer.Option("--output", "-o", help="Output Ansible playbook file")] = DEFAULT_ANSIBLE_OUTPUT,
     verbose: Annotated[bool, typer.Option("--verbose", "-v", help="Enable verbose logging")] = False,
 ) -> None:
     """
     📋 Generate Ansible playbook for distributed execution.
+    
+    Uses the enhanced build manifest as the primary configuration source.
     """
     setup_logging(verbose)
     
     console.print(Panel(
         f"📋 [bold cyan]Generating Ansible Playbook[/bold cyan]\n"
         f"Manifest: [yellow]{manifest_file}[/yellow]\n"
-        f"Config: [yellow]{execution_config}[/yellow]\n"
         f"Output: [yellow]{output}[/yellow]",
         title="Ansible Generation",
         border_style="blue"
@@ -587,11 +587,9 @@ def generate_ansible(
     
     try:
         # Validate input files
-        if manifest_file != DEFAULT_MANIFEST_FILE and not os.path.exists(manifest_file):
-            console.print(f"⚠️  Manifest file [yellow]{manifest_file}[/yellow] does not exist")
-        
-        if execution_config != DEFAULT_EXECUTION_CONFIG and not os.path.exists(execution_config):
-            console.print(f"⚠️  Execution config file [yellow]{execution_config}[/yellow] does not exist")
+        if not os.path.exists(manifest_file):
+            console.print(f"❌ [bold red]Manifest file not found: {manifest_file}[/bold red]")
+            raise typer.Exit(ExitCode.FAILURE)
         
         with Progress(
             SpinnerColumn(),
@@ -602,7 +600,6 @@ def generate_ansible(
             
             create_ansible_playbook(
                 manifest_file=manifest_file,
-                execution_config=execution_config,
                 playbook_file=output
             )
             
@@ -620,19 +617,19 @@ def generate_ansible(
 @generate_app.command("k8s")
 def generate_k8s(
     manifest_file: Annotated[str, typer.Option("--manifest-file", "-m", help="Build manifest file")] = DEFAULT_MANIFEST_FILE,
-    execution_config: Annotated[str, typer.Option("--execution-config", "-e", help="Execution config file")] = DEFAULT_EXECUTION_CONFIG,
     namespace: Annotated[str, typer.Option("--namespace", "-n", help="Kubernetes namespace")] = DEFAULT_K8S_NAMESPACE,
     verbose: Annotated[bool, typer.Option("--verbose", "-v", help="Enable verbose logging")] = False,
 ) -> None:
     """
     ☸️  Generate Kubernetes manifests for distributed execution.
+    
+    Uses the enhanced build manifest as the primary configuration source.
     """
     setup_logging(verbose)
     
     console.print(Panel(
         f"☸️  [bold cyan]Generating Kubernetes Manifests[/bold cyan]\n"
         f"Manifest: [yellow]{manifest_file}[/yellow]\n"
-        f"Config: [yellow]{execution_config}[/yellow]\n"
         f"Namespace: [yellow]{namespace}[/yellow]",
         title="Kubernetes Generation",
         border_style="blue"
@@ -655,7 +652,6 @@ def generate_k8s(
             
             create_kubernetes_manifests(
                 manifest_file=manifest_file,
-                execution_config=execution_config,
                 namespace=namespace
             )
             
