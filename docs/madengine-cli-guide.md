@@ -30,10 +30,10 @@ pip install -e .
 madengine-cli build --tags dummy resnet --registry localhost:5000
 
 # Build with additional context (required for build-only operations)
-madengine-cli build --tags llama --additional-context '{"gpu_vendor": "AMD", "guest_os": "UBUNTU"}'
+madengine-cli build --tags pyt_huggingface_gpt2 --additional-context '{"gpu_vendor": "AMD", "guest_os": "UBUNTU"}'
 
 # Build with context from file
-madengine-cli build --tags bert --additional-context-file context.json --clean-cache
+madengine-cli build --tags pyt_huggingface_bert --additional-context-file context.json --clean-docker-cache
 ```
 
 #### Run Models
@@ -64,12 +64,12 @@ madengine-cli export-config --tags dummy --output execution.json
 
 #### Production Build and Deploy
 ```bash
-# 1. Build models for production
+# Build models for production
 madengine-cli build \
-  --tags llama bert resnet \
+  --tags pyt_huggingface_gpt2 pyt_huggingface_bert resnet \
   --registry production.registry.com \
   --additional-context '{"gpu_vendor": "AMD", "guest_os": "UBUNTU"}' \
-  --clean-cache \
+  --clean-docker-cache \
   --summary-output build_summary.json \
   --verbose
 
@@ -86,11 +86,29 @@ madengine-cli run \
 # Development environment
 madengine-cli build --tags dummy --additional-context-file dev-context.json
 
-# Production environment  
-madengine-cli build --tags llama bert --additional-context-file prod-context.json --registry prod.registry.com
+# Production environment with advanced options
+madengine-cli build \
+  --tags pyt_huggingface_gpt2 pyt_huggingface_bert \
+  --additional-context-file prod-context.json \
+  --registry prod.registry.com \
+  --tools-config ./configs/prod-tools.json \
+  --disable-skip-gpu-arch
 
 # Generate deployment manifests
 madengine-cli generate k8s --namespace madengine-prod --execution-config prod-execution.json
+```
+
+#### Advanced Build Configuration
+```bash
+# Build with custom configurations and local data mirroring
+madengine-cli build \
+  --tags custom-model \
+  --additional-context '{"gpu_vendor": "AMD", "guest_os": "UBUNTU"}' \
+  --data-config ./configs/custom-data.json \
+  --tools-config ./configs/custom-tools.json \
+  --force-mirror-local /tmp/local-data \
+  --clean-docker-cache \
+  --verbose
 ```
 
 ## Command Reference
@@ -109,11 +127,17 @@ madengine-cli build [OPTIONS]
 - `--registry, -r`: Docker registry URL
 - `--additional-context, -c`: Additional context as JSON string
 - `--additional-context-file, -f`: File containing additional context JSON
-- `--clean-cache`: Rebuild without using Docker cache
+- `--clean-docker-cache`: Rebuild without using Docker cache
 - `--manifest-output, -m`: Output file for build manifest
 - `--summary-output, -s`: Output file for build summary JSON
 - `--live-output, -l`: Print output in real-time
 - `--output, -o`: Performance output file
+- `--ignore-deprecated`: Force run deprecated models
+- `--data-config`: Custom data configuration file (default: data.json)
+- `--tools-config`: Custom tools JSON configuration (default: ./scripts/common/tools.json)
+- `--sys-env-details`: Generate system config env details (default: true)
+- `--force-mirror-local`: Path to force local data mirroring
+- `--disable-skip-gpu-arch`: Disable skipping models based on GPU architecture
 
 ### Run Command
 ```bash
@@ -128,6 +152,17 @@ madengine-cli run [OPTIONS]
 - `--keep-alive`: Keep containers alive after run
 - `--keep-model-dir`: Keep model directory after run
 - `--skip-model-run`: Skip running the model
+- `--clean-docker-cache`: Rebuild images without using cache (for full workflow)
+- `--manifest-output`: Output file for build manifest (full workflow)
+- `--summary-output, -s`: Output file for summary JSON
+- `--live-output, -l`: Print output in real-time
+- `--output, -o`: Performance output file
+- `--ignore-deprecated`: Force run deprecated models
+- `--data-config`: Custom data configuration file (default: data.json)
+- `--tools-config`: Custom tools JSON configuration (default: ./scripts/common/tools.json)
+- `--sys-env-details`: Generate system config env details (default: true)
+- `--force-mirror-local`: Path to force local data mirroring
+- `--disable-skip-gpu-arch`: Disable skipping models based on GPU architecture
 - All build options (for full workflow mode)
 
 ### Generate Commands
@@ -154,7 +189,14 @@ madengine-cli export-config [OPTIONS]
 **Options:**
 - `--tags, -t`: Model tags to export config for
 - `--output, -o`: Output configuration file
-- Standard model selection options
+- `--additional-context, -c`: Additional context as JSON string
+- `--additional-context-file, -f`: File containing additional context JSON
+- `--ignore-deprecated`: Force run deprecated models
+- `--data-config`: Custom data configuration file (default: data.json)
+- `--tools-config`: Custom tools JSON configuration (default: ./scripts/common/tools.json)
+- `--sys-env-details`: Generate system config env details (default: true)
+- `--force-mirror-local`: Path to force local data mirroring
+- `--disable-skip-gpu-arch`: Disable skipping models based on GPU architecture
 
 ## Configuration Files
 
@@ -174,6 +216,23 @@ madengine-cli export-config [OPTIONS]
 ### Execution Config File
 Generated automatically or can be exported using `export-config` command.
 
+### Data Configuration File (data.json)
+Contains data configuration for model execution. Default location: `data.json` in the current directory.
+
+### Tools Configuration File
+Contains tools configuration for the build process. Default location: `./scripts/common/tools.json`.
+
+## Advanced Configuration Options
+
+### System Environment Details
+The `--sys-env-details` flag (enabled by default) generates detailed system configuration information during the build process. This helps with debugging and reproducibility.
+
+### GPU Architecture Handling
+Use `--disable-skip-gpu-arch` to prevent the automatic skipping of models that are not compatible with the detected GPU architecture.
+
+### Local Data Mirroring
+Use `--force-mirror-local <path>` to force local data mirroring to a specific path during execution.
+
 ## Output Features
 
 ### Rich Tables
@@ -189,8 +248,10 @@ Results are displayed in beautiful tables showing:
 
 ### Error Handling
 - 🎯 Clear error messages with context
-- 💡 Helpful suggestions for fixing issues
+- 💡 Helpful suggestions for fixing issues with example usage panels
 - 🔍 Detailed stack traces in verbose mode
+- ✅ Input validation with clear feedback for required fields
+- 📋 Example usage panels for common configuration errors
 
 ### Panels and Formatting
 - 📋 Configuration panels showing current settings
@@ -200,17 +261,25 @@ Results are displayed in beautiful tables showing:
 ## Differences from Original CLI
 
 ### Improvements
-1. **Better UX**: Rich output, progress bars, helpful error messages
+1. **Better UX**: Rich output, progress bars, helpful error messages with context
 2. **Type Safety**: Full type annotations and automatic validation
 3. **Modern Architecture**: Clean separation of concerns, testable code
-4. **Enhanced Output**: Tables, panels, and formatted displays
-5. **Better Error Handling**: Context-aware error messages with suggestions
+4. **Enhanced Output**: Tables, panels, and formatted displays with emoji indicators
+5. **Better Error Handling**: Context-aware error messages with suggestions and examples
 6. **Auto-completion**: Built-in shell completion support
+7. **Advanced Configuration**: More granular control over build and execution processes
+8. **Improved Validation**: Better validation of additional context with helpful error messages
+9. **Flexible Workflow**: Support for separate build/run phases or combined workflows
 
 ### Backward Compatibility
 - All original functionality is preserved
 - Command structure is mostly the same
 - New CLI is available as `madengine-cli` while original remains as `madengine`
+
+### Option Changes
+- `--clean-cache` is now `--clean-docker-cache` for better clarity
+- Added many new configuration options for advanced use cases
+- Default file paths have been updated for better organization
 
 ## Development
 
@@ -220,9 +289,11 @@ Results are displayed in beautiful tables showing:
 madengine-cli --help
 madengine-cli build --help
 madengine-cli run --help
+madengine-cli generate --help
 
-# Compare with original
-madengine-cli --help
+# Test specific commands
+madengine-cli --version
+madengine-cli export-config --help
 ```
 
 ### Adding New Features
@@ -232,3 +303,15 @@ The new CLI is built with:
 - **Click**: Underlying framework (via Typer)
 
 See the source code in `src/madengine/mad_cli.py` for implementation details.
+
+## Exit Codes
+
+The CLI uses specific exit codes to indicate different types of failures:
+
+- `0`: Success
+- `1`: General failure
+- `2`: Build failure
+- `3`: Run failure  
+- `4`: Invalid arguments
+
+This allows for better integration with scripts and CI/CD pipelines that need to handle different failure scenarios appropriately.
