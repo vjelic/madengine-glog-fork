@@ -19,7 +19,6 @@ from madengine.tools.distributed_orchestrator import (
 
 # Constants
 DEFAULT_MANIFEST_FILE = 'build_manifest.json'
-DEFAULT_EXECUTION_CONFIG = 'execution_config.json'
 DEFAULT_PERF_OUTPUT = 'perf.csv'
 DEFAULT_DATA_CONFIG = 'data.json'
 DEFAULT_TOOLS_CONFIG = './scripts/common/tools.json'
@@ -330,6 +329,8 @@ def run_models(args: argparse.Namespace) -> int:
 def generate_ansible(args: argparse.Namespace) -> int:
     """Generate Ansible playbook for distributed execution.
     
+    Uses the enhanced build manifest as the primary configuration source.
+    
     Args:
         args: The command-line arguments.
         
@@ -340,17 +341,12 @@ def generate_ansible(args: argparse.Namespace) -> int:
         logging.info("Generating Ansible playbook")
         
         # Validate input files exist if specified
-        if hasattr(args, 'manifest_file') and args.manifest_file != DEFAULT_MANIFEST_FILE:
-            if not os.path.exists(args.manifest_file):
-                logging.warning(f"Manifest file {args.manifest_file} does not exist")
-        
-        if hasattr(args, 'execution_config') and args.execution_config != DEFAULT_EXECUTION_CONFIG:
-            if not os.path.exists(args.execution_config):
-                logging.warning(f"Execution config file {args.execution_config} does not exist")
+        if not os.path.exists(args.manifest_file):
+            logging.error(f"Manifest file not found: {args.manifest_file}")
+            return EXIT_FAILURE
         
         create_ansible_playbook(
             manifest_file=args.manifest_file,
-            execution_config=args.execution_config,
             playbook_file=args.output
         )
         
@@ -365,6 +361,8 @@ def generate_ansible(args: argparse.Namespace) -> int:
 def generate_k8s(args: argparse.Namespace) -> int:
     """Generate Kubernetes manifests for distributed execution.
     
+    Uses the enhanced build manifest as the primary configuration source.
+    
     Args:
         args: The command-line arguments.
         
@@ -375,17 +373,12 @@ def generate_k8s(args: argparse.Namespace) -> int:
         logging.info("Generating Kubernetes manifests")
         
         # Validate input files exist if specified
-        if hasattr(args, 'manifest_file') and args.manifest_file != DEFAULT_MANIFEST_FILE:
-            if not os.path.exists(args.manifest_file):
-                logging.warning(f"Manifest file {args.manifest_file} does not exist")
-        
-        if hasattr(args, 'execution_config') and args.execution_config != DEFAULT_EXECUTION_CONFIG:
-            if not os.path.exists(args.execution_config):
-                logging.warning(f"Execution config file {args.execution_config} does not exist")
+        if not os.path.exists(args.manifest_file):
+            logging.error(f"Manifest file not found: {args.manifest_file}")
+            return EXIT_FAILURE
         
         create_kubernetes_manifests(
             manifest_file=args.manifest_file,
-            execution_config=args.execution_config,
             namespace=args.namespace
         )
         
@@ -397,34 +390,7 @@ def generate_k8s(args: argparse.Namespace) -> int:
         return EXIT_FAILURE
 
 
-def export_config(args: argparse.Namespace) -> int:
-    """Export execution configuration for external tools.
-    
-    Args:
-        args: The command-line arguments.
-        
-    Returns:
-        int: Exit code (0 for success, 1 for failure)
-    """
-    try:
-        logging.info("Exporting execution configuration")
-        orchestrator = DistributedOrchestrator(args)
-        
-        # Discover models to get configuration
-        from madengine.tools.discover_models import DiscoverModels
-        discover_models = DiscoverModels(args=args)
-        models = discover_models.run()
-        
-        if not models:
-            logging.warning("No models discovered for configuration export")
-        
-        orchestrator.export_execution_config(models, args.output)
-        logging.info(f"Execution configuration exported to: {args.output}")
-        return EXIT_SUCCESS
-        
-    except Exception as e:
-        logging.error(f"Failed to export configuration: {e}")
-        return EXIT_FAILURE
+
 
 
 def setup_logging(verbose: bool = False) -> None:
@@ -494,15 +460,18 @@ Examples:
   # Run models using pre-built manifest with explicit registry override
   %(prog)s run --manifest-file build_manifest.json --registry custom-registry.com --timeout 3600
   
-  # Generate Ansible playbook for distributed execution
-  %(prog)s generate ansible --output madengine.yml
+  # Generate Ansible playbook for distributed execution using enhanced manifest
+  %(prog)s generate ansible --manifest-file build_manifest.json --output madengine.yml
   
-  # Generate Kubernetes manifests with custom namespace
-  %(prog)s generate k8s --namespace madengine-prod
+  # Generate Kubernetes manifests with custom namespace using enhanced manifest
+  %(prog)s generate k8s --manifest-file build_manifest.json --namespace madengine-prod
 
 Required additional context for build-only operations:
   gpu_vendor: AMD, NVIDIA, INTEL
   guest_os: UBUNTU, CENTOS, ROCKY
+
+Note: Generate commands now use only the enhanced build manifest file.
+      The export-config command has been removed as it's no longer needed.
         """
     )
     
@@ -603,8 +572,6 @@ Required additional context for build-only operations:
                                                            help='Generate Ansible playbook')
     parser_generate_ansible.add_argument('--manifest-file', type=str, default=DEFAULT_MANIFEST_FILE,
                                        help='Build manifest file (default: build_manifest.json)')
-    parser_generate_ansible.add_argument('--execution-config', type=str, default=DEFAULT_EXECUTION_CONFIG,
-                                       help='Execution config file (default: execution_config.json)')
     parser_generate_ansible.add_argument('--output', type=str, default=DEFAULT_ANSIBLE_OUTPUT,
                                        help='Output Ansible playbook file (default: madengine_distributed.yml)')
     parser_generate_ansible.set_defaults(func=generate_ansible)
@@ -615,20 +582,9 @@ Required additional context for build-only operations:
                                                         help='Generate Kubernetes manifests')
     parser_generate_k8s.add_argument('--manifest-file', type=str, default=DEFAULT_MANIFEST_FILE,
                                    help='Build manifest file (default: build_manifest.json)')
-    parser_generate_k8s.add_argument('--execution-config', type=str, default=DEFAULT_EXECUTION_CONFIG,
-                                   help='Execution config file (default: execution_config.json)')
     parser_generate_k8s.add_argument('--namespace', type=str, default=DEFAULT_K8S_NAMESPACE,
                                    help='Kubernetes namespace (default: madengine)')
     parser_generate_k8s.set_defaults(func=generate_k8s)
-
-    # Export config command
-    parser_export = subparsers.add_parser('export-config',
-                                         description="Export execution configuration for external tools", 
-                                         help='Export execution configuration')
-    add_model_arguments(parser_export)
-    parser_export.add_argument('--output', type=str, default=DEFAULT_EXECUTION_CONFIG,
-                              help='Output configuration file (default: execution_config.json)')
-    parser_export.set_defaults(func=export_config)
     
     args = parser.parse_args()
     
