@@ -4,6 +4,8 @@
 
 The madengine Distributed Execution Solution enables flexible deployment of AI model benchmarking across diverse infrastructure setups. This solution splits the traditional monolithic workflow into separate **build** and **run** phases, enabling distributed execution scenarios from simple single-node setups to complex multi-cluster deployments.
 
+![madengine Distributed Execution Architecture Overview](img/architecture_overview.png)
+
 ### Why Distributed Execution?
 
 Traditional AI benchmarking tools tightly couple model building and execution, limiting deployment flexibility. Our solution addresses real-world challenges:
@@ -15,6 +17,8 @@ Traditional AI benchmarking tools tightly couple model building and execution, l
 - **Scale Management**: Distribute workloads across multiple nodes or clusters
 
 ### Supported Use Cases
+
+![Distributed Workflow Example](img/distributed_workflow.png)
 
 #### 1. **Single GPU Node** (Development & Testing)
 - **Scenario**: Individual developers or small teams with dedicated GPU workstations
