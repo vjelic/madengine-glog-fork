@@ -2,114 +2,271 @@
 
 ## Overview
 
-This solution splits the madengine `run_models.py` workflow into separate **build** and **run** phases to enable distributed execution scenarios such as:
+The madengine Distributed Execution Solution enables flexible deployment of AI model benchmarking across diverse infrastructure setups. This solution splits the traditional monolithic workflow into separate **build** and **run** phases, enabling distributed execution scenarios from simple single-node setups to complex multi-cluster deployments.
 
-- **Ansible**: Build images on a central host, distribute and run on multiple GPU nodes
-- **Kubernetes**: Build images in CI/CD, deploy as jobs across GPU clusters
-- **Multi-node setups**: Build once, run on multiple remote nodes with different GPU configurations
+### Why Distributed Execution?
 
-## Architecture
+Traditional AI benchmarking tools tightly couple model building and execution, limiting deployment flexibility. Our solution addresses real-world challenges:
 
-### Original Flow Problem
-The original `run_models.py` has a tightly coupled flow:
+- **Resource Optimization**: Build once on powerful build servers, run on specialized GPU nodes
+- **Infrastructure Flexibility**: Deploy across heterogeneous hardware without rebuilding
+- **CI/CD Integration**: Seamlessly integrate with existing DevOps pipelines
+- **Cost Efficiency**: Leverage different instance types for build vs. execution workloads
+- **Scale Management**: Distribute workloads across multiple nodes or clusters
+
+### Supported Use Cases
+
+#### 1. **Single GPU Node** (Development & Testing)
+- **Scenario**: Individual developers or small teams with dedicated GPU workstations
+- **Benefits**: Simplified workflow while maintaining production-ready patterns
+- **Example**: Data scientist running model comparisons on a local workstation
+
+#### 2. **Multi-Node GPU Clusters** (Production Workloads)
+- **Scenario**: Enterprise environments with multiple GPU servers
+- **Benefits**: Parallel execution, resource sharing, centralized management
+- **Example**: ML engineering team benchmarking models across different GPU types
+
+#### 3. **Cloud-Native Deployments** (Kubernetes/Container Orchestration)
+- **Scenario**: Modern cloud infrastructure with container orchestration
+- **Benefits**: Auto-scaling, resource management, integration with cloud services
+- **Example**: Cloud provider offering ML benchmarking as a service
+
+#### 4. **Hybrid Infrastructure** (On-Premise + Cloud)
+- **Scenario**: Organizations with mixed on-premise and cloud resources
+- **Benefits**: Workload distribution, cost optimization, data locality
+- **Example**: Financial institution with compliance requirements and cloud bursting needs
+
+#### 5. **CI/CD Pipeline Integration** (Automated Testing)
+- **Scenario**: Continuous integration environments for ML model validation
+- **Benefits**: Automated testing, reproducible results, quality gates
+- **Example**: MLOps pipeline validating model performance before deployment
+
+## Architecture & Design
+
+### Legacy Challenges
+The original `run_models.py` workflow created several limitations:
 ```
 Model Discovery → Docker Build → Container Run → Performance Collection
 ```
 
-### New Split Architecture
+**Problems:**
+- Tight coupling between build and execution phases
+- Resource waste (building on expensive GPU nodes)
+- Limited scalability (serial execution)
+- Difficult CI/CD integration
+- Complex multi-environment deployment
+
+### Modern Split Architecture
+Our solution decouples these phases for maximum flexibility:
+
 ```
-BUILD PHASE (Central Host):
+BUILD PHASE (Central/CI Server):
   Model Discovery → Docker Build → Push to Registry → Export Manifest
 
-RUN PHASE (Remote Nodes): 
+RUN PHASE (GPU Nodes):
   Load Manifest → Pull Images → Container Run → Performance Collection
 ```
 
-## Components
+**Benefits:**
+- **Resource Efficiency**: Build on CPU-optimized instances, run on GPU-optimized instances
+- **Parallel Execution**: Multiple nodes can run different models simultaneously
+- **Reproducibility**: Same Docker images ensure consistent results across environments
+- **Scalability**: Easy horizontal scaling by adding more execution nodes
+- **Cost Optimization**: Use appropriate instance types for each phase 
+  Load Manifest → Pull Images → Container Run → Performance Collection
 
-### 1. DockerBuilder (`docker_builder.py`)
+## Core Components
+
+### 1. **Modern CLI** (`madengine-cli`)
+Production-ready command-line interface built with Typer and Rich:
+- **Beautiful Output**: Progress bars, tables, panels with rich formatting
+- **Smart Commands**: Automatic workflow detection (build-only vs. full workflow)
+- **Type Safety**: Full type annotations with automatic validation
+- **Error Handling**: Context-aware error messages with helpful suggestions
+
+**Key Commands:**
+- `madengine-cli build` - Build images and create manifest
+- `madengine-cli run` - Intelligent run command (execution-only or full workflow)
+- `madengine-cli generate` - Create deployment configurations
+- `madengine-cli export-config` - Export configurations for external tools
+
+### 2. **DockerBuilder** (`docker_builder.py`)
 Handles the Docker image building phase:
-- Builds images for all discovered models
-- Pushes images to a registry (optional)
-- Exports a build manifest with image metadata
-- Supports credential handling and build arguments
+- Builds images for all discovered models with proper tagging
+- Pushes images to registries with credential handling
+- Exports comprehensive build manifests with metadata
+- Supports advanced build arguments and caching strategies
 
-### 2. ContainerRunner (`container_runner.py`)
-Handles the container execution phase:
-- Loads build manifest from build phase
-- Pulls images from registry if needed
-- Runs containers with proper GPU, mount, and environment configurations
-- Collects performance metrics and results
+### 3. **ContainerRunner** (`container_runner.py`)
+Manages container execution phase:
+- Loads build manifests and pulls images automatically
+- Configures GPU access, mounts, and environment variables
+- Collects performance metrics and execution results
+- Handles timeout management and container lifecycle
 
-### 3. DistributedOrchestrator (`distributed_orchestrator.py`)
+### 4. **DistributedOrchestrator** (`distributed_orchestrator.py`)
 Coordinates the distributed workflow:
-- Manages both build and run phases
-- Supports complete workflows or individual phases
-- Generates deployment configurations for external tools
-- Handles credential and context management
+- Manages both independent and combined build/run phases
+- Generates deployment configurations for external orchestration tools
+- Handles credential management and context passing
+- Provides comprehensive logging and error reporting
 
-### 4. Distributed CLI (`distributed_cli.py`)
-Command-line interface for distributed operations:
-- `build` - Build images and create manifest
-- `run` - Smart command that either runs execution-only (if manifest exists) or complete workflow (build + run)
-- `export-config` - Export execution configuration for external tools
-- `generate ansible` - Create Ansible playbooks
-- `generate k8s` - Create Kubernetes manifests
+## Getting Started
 
-## Usage Examples
+### Prerequisites
 
-### 1. Basic Split Workflow
+**For All Deployments:**
+- madengine installed on build and execution nodes
+- Docker installed and running
+- Access to a Docker registry (local or cloud-based)
+
+**For GPU Execution:**
+- ROCm Docker support (for AMD GPUs) or NVIDIA Docker runtime (for NVIDIA GPUs)
+- Appropriate GPU drivers installed
+
+**For Distributed Deployments:**
+- Network connectivity between build server and GPU nodes
+- SSH access or orchestration tools (Ansible/Kubernetes) configured
+
+### Quick Start: Single Node
+
+Perfect for development, testing, or single-workstation deployments:
+
+```bash
+# Install and setup
+pip install -e .
+
+# Simple workflow: build and run on same machine
+madengine-cli run --tags dummy --registry localhost:5000 --timeout 3600
+
+# Or split phases for testing distributed workflow
+madengine-cli build --tags dummy --registry localhost:5000 \
+  --additional-context '{"gpu_vendor": "AMD", "guest_os": "UBUNTU"}'
+madengine-cli run --manifest-file build_manifest.json
+```
+
+### Quick Start: Multi-Node
+
+For production deployments across multiple GPU servers:
+
+```bash
+# On build server
+madengine-cli build --tags resnet bert --registry my-registry.com:5000 \
+  --additional-context '{"gpu_vendor": "NVIDIA", "guest_os": "UBUNTU"}'
+
+# Transfer manifest to GPU nodes
+scp build_manifest.json user@gpu-node-01:/path/to/madengine/
+
+# On each GPU node
+madengine-cli run --manifest-file build_manifest.json --timeout 7200
+```
+
+## Usage Examples & Deployment Patterns
+
+### 1. Development Workflow (Single Node)
+
+**Audience**: Data scientists, ML engineers, individual developers  
+**Use Case**: Local model development and testing
+
+```bash
+# Complete workflow for development
+madengine-cli run --tags dummy --registry localhost:5000 \
+  --additional-context '{"gpu_vendor": "AMD", "guest_os": "UBUNTU"}' \
+  --live-output --verbose
+
+# Split workflow for testing distributed patterns
+madengine-cli build --tags dummy --registry localhost:5000 \
+  --additional-context '{"gpu_vendor": "AMD", "guest_os": "UBUNTU"}' \
+  --clean-docker-cache
+
+madengine-cli run --manifest-file build_manifest.json --timeout 1800
+```
+
+### 2. Production Split Workflow
+
+**Audience**: DevOps engineers, platform teams  
+**Use Case**: Production deployments with resource optimization
 
 **Build Phase (on CI/Build server):**
 ```bash
 # Build all models and push to registry
-python -m madengine.distributed_cli build \
-    --registry localhost:5000 \
+madengine-cli build \
+    --tags resnet bert llama \
+    --registry production.registry.com \
+    --additional-context '{"gpu_vendor": "NVIDIA", "guest_os": "UBUNTU"}' \
     --clean-docker-cache \
-    --manifest-output build_manifest.json
+    --manifest-output build_manifest.json \
+    --summary-output build_summary.json
 
 # This creates:
 # - build_manifest.json (contains image info, model info, build metadata)
-# - Images pushed to localhost:5000 registry
+# - Images pushed to production.registry.com
+# - build_summary.json (build status and metrics)
 ```
 
 **Run Phase (on GPU nodes):**
 ```bash
 # Copy build_manifest.json to GPU nodes, then:
-python -m madengine.distributed_cli run \
+madengine-cli run \
     --manifest-file build_manifest.json \
-    --timeout 3600
+    --timeout 3600 \
+    --summary-output execution_summary.json
 
 # Registry information is automatically detected from the manifest
 # No need to specify --registry parameter unless you want to override
 ```
 
-### 2. Smart Run Command (Complete Workflow)
+### 3. Intelligent Workflow Detection
 
-The `run` command is smart and can automatically detect whether to perform execution-only or complete workflow:
+**Audience**: All users  
+**Use Case**: Simplified operations with automatic workflow detection
+
+The `madengine-cli run` command automatically detects whether to perform execution-only or complete workflow:
 
 **Complete Workflow (when no manifest exists):**
 ```bash
 # Automatically runs build + run phases
-python -m madengine.distributed_cli run \
+madengine-cli run \
+    --tags resnet \
     --registry localhost:5000 \
+    --additional-context '{"gpu_vendor": "AMD", "guest_os": "UBUNTU"}' \
     --timeout 3600 \
     --clean-docker-cache
 ```
 
-### 3. Ansible Deployment
+**Execution-Only Mode (when manifest exists):**
+```bash
+# Only runs the execution phase using existing manifest
+# Registry is automatically detected from the manifest
+madengine-cli run \
+    --manifest-file build_manifest.json \
+    --timeout 3600
+
+# Optional: Override registry from manifest
+madengine-cli run \
+    --manifest-file build_manifest.json \
+    --registry custom-registry.com \
+    --timeout 3600
+```
+
+### 4. Ansible Deployment
+
+**Audience**: Infrastructure teams, system administrators  
+**Use Case**: Automated deployment across multiple GPU nodes
 
 **Export execution configuration:**
 ```bash
 # Export execution configuration for external tools
-python -m madengine.distributed_cli export-config \
+madengine-cli export-config \
+    --tags resnet bert \
+    --additional-context '{"gpu_vendor": "NVIDIA", "guest_os": "UBUNTU"}' \
     --output execution_config.json
 ```
 
 **Generate Ansible playbook:**
 ```bash
 # Generate Ansible playbook using the manifest and config
-python -m madengine.distributed_cli generate ansible \
+madengine-cli generate ansible \
     --manifest-file build_manifest.json \
     --execution-config execution_config.json \
     --output madengine_distributed.yml
@@ -117,22 +274,39 @@ python -m madengine.distributed_cli generate ansible \
 
 **Run with Ansible:**
 ```bash
+# Create inventory file for your GPU cluster
+cat > gpu_inventory << EOF
+[gpu_nodes]
+gpu-node-01 ansible_host=192.168.1.101 ansible_user=madengine
+gpu-node-02 ansible_host=192.168.1.102 ansible_user=madengine
+gpu-node-03 ansible_host=192.168.1.103 ansible_user=madengine
+
+[gpu_nodes:vars]
+madengine_path=/opt/madengine
+registry_url=production.registry.com
+EOF
+
 # Deploy to GPU cluster
 ansible-playbook -i gpu_inventory madengine_distributed.yml
 ```
 
-### 4. Kubernetes Deployment
+### 5. Kubernetes Deployment
+
+**Audience**: Platform engineers, cloud architects  
+**Use Case**: Cloud-native deployments with auto-scaling and resource management
 
 **Export execution configuration:**
 ```bash
 # Export execution configuration for external tools
-python -m madengine.distributed_cli export-config \
+madengine-cli export-config \
+    --tags llama bert \
+    --additional-context '{"gpu_vendor": "NVIDIA", "guest_os": "UBUNTU"}' \
     --output execution_config.json
 ```
 
 **Generate K8s manifests:**
 ```bash
-python -m madengine.distributed_cli generate k8s \
+madengine-cli generate k8s \
     --manifest-file build_manifest.json \
     --execution-config execution_config.json \
     --namespace madengine-prod
@@ -140,549 +314,582 @@ python -m madengine.distributed_cli generate k8s \
 
 **Deploy to Kubernetes:**
 ```bash
+# Create namespace and deploy
+kubectl create namespace madengine-prod
 kubectl apply -f k8s-madengine-configmap.yaml
 kubectl apply -f k8s-madengine-job.yaml
+
+# Monitor execution
+kubectl get jobs -n madengine-prod
+kubectl logs -n madengine-prod job/madengine-job -f
 ```
 
-**Note**: The generated Kubernetes manifests are templates that should be customized for your environment:
-- Update the `nodeSelector` to match your GPU node labels
+**Important K8s Customization Notes:**
+- Update `nodeSelector` to match your GPU node labels
 - Adjust resource requests/limits based on model requirements  
-- Modify the container image to use your actual distributed runner image
-- Update GPU resource types (nvidia.com/gpu vs amd.com/gpu) based on your hardware
-- Update the command to use the correct distributed CLI: `python3 -m madengine.distributed_cli run --manifest-file=/config/manifest.json`
+- Modify GPU resource types (`nvidia.com/gpu` vs `amd.com/gpu`) based on hardware
+- Update the container image to use your distributed runner image
+- Customize the command to use: `madengine-cli run --manifest-file=/config/manifest.json`
 
-### 5. Configuration Export
+## Real-World Deployment Scenarios
 
-The `export-config` command allows you to export execution configurations that can be used by external orchestration tools:
+### Scenario 1: AI Research Lab
+
+**Setup**: 5 GPU workstations, shared NFS storage, local Docker registry  
+**Requirement**: Researchers need to compare models across different GPU types
+
+```bash
+# Central build server (shared machine)
+madengine-cli build --tags transformer_models --registry lab-registry:5000 \
+  --additional-context '{"gpu_vendor": "NVIDIA", "guest_os": "UBUNTU"}' \
+  --clean-docker-cache
+
+# Distribute to workstations via shared storage
+cp build_manifest.json /shared/nfs/madengine/
+
+# Each researcher runs on their workstation
+madengine-cli run --manifest-file /shared/nfs/madengine/build_manifest.json \
+  --timeout 7200 --keep-alive --live-output
+```
+
+### Scenario 2: Cloud Service Provider
+
+**Setup**: Kubernetes cluster with mixed GPU types, CI/CD pipeline, cloud registry  
+**Requirement**: Provide ML benchmarking as a service to customers
+
+```bash
+# CI/CD Pipeline (GitLab/Jenkins)
+madengine-cli build --tags customer_models --registry gcr.io/ml-bench \
+  --additional-context-file customer_context.json \
+  --summary-output build_metrics.json
+
+# Generate K8s manifests for auto-scaling deployment
+madengine-cli generate k8s --namespace customer-bench-$CUSTOMER_ID
+
+# Deploy with auto-scaling based on queue depth
+kubectl apply -f k8s-manifests/ --namespace customer-bench-$CUSTOMER_ID
+```
+
+### Scenario 3: Financial Institution
+
+**Setup**: On-premise secure network, compliance requirements, air-gapped registry  
+**Requirement**: Regular model validation with audit trails
+
+```bash
+# Secure build environment
+madengine-cli build --tags risk_models --registry secure-registry.internal \
+  --additional-context '{"gpu_vendor": "AMD", "guest_os": "CENTOS"}' \
+  --summary-output audit_build_$(date +%Y%m%d).json
+
+# Ansible deployment with compliance logging
+madengine-cli generate ansible --manifest-file build_manifest.json
+ansible-playbook -i secure_gpu_inventory madengine_distributed.yml \
+  --extra-vars "audit_mode=true compliance_log=/audit/ml_bench_$(date +%Y%m%d).log"
+```
+
+## Advanced Configuration & Optimization
+
+### Configuration Export & External Integration
+
+**Audience**: DevOps teams, integration specialists  
+**Use Case**: Integration with existing tools and monitoring systems
+
+The `export-config` command allows you to export execution configurations for use with external orchestration tools:
 
 ```bash
 # Export configuration with specific tags
-python -m madengine.distributed_cli export-config \
+madengine-cli export-config \
     --tags llama bert \
+    --additional-context '{"gpu_vendor": "NVIDIA", "guest_os": "UBUNTU"}' \
     --output execution_config.json
 
 # Export configuration for all discovered models
-python -m madengine.distributed_cli export-config \
-    --output execution_config.json
+madengine-cli export-config \
+    --additional-context-file production_context.json \
+    --output all_models_config.json
 ```
 
-The exported configuration includes:
-- Model discovery information
-- Required credentials
-- Docker environment variables and mounts
-- GPU configuration details
+**Exported Configuration Includes:**
+- Model discovery information and metadata
+- Required credentials and authentication
+- Docker environment variables and volume mounts
+- GPU configuration and resource requirements
+- Custom tool configurations and data paths
 
-This is useful for integrating madengine with external tools like CI/CD pipelines, monitoring systems, or custom orchestration frameworks.
-
-### 6. Smart Run Command Behavior
-
-The `run` command in the distributed CLI is intelligent and automatically detects the appropriate workflow based on the arguments provided:
-
-#### Execution-Only Mode
-When a `--manifest-file` is provided **and** the file exists:
+**Integration Examples:**
 ```bash
-# Only runs the execution phase using existing manifest
-# Registry is automatically detected from the manifest
-python -m madengine.distributed_cli run \
-    --manifest-file build_manifest.json \
-    --timeout 3600
+# Integration with monitoring systems
+curl -X POST http://monitoring.internal/api/benchmarks \
+     -H "Content-Type: application/json" \
+     -d @execution_config.json
 
-# Optional: Override registry from manifest
-python -m madengine.distributed_cli run \
-    --manifest-file build_manifest.json \
-    --registry custom-registry.com \
-    --timeout 3600
+# Custom orchestration with Terraform
+terraform apply -var-file="execution_config.json"
 
-# Note: No --tags parameter needed when using manifest file
-# The manifest contains both built images and model information
-# ensuring exact reproduction of the build configuration
+# Jenkins pipeline integration
+jenkins-cli build madengine-benchmark --parameters execution_config.json
 ```
 
-#### Complete Workflow Mode  
-When **no** `--manifest-file` is provided **or** the manifest file doesn't exist:
+### Performance Optimization
+
+**Build Optimization:**
 ```bash
-# Runs both build and execution phases
-python -m madengine.distributed_cli run \
-    --tags resnet \
-    --registry localhost:5000 \
+# Clean build for reproducible images
+madengine-cli build \
+    --tags production_models \
+    --registry production.registry.com \
     --clean-docker-cache \
-    --timeout 3600
-```
+    --additional-context '{"gpu_vendor": "NVIDIA", "guest_os": "UBUNTU"}' \
+    --tools-config ./configs/optimized-tools.json
 
-This smart behavior eliminates the need for a separate `full` command and makes the CLI more intuitive to use.
-
-### 7. CLI Examples Summary
-
-Here are some comprehensive examples of using the distributed CLI:
-
-```bash
-# Build models with specific tags and push to registry
-python -m madengine.distributed_cli build \
-    --tags llama bert resnet \
-    --registry localhost:5000 --clean-docker-cache
-
-# Run models using pre-built manifest with auto-detected registry (execution-only)
-# No --registry needed - registry is auto-detected from the manifest
-python -m madengine.distributed_cli run \
-    --manifest-file build_manifest.json --timeout 3600
-
-# Complete workflow with specific tags and registry (build + run)
-python -m madengine.distributed_cli run \
-    --tags resnet --registry localhost:5000 --timeout 3600 --live-output
-
-# Export configuration for external orchestration tools
-python -m madengine.distributed_cli export-config \
-    --tags llama --output execution_config.json
-
-# Generate Ansible playbook for distributed execution
-python -m madengine.distributed_cli generate ansible \
-    --manifest-file build_manifest.json \
-    --execution-config execution_config.json \
-    --output madengine.yml
-
-# Generate Kubernetes manifests with custom namespace
-python -m madengine.distributed_cli generate k8s \
-    --namespace madengine-prod --tags llama
-```
-
-### 8. Advanced CLI Usage
-
-The distributed CLI supports all standard madengine arguments for model filtering and execution control:
-
-#### Model Selection and Filtering
-```bash
-# Build specific models by tags
-python -m madengine.distributed_cli build \
-    --tags llama bert resnet \
-    --registry localhost:5000
-
-# Build with additional context for custom base images
-python -m madengine.distributed_cli build \
-    --additional-context "{'docker_build_arg':{'BASE_DOCKER':'custom:latest'}}" \
-    --registry localhost:5000
-
-# Build with context file
-python -m madengine.distributed_cli build \
-    --additional-context-file context.json \
-    --registry localhost:5000
-```
-
-#### Execution Control
-```bash
-# Run with custom timeout and keep containers alive for debugging
-# Registry auto-detected from manifest
-python -m madengine.distributed_cli run \
-    --manifest-file build_manifest.json \
-    --timeout 7200 \
-    --keep-alive \
-    --live-output
-
-# Override registry if needed (fallback mode)
-python -m madengine.distributed_cli run \
-    --manifest-file build_manifest.json \
-    --registry custom-registry.com \
-    --tags llama \
-    --timeout 3600
-```
-
-#### Data Configuration
-```bash
-# Use custom data configuration
-python -m madengine.distributed_cli full \
-    --data-config-file-name custom_data.json \
-    --force-mirror-local /shared/data \
-    --registry localhost:5000
-```
-
-#### Build Optimization
-```bash
-# Clean build without cache for reproducible images
-python -m madengine.distributed_cli build \
-    --clean-docker-cache \
-    --registry localhost:5000
-
-# Save detailed build and execution summaries
-python -m madengine.distributed_cli full \
+# Parallel builds with resource management
+madengine-cli build \
+    --tags batch_1 batch_2 batch_3 \
     --registry localhost:5000 \
-    --summary-output full_workflow_summary.json
+    --sys-env-details \
+    --disable-skip-gpu-arch
 ```
 
-## Integration with Existing madengine
+**Execution Optimization:**
+```bash
+# High-performance execution with custom timeouts
+madengine-cli run \
+    --manifest-file build_manifest.json \
+    --timeout 0 \
+    --keep-model-dir \
+    --force-mirror-local /fast-ssd/data \
+    --summary-output detailed_metrics.json
 
-### Minimal Changes Required
+# Resource monitoring during execution
+madengine-cli run \
+    --manifest-file build_manifest.json \
+    --live-output \
+    --verbose
+```
 
-The solution maintains compatibility with existing madengine components:
+### CLI Reference Summary
 
-1. **Context System**: Uses existing `Context` class for configuration
-2. **Data Provider**: Integrates with existing `Data` class for data management  
-3. **Docker Integration**: Uses existing `Docker` class for container management
-4. **Model Discovery**: Uses existing `DiscoverModels` for finding models
+**Essential Commands for Different Users:**
 
-### Migration Path
+**Data Scientists / Researchers:**
+```bash
+# Simple complete workflow
+madengine-cli run --tags dummy --registry localhost:5000
 
-1. **Immediate**: Use new distributed CLI for split workflows
-2. **Gradual**: Migrate existing workflows to use distributed orchestrator
-3. **Full Integration**: Replace `run_models.py` with distributed orchestrator
+# Development with live monitoring
+madengine-cli run --tags my_model --live-output --verbose \
+  --additional-context '{"gpu_vendor": "AMD", "guest_os": "UBUNTU"}'
+```
 
-## Step-by-Step: Building and Running a Single Model
+**DevOps Engineers:**
+```bash
+# Production build pipeline
+madengine-cli build --tags production_suite --registry prod.registry.com \
+  --clean-docker-cache --summary-output build_report.json
 
-This section provides a complete walkthrough for building and running a single model (`dummy`) in a distributed scenario, from initial setup to deployment on GPU nodes.
+# Execution with monitoring
+madengine-cli run --manifest-file build_manifest.json \
+  --timeout 7200 --summary-output execution_report.json
+```
 
-### Prerequisites
+**Platform Teams:**
+```bash
+# Generate deployment configs
+madengine-cli export-config --tags cluster_models --output deploy_config.json
+madengine-cli generate ansible --output cluster_deployment.yml
+madengine-cli generate k8s --namespace ml-production
+```
 
-1. **Docker Registry**: A accessible Docker registry (local or remote)
-2. **GPU Node(s)**: Target machines with GPU drivers and Docker installed
-3. **Network Access**: GPU nodes can access the Docker registry
-4. **madengine**: Installed on build machine and GPU nodes
+## Integration & Migration
 
-### Phase 1: Build and Prepare (Central Build Machine)
+### Compatibility with Existing madengine
 
-#### Step 1: Navigate to madengine Directory
+The distributed solution maintains full compatibility with existing madengine components:
+
+**Preserved Components:**
+- **Context System**: Uses existing `Context` class for configuration management
+- **Data Provider**: Integrates seamlessly with existing `Data` class for data handling  
+- **Docker Integration**: Leverages existing `Docker` class for container management
+- **Model Discovery**: Uses existing `DiscoverModels` for finding and filtering models
+- **All CLI Arguments**: Supports all existing madengine command-line options
+
+**Enhanced Features:**
+- **Modern CLI**: Beautiful output with progress bars, tables, and rich formatting
+- **Better Error Handling**: Context-aware error messages with helpful suggestions
+- **Type Safety**: Full type annotations with automatic validation
+- **Advanced Configuration**: Additional options for optimization and customization
+
+### Migration Strategies
+
+#### 1. **Gradual Migration** (Recommended)
+```bash
+# Phase 1: Start using new CLI for development
+madengine-cli run --tags dummy --registry localhost:5000
+
+# Phase 2: Adopt split workflow for production
+madengine-cli build --tags prod_models --registry prod.registry.com
+madengine-cli run --manifest-file build_manifest.json
+
+# Phase 3: Integrate with orchestration tools
+madengine-cli generate ansible --output prod_deployment.yml
+```
+
+#### 2. **Side-by-Side Comparison**
+```bash
+# Run both old and new workflows for validation
+python -m madengine.mad --tags dummy  # Original
+madengine-cli run --tags dummy         # New
+
+# Compare results and performance metrics
+```
+
+#### 3. **Direct Replacement**
+```bash
+# Replace existing scripts/pipelines with new CLI
+# Old: python -m madengine.mad --tags production --registry localhost:5000
+# New: madengine-cli run --tags production --registry localhost:5000
+```
+
+### Enterprise Integration Patterns
+
+#### CI/CD Pipeline Integration
+```yaml
+# GitLab CI example
+stages:
+  - build
+  - test
+  - deploy
+
+build_models:
+  stage: build
+  script:
+    - madengine-cli build --tags $MODEL_TAGS --registry $CI_REGISTRY_IMAGE
+    - madengine-cli export-config --output config.json
+  artifacts:
+    paths:
+      - build_manifest.json
+      - config.json
+
+test_models:
+  stage: test
+  script:
+    - madengine-cli run --manifest-file build_manifest.json --timeout 1800
+  artifacts:
+    reports:
+      junit: test_results.xml
+
+deploy_production:
+  stage: deploy
+  script:
+    - madengine-cli generate k8s --namespace production
+    - kubectl apply -f k8s-madengine-*.yaml
+```
+
+#### Monitoring Integration
+```bash
+# Prometheus metrics export
+madengine-cli run --manifest-file build_manifest.json \
+  --summary-output metrics.json
+
+# Custom metrics processing
+python post_process_metrics.py metrics.json > prometheus_metrics.txt
+curl -X POST http://pushgateway:9091/metrics/job/madengine < prometheus_metrics.txt
+```
+
+## Step-by-Step Tutorial: Single Model Deployment
+
+This tutorial walks through deploying a single model (`dummy`) across distributed infrastructure.
+
+### Phase 1: Build and Prepare
+
+**Step 1: Build the Model**
 ```bash
 cd /path/to/madengine
-```
 
-#### Step 2: Build the Dummy Model
-```bash
-# Build just the dummy model and push to registry
-python -m madengine.distributed_cli build \
+# Build dummy model with proper context
+madengine-cli build \
     --tags dummy \
     --registry localhost:5000 \
-    --manifest-output dummy_build_manifest.json \
-    --summary-output dummy_build_summary.json
+    --additional-context '{"gpu_vendor": "AMD", "guest_os": "UBUNTU"}' \
+    --manifest-output dummy_manifest.json \
+    --summary-output dummy_build.json \
+    --clean-docker-cache
 ```
 
-This will:
-- Discover models with the "dummy" tag
-- Build Docker images for the dummy model variants
-- Push images to the registry at `localhost:5000`
-- Create `dummy_build_manifest.json` with build metadata
-- Generate `dummy_build_summary.json` with build status
-
-#### Step 3: Verify Build Results
+**Step 2: Verify Build**
 ```bash
-# Check build summary for any failures
-cat dummy_build_summary.json
+# Check build status
+cat dummy_build.json | jq '.successful_builds | length'
 
-# Example successful output:
-{
-  "successful_builds": [
-    {
-      "model_name": "dummy",
-      "image_tag": "localhost:5000/madengine/dummy:latest",
-      "build_time": "2024-01-15T10:30:00Z",
-      "image_size": "1.2GB"
-    }
-  ],
-  "failed_builds": [],
-  "total_build_time": 180.5,
-  "registry_url": "localhost:5000"
-}
+# Verify registry push
+docker images | grep dummy
+curl http://localhost:5000/v2/_catalog
 ```
 
-#### Step 4: Export Execution Configuration (Optional)
+### Phase 2: Single Node Execution
+
+**Step 3: Local Testing**
 ```bash
-# Export configuration for external orchestration tools
-python -m madengine.distributed_cli export-config \
-    --tags dummy \
-    --output dummy_execution_config.json
-```
-
-### Phase 2: Manual Deployment to GPU Node
-
-#### Step 5: Transfer Manifest to GPU Node
-```bash
-# Copy manifest to GPU node (replace gpu-node-01 with actual hostname/IP)
-scp dummy_build_manifest.json user@gpu-node-01:/home/user/madengine/
-```
-
-#### Step 6: Run on GPU Node
-```bash
-# SSH to GPU node
-ssh user@gpu-node-01
-
-# Navigate to madengine directory on GPU node
-cd /home/user/madengine
-
-# Run the dummy model using the manifest
-# Registry is automatically detected from the manifest
-python -m madengine.distributed_cli run \
-    --manifest-file dummy_build_manifest.json \
+# Test locally first
+madengine-cli run \
+    --manifest-file dummy_manifest.json \
     --timeout 1800 \
     --live-output \
-    --summary-output dummy_execution_summary.json
+    --summary-output dummy_execution.json
 ```
 
-#### Step 7: Verify Execution Results
+### Phase 3: Multi-Node Deployment
+
+**Step 4: Manual Distribution**
 ```bash
-# Check execution summary
-cat dummy_execution_summary.json
+# Copy to remote GPU node
+scp dummy_manifest.json user@gpu-node:/opt/madengine/
 
-# Example successful output:
-{
-  "successful_runs": [
-    {
-      "model_name": "dummy",
-      "execution_time": 45.2,
-      "gpu_used": "GPU-0",
-      "peak_gpu_memory": "2.1GB",
-      "exit_code": 0,
-      "output_file": "perf.csv"
-    }
-  ],
-  "failed_runs": [],
-  "total_execution_time": 45.2,
-  "gpu_node": "gpu-node-01"
-}
-
-# Check performance results
-head perf.csv
+# SSH and execute
+ssh user@gpu-node 'cd /opt/madengine && madengine-cli run --manifest-file dummy_manifest.json'
 ```
 
-### Phase 3: Automated Deployment with Ansible
-
-#### Step 8: Generate Ansible Playbook
+**Step 5: Automated Deployment**
 ```bash
-# Back on build machine - generate Ansible playbook
-python -m madengine.distributed_cli generate ansible \
-    --manifest-file dummy_build_manifest.json \
-    --execution-config dummy_execution_config.json \
-    --output dummy_ansible_playbook.yml
+# Generate Ansible playbook
+madengine-cli export-config --tags dummy --output dummy_config.json
+madengine-cli generate ansible --manifest-file dummy_manifest.json --output deploy.yml
+
+# Deploy with Ansible
+ansible-playbook -i gpu_inventory deploy.yml
 ```
 
-#### Step 9: Create Ansible Inventory
+### Phase 4: Production Kubernetes
+
+**Step 6: Container Orchestration**
 ```bash
-# Create inventory file for your GPU nodes
-cat > gpu_inventory << EOF
-[gpu_nodes]
-gpu-node-01 ansible_host=192.168.1.101 ansible_user=madengine
-gpu-node-02 ansible_host=192.168.1.102 ansible_user=madengine
+# Generate K8s manifests
+madengine-cli generate k8s --namespace madengine-prod --manifest-file dummy_manifest.json
 
-[gpu_nodes:vars]
-madengine_path=/home/madengine/madengine
-registry_url=localhost:5000
-EOF
-```
-
-#### Step 10: Deploy with Ansible
-```bash
-# Run Ansible playbook to deploy to all GPU nodes
-ansible-playbook -i gpu_inventory dummy_ansible_playbook.yml
-
-# Check results on all nodes
-ansible gpu_nodes -i gpu_inventory -m shell -a "cat /home/madengine/madengine/perf.csv | head -5"
-```
-
-### Phase 4: Kubernetes Deployment
-
-#### Step 11: Generate Kubernetes Manifests
-```bash
-# Generate K8s manifests for the dummy model
-python -m madengine.distributed_cli generate k8s \
-    --manifest-file dummy_build_manifest.json \
-    --execution-config dummy_execution_config.json \
-    --namespace madengine-dummy
-```
-
-#### Step 12: Customize Kubernetes Manifests
-```bash
-# Edit the generated manifests to match your cluster
-# Update k8s-madengine-job.yaml:
-# - nodeSelector for GPU nodes
-# - Resource requests/limits  
-# - GPU resource type (nvidia.com/gpu or amd.com/gpu)
-# - Image registry URLs
-
-vim k8s-madengine-job.yaml
-```
-
-#### Step 13: Deploy to Kubernetes
-```bash
-# Create namespace
-kubectl create namespace madengine-dummy
-
-# Apply manifests
+# Deploy to cluster
+kubectl create namespace madengine-prod
 kubectl apply -f k8s-madengine-configmap.yaml
 kubectl apply -f k8s-madengine-job.yaml
 
-# Monitor job progress
-kubectl get jobs -n madengine-dummy
-kubectl get pods -n madengine-dummy
-kubectl logs -n madengine-dummy job/madengine-dummy-job
-
-# Get results
-kubectl get configmap madengine-results -n madengine-dummy -o yaml
+# Monitor execution
+kubectl logs -f job/madengine-job -n madengine-prod
 ```
 
-### Key Benefits of This Workflow
+## Troubleshooting Guide
 
-1. **Separation of Concerns**: Build once on a central machine, run anywhere
-2. **Resource Efficiency**: GPU nodes don't need build dependencies  
-3. **Scalability**: Easy to run on multiple nodes simultaneously
-4. **Reproducibility**: Same Docker images ensure consistent results
-5. **Integration**: Works with existing orchestration tools (Ansible, K8s)
+### Common Issues and Solutions
 
-### Troubleshooting Single Model Deployment
+#### Build Phase Problems
 
-#### Common Issues and Solutions
-
-**Build Phase Issues:**
+**Registry Connectivity Issues:**
 ```bash
-# Check Docker registry connectivity
+# Test registry access
+curl -v http://localhost:5000/v2/_catalog
 docker login localhost:5000
-docker images | grep dummy
 
-# Verify model discovery
-python -m madengine.tools.discover_models --tags dummy
+# Fix: Check registry service and firewall
+sudo systemctl status docker-registry
+sudo ufw allow 5000
 ```
 
-**Run Phase Issues:**
+**Model Discovery Failures:**
 ```bash
-# Check image pull from registry
+# Verify model tags and paths
+madengine-cli export-config --tags dummy --verbose
+
+# Fix: Check model configuration files
+ls -la scripts/dummy/
+cat models.json | jq '.models[] | select(.tags[] | contains("dummy"))'
+```
+
+**Docker Build Failures:**
+```bash
+# Check Docker daemon and space
+docker system info
+docker system df
+
+# Fix: Clean up space and restart Docker
+docker system prune -f
+sudo systemctl restart docker
+```
+
+#### Execution Phase Problems
+
+**GPU Access Issues:**
+```bash
+# Check GPU availability
+nvidia-smi  # or rocm-smi for AMD
+docker run --rm --gpus all nvidia/cuda:11.0-base nvidia-smi
+
+# Fix: Install Docker GPU runtime
+sudo apt-get install nvidia-docker2
+sudo systemctl restart docker
+```
+
+**Image Pull Failures:**
+```bash
+# Test image pull manually
 docker pull localhost:5000/madengine/dummy:latest
 
-# Verify GPU availability
-nvidia-smi  # or rocm-smi for AMD GPUs
-
-# Check Docker GPU runtime
-docker run --rm --gpus all nvidia/cuda:11.0-base-ubuntu20.04 nvidia-smi
+# Fix: Check registry URL in manifest
+cat build_manifest.json | jq '.registry'
 ```
 
-**Network Issues:**
+**Permission Errors:**
 ```bash
-# Test registry connectivity from GPU node
-curl -v http://localhost:5000/v2/_catalog
+# Check Docker permissions
+groups $USER | grep docker
 
-# Check firewall rules for registry port
-sudo ufw status | grep 5000
+# Fix: Add user to Docker group
+sudo usermod -aG docker $USER
+newgrp docker
 ```
 
-### Performance Considerations for Single Model
+#### Network and Distribution Issues
 
-1. **Image Size**: The dummy model image is relatively small (~1.2GB), making it ideal for testing
-2. **Runtime**: Typical execution time is 30-60 seconds
-3. **Memory**: Requires ~2GB GPU memory
-4. **Network**: Image transfer time depends on registry bandwidth
-
-This single-model workflow serves as a foundation for scaling up to multi-model, multi-node distributed execution scenarios.
-
-## Quick Reference: Minimal Single-Model Workflow
-
-For quick deployment of a single model in a distributed scenario, here's the minimal command sequence:
-
-### Manual Deployment (Build Machine → GPU Node)
-
-**Build Phase:**
+**SSH/Ansible Connectivity:**
 ```bash
-# 1. Build and push model
-python -m madengine.distributed_cli build --tags dummy --registry localhost:5000
+# Test SSH access
+ssh -v user@gpu-node
 
-# 2. Transfer manifest
-scp build_manifest.json user@gpu-node:/path/to/madengine/
+# Fix: Setup SSH keys
+ssh-copy-id user@gpu-node
 ```
 
-**Run Phase (on GPU node):**
+**Kubernetes Deployment Problems:**
 ```bash
-# 3. Run model (registry auto-detected from manifest)
-python -m madengine.distributed_cli run --manifest-file build_manifest.json
+# Check cluster access
+kubectl cluster-info
+kubectl get nodes
+
+# Fix: Update kubeconfig
+kubectl config view
+kubectl config use-context correct-cluster
 ```
 
-### Ansible Deployment (Build Machine → Multiple GPU Nodes)
+### Performance Optimization Tips
 
+#### For Build Phase:
+- Use `--clean-docker-cache` sparingly (only when needed)
+- Enable Docker BuildKit for faster builds
+- Use local registry to reduce push/pull times
+- Build during off-peak hours for better resource utilization
+
+#### For Execution Phase:
+- Use `--force-mirror-local` for faster data access
+- Set appropriate `--timeout` values based on model complexity
+- Enable `--live-output` for long-running jobs
+- Use `--keep-alive` for debugging failed executions
+
+### Monitoring and Logging
+
+**Enable Verbose Logging:**
 ```bash
-# 1. Build and export config
-python -m madengine.distributed_cli build --tags dummy --registry localhost:5000
-python -m madengine.distributed_cli export-config --tags dummy
-
-# 2. Generate and run Ansible playbook
-python -m madengine.distributed_cli generate ansible
-ansible-playbook -i gpu_inventory madengine_distributed.yml
+madengine-cli run --manifest-file build_manifest.json --verbose
 ```
 
-### Kubernetes Deployment (CI/CD → K8s Cluster)
-
+**Monitor Resource Usage:**
 ```bash
-# 1. Build and export config (in CI/CD)
-python -m madengine.distributed_cli build --tags dummy --registry my-registry.com
-python -m madengine.distributed_cli export-config --tags dummy
+# GPU monitoring
+watch -n 1 nvidia-smi
 
-# 2. Generate and deploy K8s manifests
-python -m madengine.distributed_cli generate k8s --namespace madengine-prod
-kubectl apply -f k8s-madengine-configmap.yaml
-kubectl apply -f k8s-madengine-job.yaml
+# System monitoring
+htop
+iostat -x 1
 ```
 
-**Key Files Generated:**
-- `build_manifest.json` - Contains built image metadata and execution info
-- `execution_config.json` - Runtime configuration for external tools  
-- `*_summary.json` - Build/execution status and metrics
-- `madengine_distributed.yml` - Ansible playbook
-- `k8s-madengine-*.yaml` - Kubernetes manifests
+**Collect Execution Metrics:**
+```bash
+madengine-cli run --manifest-file build_manifest.json \
+  --summary-output execution_metrics.json \
+  --live-output
+```
+
+## Quick Reference
+
+### Command Cheat Sheet
+
+**Single Node Development:**
+```bash
+# Complete workflow
+madengine-cli run --tags dummy --registry localhost:5000
+
+# Split workflow for testing
+madengine-cli build --tags dummy --registry localhost:5000 \
+  --additional-context '{"gpu_vendor": "AMD", "guest_os": "UBUNTU"}'
+madengine-cli run --manifest-file build_manifest.json
+```
+
+**Multi-Node Production:**
+```bash
+# Build phase (CI/Build server)
+madengine-cli build --tags prod_models --registry prod.registry.com \
+  --additional-context-file production.json --clean-docker-cache
+
+# Execution phase (GPU nodes)
+madengine-cli run --manifest-file build_manifest.json --timeout 7200
+```
+
+**Automated Deployment:**
+```bash
+# Ansible
+madengine-cli export-config --output config.json
+madengine-cli generate ansible --output deployment.yml
+ansible-playbook -i inventory deployment.yml
+
+# Kubernetes
+madengine-cli generate k8s --namespace production
+kubectl apply -f k8s-madengine-*.yaml
+```
+
+### File Outputs
+
+| File | Purpose | When Generated |
+|------|---------|----------------|
+| `build_manifest.json` | Build metadata and image info | After successful build |
+| `execution_config.json` | Runtime configuration | Via `export-config` command |
+| `*_summary.json` | Build/execution metrics | When `--summary-output` used |
+| `madengine_distributed.yml` | Ansible playbook | Via `generate ansible` |
+| `k8s-madengine-*.yaml` | Kubernetes manifests | Via `generate k8s` |
+| `perf.csv` | Performance results | After model execution |
+
+### Best Practices
+
+1. **Always use `--additional-context`** for build-only operations
+2. **Test locally first** before distributed deployment
+3. **Use semantic tagging** for model organization
+4. **Monitor build and execution metrics** with summary outputs
+5. **Implement proper registry authentication** for production
+6. **Customize generated templates** for your infrastructure
+7. **Use version control** for configuration files
+8. **Document your deployment patterns** for team consistency
+
+## Benefits Summary
+
+### For Development Teams
+- **Faster Iteration**: Build once, test on multiple configurations
+- **Local Development**: Full workflow on single machines
+- **Easy Debugging**: Live output and container inspection capabilities
+
+### For Operations Teams  
+- **Resource Optimization**: Separate build and execution infrastructure
+- **Scalability**: Horizontal scaling across multiple nodes
+- **Integration**: Seamless CI/CD and orchestration tool support
+- **Monitoring**: Comprehensive metrics and logging
+
+### For Organizations
+- **Cost Efficiency**: Use appropriate instance types for each workload phase
+- **Flexibility**: Support diverse infrastructure setups
+- **Compliance**: Audit trails and reproducible builds
+- **Innovation**: Enable new deployment patterns and use cases
+
+---
 
 **Next Steps:**
-- Scale to multiple models by using different `--tags` filters
-- Integrate with your existing CI/CD pipeline using the `export-config` command
-- Monitor execution using the summary JSON files for automated reporting
-- Customize Ansible/K8s templates for your infrastructure requirements
+1. Try the single-node quick start for your use case
+2. Explore split workflow for your infrastructure
+3. Integrate with your existing CI/CD pipelines
+4. Scale to multi-node deployments
+5. Customize for your specific requirements
 
-### 9. Build Manifest Format
-
-The build manifest has been enhanced to ensure reliable execution across distributed environments:
-
-#### Enhanced Manifest Structure
-```json
-{
-  "built_images": {
-    "ci-dummy_ubuntu_amd": {
-      "docker_image": "ci-dummy_ubuntu_amd",
-      "dockerfile": "/path/to/dummy.ubuntu.amd.Dockerfile",
-      "base_docker": "ubuntu:22.04",
-      "build_duration": 45.2,
-      "registry_image": "localhost:5000/ci-dummy_ubuntu_amd"
-    }
-  },
-  "built_models": {
-    "ci-dummy_ubuntu_amd": {
-      "name": "dummy",
-      "path": "/scripts/dummy",
-      "tags": ["dummy", "test"],
-      "dockerfile": "/path/to/dummy.ubuntu.amd.Dockerfile"
-    }
-  },
-  "registry": "localhost:5000",
-  "context": {
-    "docker_env_vars": {},
-    "docker_mounts": {},
-    "docker_build_arg": {}
-  }
-}
-```
-
-#### Key Improvements
-
-1. **Model Information Storage**: The manifest now includes `built_models` that maps each built image to its corresponding model information
-2. **Registry Auto-Detection**: The manifest includes top-level `registry` field for automatic registry detection during execution
-3. **Exact Reproduction**: No need to specify `--tags` or `--registry` during execution when using a manifest file
-4. **Backward Compatibility**: Falls back to name-based matching for older manifest files
-5. **Reliable Matching**: Direct image-to-model mapping eliminates matching errors
-
-#### Execution Behavior
-
-**With Enhanced Manifest (Recommended):**
-```bash
-# Build phase creates enhanced manifest with registry information
-python -m madengine.distributed_cli build --tags dummy --registry localhost:5000
-
-# Run phase uses stored model and registry information - no additional parameters needed
-python -m madengine.distributed_cli run --manifest-file build_manifest.json
-```
-
-**Fallback Mode (Legacy Manifests):**
-```bash
-# For older manifests without built_models, uses name-based matching
-python -m madengine.distributed_cli run \
-    --manifest-file legacy_manifest.json \
-    --tags dummy  # May need tags for discovery
-```
-
-This improvement addresses the common issue where models discovered during execution don't match the built images, ensuring consistent and reliable distributed execution.
+For additional support and examples, see the [madengine-cli guide](./madengine-cli-guide.md) and project documentation.
