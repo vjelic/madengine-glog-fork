@@ -637,11 +637,9 @@ def generate_k8s(
     
     try:
         # Validate input files
-        if manifest_file != DEFAULT_MANIFEST_FILE and not os.path.exists(manifest_file):
-            console.print(f"⚠️  Manifest file [yellow]{manifest_file}[/yellow] does not exist")
-        
-        if execution_config != DEFAULT_EXECUTION_CONFIG and not os.path.exists(execution_config):
-            console.print(f"⚠️  Execution config file [yellow]{execution_config}[/yellow] does not exist")
+        if not os.path.exists(manifest_file):
+            console.print(f"❌ [bold red]Manifest file not found: {manifest_file}[/bold red]")
+            raise typer.Exit(ExitCode.FAILURE)
         
         with Progress(
             SpinnerColumn(),
@@ -661,77 +659,6 @@ def generate_k8s(
         
     except Exception as e:
         console.print(f"💥 [bold red]Failed to generate Kubernetes manifests: {e}[/bold red]")
-        if verbose:
-            console.print_exception()
-        raise typer.Exit(ExitCode.FAILURE)
-
-
-@app.command("export-config")
-def export_config(
-    tags: Annotated[List[str], typer.Option("--tags", "-t", help="Model tags to export config for")] = [],
-    output: Annotated[str, typer.Option("--output", "-o", help="Output configuration file")] = DEFAULT_EXECUTION_CONFIG,
-    additional_context: Annotated[str, typer.Option("--additional-context", "-c", help="Additional context as JSON string")] = "{}",
-    additional_context_file: Annotated[Optional[str], typer.Option("--additional-context-file", "-f", help="File containing additional context JSON")] = None,
-    ignore_deprecated_flag: Annotated[bool, typer.Option("--ignore-deprecated", help="Force run deprecated models")] = False,
-    data_config_file_name: Annotated[str, typer.Option("--data-config", help="Custom data configuration file")] = DEFAULT_DATA_CONFIG,
-    tools_json_file_name: Annotated[str, typer.Option("--tools-config", help="Custom tools JSON configuration")] = DEFAULT_TOOLS_CONFIG,
-    generate_sys_env_details: Annotated[bool, typer.Option("--sys-env-details", help="Generate system config env details")] = True,
-    force_mirror_local: Annotated[Optional[str], typer.Option("--force-mirror-local", help="Path to force local data mirroring")] = None,
-    disable_skip_gpu_arch: Annotated[bool, typer.Option("--disable-skip-gpu-arch", help="Disable skipping models based on GPU architecture")] = False,
-    verbose: Annotated[bool, typer.Option("--verbose", "-v", help="Enable verbose logging")] = False,
-) -> None:
-    """
-    📤 Export execution configuration for external tools.
-    """
-    setup_logging(verbose)
-    
-    console.print(Panel(
-        f"📤 [bold cyan]Exporting Configuration[/bold cyan]\n"
-        f"Tags: [yellow]{', '.join(tags) if tags else 'All models'}[/yellow]\n"
-        f"Output: [yellow]{output}[/yellow]",
-        title="Config Export",
-        border_style="blue"
-    ))
-    
-    try:
-        # Create arguments object
-        args = create_args_namespace(
-            tags=tags,
-            additional_context=additional_context,
-            additional_context_file=additional_context_file,
-            ignore_deprecated_flag=ignore_deprecated_flag,
-            data_config_file_name=data_config_file_name,
-            tools_json_file_name=tools_json_file_name,
-            generate_sys_env_details=generate_sys_env_details,
-            force_mirror_local=force_mirror_local,
-            disable_skip_gpu_arch=disable_skip_gpu_arch,
-            verbose=verbose,
-        )
-        
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            console=console,
-        ) as progress:
-            task = progress.add_task("Exporting configuration...", total=None)
-            
-            orchestrator = DistributedOrchestrator(args)
-            
-            # Discover models
-            from madengine.tools.discover_models import DiscoverModels
-            discover_models = DiscoverModels(args=args)
-            models = discover_models.run()
-            
-            if not models:
-                console.print("⚠️  [yellow]No models discovered for configuration export[/yellow]")
-            
-            orchestrator.export_execution_config(models, output)
-            progress.update(task, description="Configuration exported!")
-        
-        console.print(f"✅ [bold green]Configuration exported to: [cyan]{output}[/cyan][/bold green]")
-        
-    except Exception as e:
-        console.print(f"💥 [bold red]Failed to export configuration: {e}[/bold red]")
         if verbose:
             console.print_exception()
         raise typer.Exit(ExitCode.FAILURE)
