@@ -297,6 +297,10 @@ class ContainerRunner:
         # Add context environment variables
         if "docker_env_vars" in self.context.ctx:
             for env_arg in self.context.ctx["docker_env_vars"].keys():
+                # Skip individual MAD_MULTI_NODE_* env vars (except MAD_MULTI_NODE_RUNNER)
+                # These are redundant since MAD_MULTI_NODE_RUNNER contains all necessary information
+                if env_arg.startswith("MAD_MULTI_NODE_") and env_arg != "MAD_MULTI_NODE_RUNNER":
+                    continue
                 env_args += f"--env {env_arg}='{str(self.context.ctx['docker_env_vars'][env_arg])}' "
 
         print(f"Env arguments: {env_args}")
