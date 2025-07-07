@@ -11,7 +11,12 @@ import logging
 import os
 import sys
 from pathlib import Path
-from typing import Annotated, Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union
+
+try:
+    from typing import Annotated  # Python 3.9+
+except ImportError:
+    from typing_extensions import Annotated  # Python 3.8
 
 import typer
 from rich import print as rprint
