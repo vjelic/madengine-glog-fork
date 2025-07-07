@@ -1,6 +1,6 @@
 # madengine-cli Guide
 
-A production-ready, modern command-line interface for the madengine Distributed Orchestrator built with Typer and Rich for building and running AI models in distributed scenarios.
+A production-ready, modern command-line interface for the madengine Distributed Orchestrator built with Typer and Rich for building and running AI models in distributed scenarios within the MAD (Model Automation and Dashboarding) package.
 
 ## Table of Contents
 
@@ -8,6 +8,7 @@ A production-ready, modern command-line interface for the madengine Distributed 
 - [Features](#features)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
+- [MAD Model Discovery and Tag System](#mad-model-discovery-and-tag-system)
 - [Command Overview](#command-overview)
 - [Usage](#usage)
   - [Core Commands](#core-commands)
@@ -27,6 +28,8 @@ A production-ready, modern command-line interface for the madengine Distributed 
 
 The `madengine-cli` is the next-generation CLI interface that replaces and enhances the original distributed CLI. It provides a modern, user-friendly interface with rich terminal output, better error handling, and improved workflow management.
 
+madengine is designed to work within the **MAD (Model Automation and Dashboarding) package**, which serves as a comprehensive model hub containing Docker configurations, scripts, and adopted AI models. The CLI automatically discovers available models from the MAD repository structure to enable selective building and execution.
+
 ## Features
 
 🚀 **Modern Design**: Built with Typer for excellent CLI experience and Rich for beautiful terminal output  
@@ -41,28 +44,133 @@ The `madengine-cli` is the next-generation CLI interface that replaces and enhan
 
 ## Installation
 
-Install the updated package to get access to the modern CLI:
+madengine is designed to be installed within the MAD package environment:
 
 ```bash
+# Navigate to MAD package directory
+cd /path/to/MAD
+
+# Install madengine within MAD package (development mode)
 pip install -e .
 ```
+
+**Prerequisites:**
+- **MAD package** cloned and available
+- Python 3.8 or higher
+- Docker installed and running
+- Access to MAD model repository structure
 
 ## Quick Start
 
 ### Single Command Workflow
 ```bash
-# Complete workflow: build and run models in one command
+# Navigate to MAD package directory
+cd /path/to/MAD
+
+# Complete workflow: build and run models in one command (discovers models from MAD)
 madengine-cli run --tags dummy --registry localhost:5000 --timeout 3600
 ```
 
 ### Separated Build and Run
 ```bash
-# 1. Build phase: Create Docker images and manifest
+# 1. Build phase: Create Docker images and manifest (within MAD package)
+cd /path/to/MAD
 madengine-cli build --tags dummy --registry localhost:5000 \
   --additional-context '{"gpu_vendor": "AMD", "guest_os": "UBUNTU"}'
 
 # 2. Run phase: Execute using the generated manifest
 madengine-cli run --manifest-file build_manifest.json
+```
+
+### MAD Model Discovery Examples
+```bash
+# Discover models from different MAD sources
+madengine-cli run --tags dummy                           # Root models.json
+madengine-cli run --tags dummy2:dummy_2                  # scripts/dummy2/models.json  
+madengine-cli run --tags dummy3:dummy_3:batch_size=512   # scripts/dummy3/get_models_json.py
+```
+
+## MAD Model Discovery and Tag System
+
+### Understanding MAD Package Structure
+
+madengine-cli works within the **MAD (Model Automation and Dashboarding) package** and automatically discovers available models from multiple sources:
+
+#### Model Discovery Sources
+
+**1. Root Models Configuration** (`models.json`)
+- Main model definitions at MAD package root
+- Traditional static model configurations
+```bash
+madengine-cli build --tags dummy                    # Discovers from root models.json
+madengine-cli build --tags pyt_huggingface_bert     # Standard model tags
+```
+
+**2. Directory-Specific Models** (`scripts/{model_dir}/models.json`)  
+- Static model definitions in subdirectories
+- Organized by model families or categories
+```bash
+madengine-cli build --tags dummy2:dummy_2           # From scripts/dummy2/models.json
+```
+
+**3. Dynamic Model Discovery** (`scripts/{model_dir}/get_models_json.py`)
+- Python scripts that generate model configurations dynamically
+- Supports parameterized model variants
+```bash
+madengine-cli build --tags dummy3:dummy_3                          # Basic dynamic model
+madengine-cli build --tags dummy3:dummy_3:batch_size=512:in=32     # With parameters
+```
+
+#### Tag System Examples
+
+**Simple Tags (Root Models):**
+```bash
+madengine-cli run --tags dummy                                      # Single model
+madengine-cli run --tags dummy pyt_huggingface_bert                 # Multiple models
+```
+
+**Directory Tags (Organized Models):**
+```bash
+madengine-cli run --tags dummy2:dummy_2                             # Directory-specific
+```
+
+**Parameterized Tags (Dynamic Models):**
+```bash
+madengine-cli run --tags dummy3:dummy_3:batch_size=512              # With batch size
+madengine-cli run --tags dummy3:dummy_3:batch_size=512:in=32:out=16 # Multiple params
+```
+
+#### Required MAD Structure
+
+For proper model discovery, ensure your MAD package has this structure:
+```
+MAD/
+├── models.json                          # Root model definitions
+├── scripts/
+│   ├── dummy2/
+│   │   ├── models.json                  # Static model configs
+│   │   └── run.sh
+│   ├── dummy3/
+│   │   ├── get_models_json.py          # Dynamic model discovery
+│   │   └── run.sh
+│   └── common/
+│       └── tools.json                   # Build tools configuration
+├── data.json                            # Data provider configurations
+├── credential.json                      # Authentication credentials
+└── pyproject.toml                       # madengine package configuration
+```
+
+#### Discovery Validation
+
+Verify model discovery is working:
+```bash
+# List all discoverable models
+madengine discover
+
+# Check specific model discovery
+madengine discover --tags dummy
+madengine discover --tags dummy2:dummy_2
+madengine discover --tags dummy3:dummy_3:batch_size=256
 ```
 
 ## Command Overview
@@ -81,14 +189,21 @@ The CLI provides four main command groups:
 ### Core Commands
 
 #### Build Command
-Create Docker images and build manifest for later execution:
+Create Docker images and build manifest for later execution (discovers models from MAD):
 
 ```bash
-# Basic build with registry
+# Basic build with registry (discovers from MAD root models.json)
 madengine-cli build --tags dummy resnet --registry localhost:5000
+
+# Build directory-specific models
+madengine-cli build --tags dummy2:dummy_2 --registry localhost:5000
 
 # Build with additional context (required for build-only operations)
 madengine-cli build --tags pyt_huggingface_gpt2 \
+  --additional-context '{"gpu_vendor": "AMD", "guest_os": "UBUNTU"}'
+
+# Build dynamic models with parameters
+madengine-cli build --tags dummy3:dummy_3:batch_size=512 \
   --additional-context '{"gpu_vendor": "AMD", "guest_os": "UBUNTU"}'
 
 # Build with context from file and clean cache
@@ -498,15 +613,22 @@ The CLI provides a modern, informative interface with:
 
 ### Development Workflow
 ```bash
-# 1. Start with quick local testing
+# Ensure you're working within MAD package directory
+cd /path/to/MAD
+
+# 1. Start with quick local testing (discovers models from MAD)
 madengine-cli run --tags dummy --live-output --verbose
 
-# 2. Test with specific contexts
-madengine-cli build --tags dummy \
+# 2. Test different model discovery sources
+madengine-cli build --tags dummy2:dummy_2 \
   --additional-context-file dev-context.json \
   --clean-docker-cache
 
-# 3. Validate execution
+# 3. Test dynamic models with parameters
+madengine-cli build --tags dummy3:dummy_3:batch_size=256 \
+  --additional-context-file dev-context.json
+
+# 4. Validate execution
 madengine-cli run --manifest-file build_manifest.json --keep-alive
 ```
 
@@ -607,11 +729,22 @@ madengine-cli generate k8s --help
 
 ### Development Environment Setup
 ```bash
-# Install in development mode
+# Navigate to MAD package directory
+cd /path/to/MAD
+
+# Install madengine in development mode within MAD package
 pip install -e .
 
-# Run with full debugging
+# Verify MAD model discovery is working
+madengine discover                    # List all discoverable models
+madengine discover --tags dummy       # Check specific model discovery
+
+# Run with full debugging (discovers models from MAD structure)
 madengine-cli run --tags dummy --verbose --live-output
+
+# Test different model discovery sources
+madengine-cli build --tags dummy2:dummy_2 --verbose     # Directory models
+madengine-cli build --tags dummy3:dummy_3 --verbose     # Dynamic models
 
 # Test configuration validation
 madengine-cli build --tags dummy  # Should show context requirement error

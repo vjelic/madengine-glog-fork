@@ -2,7 +2,9 @@
 
 ## Overview
 
-The madengine Distributed Execution Solution enables flexible deployment of AI model benchmarking across diverse infrastructure setups. This solution splits the traditional monolithic workflow into separate **build** and **run** phases, enabling distributed execution scenarios from simple single-node setups to complex multi-cluster deployments.
+The madengine Distributed Execution Solution enables flexible deployment of AI model benchmarking across diverse infrastructure setups. madengine is designed to work within the **MAD (Model Automation and Dashboarding) package**, which serves as a comprehensive model hub containing Docker configurations, scripts, and adopted AI models.
+
+This solution splits the traditional monolithic workflow into separate **build** and **run** phases, enabling distributed execution scenarios from simple single-node setups to complex multi-cluster deployments. The madengine-cli automatically discovers available models from the MAD repository structure (models.json files and dynamic model scripts) to enable selective building and execution.
 
 ![madengine Distributed Execution Architecture Overview](img/architecture_overview.png)
 
@@ -79,6 +81,59 @@ RUN PHASE (GPU Nodes):
 - **Cost Optimization**: Use appropriate instance types for each phase 
   Load Manifest → Pull Images → Container Run → Performance Collection
 
+## MAD Model Discovery and Integration
+
+### Working with MAD Package Structure
+
+madengine is designed to operate within the **MAD (Model Automation and Dashboarding) package**, which serves as a comprehensive model hub. The madengine-cli automatically discovers available models from various sources within the MAD structure:
+
+**Model Discovery Sources:**
+
+1. **Root Models Configuration** (`models.json`)
+   - Main model definitions at MAD package root
+   - Traditional static model configurations
+   - Example: `madengine-cli build --tags dummy`
+
+2. **Directory-Specific Models** (`scripts/{model_dir}/models.json`)
+   - Static model definitions in subdirectories
+   - Organized by model families or categories
+   - Example: `madengine-cli build --tags dummy2:dummy_2`
+
+3. **Dynamic Model Discovery** (`scripts/{model_dir}/get_models_json.py`)
+   - Python scripts that generate model configurations dynamically
+   - Supports parameterized model variants
+   - Example: `madengine-cli build --tags dummy3:dummy_3:batch_size=512:in=32:out=16`
+
+**Model Tag System:**
+
+The tag system supports hierarchical model selection:
+- **Simple tags**: `dummy` (from root models.json)
+- **Directory tags**: `dummy2:dummy_2` (from scripts/dummy2/models.json)
+- **Parameterized tags**: `dummy3:dummy_3:batch_size=512` (dynamic with parameters)
+
+**Required MAD Structure:**
+```
+MAD/
+├── models.json                          # Root model definitions
+├── scripts/
+│   ├── dummy2/
+│   │   ├── models.json                  # Static model configs
+│   │   └── run.sh
+│   ├── dummy3/
+│   │   ├── get_models_json.py          # Dynamic model discovery
+│   │   └── run.sh
+│   └── common/
+│       └── tools.json                   # Build tools configuration
+├── data.json                            # Data provider configurations
+└── credential.json                      # Authentication credentials
+```
+
+**Integration Benefits:**
+- **Automatic Discovery**: No manual model registration required
+- **Flexible Configuration**: Support for static and dynamic model definitions
+- **Parameterization**: Pass runtime parameters through tag system
+- **Organized Structure**: Models grouped by categories and use cases
+
 ## Core Components
 
 ### 1. **Modern CLI** (`madengine-cli`)
@@ -120,7 +175,8 @@ Coordinates the distributed workflow:
 ### Prerequisites
 
 **For All Deployments:**
-- madengine installed on build and execution nodes
+- **MAD package** with madengine installed (madengine is designed to work within the MAD model hub)
+- Access to MAD model repository structure (models.json files and model scripts)
 - Docker installed and running
 - Access to a Docker registry (local or cloud-based)
 
@@ -132,15 +188,24 @@ Coordinates the distributed workflow:
 - Network connectivity between build server and GPU nodes
 - SSH access or orchestration tools (Ansible/Kubernetes) configured
 
+**MAD Package Structure:**
+The madengine-cli relies on the MAD package structure for model discovery:
+- Root `models.json` - Contains main model definitions
+- `scripts/{model_dir}/models.json` - Directory-specific static model definitions  
+- `scripts/{model_dir}/get_models_json.py` - Dynamic model discovery scripts
+
 ### Quick Start: Single Node
 
-Perfect for development, testing, or single-workstation deployments:
+Perfect for development, testing, or single-workstation deployments within a MAD package environment:
 
 ```bash
-# Install and setup
+# Navigate to MAD package directory
+cd /path/to/MAD
+
+# Install madengine within MAD package
 pip install -e .
 
-# Simple workflow: build and run on same machine
+# Simple workflow: build and run on same machine (discovers models from MAD structure)
 madengine-cli run --tags dummy --registry localhost:5000 --timeout 3600
 
 # Or split phases for testing distributed workflow
@@ -151,17 +216,19 @@ madengine-cli run --manifest-file build_manifest.json
 
 ### Quick Start: Multi-Node
 
-For production deployments across multiple GPU servers:
+For production deployments across multiple GPU servers using MAD package models:
 
 ```bash
-# On build server
+# On build server (within MAD package directory)
+cd /path/to/MAD
 madengine-cli build --tags resnet bert --registry my-registry.com:5000 \
   --additional-context '{"gpu_vendor": "NVIDIA", "guest_os": "UBUNTU"}'
 
-# Transfer manifest to GPU nodes
+# Transfer manifest to GPU nodes (along with MAD package or just manifests)
 scp build_manifest.json user@gpu-node-01:/path/to/madengine/
 
-# On each GPU node
+# On each GPU node (ensure MAD package structure is available)
+cd /path/to/MAD
 madengine-cli run --manifest-file build_manifest.json --timeout 7200
 ```
 
