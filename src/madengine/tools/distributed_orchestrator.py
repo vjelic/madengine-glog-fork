@@ -179,8 +179,12 @@ class DistributedOrchestrator:
         
         # Auto-detect registry from manifest if not provided via CLI
         if not registry and "registry" in manifest:
-            registry = manifest["registry"]
-            print(f"Auto-detected registry from manifest: {registry}")
+            manifest_registry = manifest["registry"]
+            if manifest_registry and manifest_registry.strip():  # Check for non-empty string
+                registry = manifest_registry
+                print(f"Auto-detected registry from manifest: {registry}")
+            else:
+                print("Manifest registry is empty, will use local images only")
         elif registry:
             print(f"Using registry from CLI: {registry}")
         else:
@@ -245,10 +249,15 @@ class DistributedOrchestrator:
                             if effective_registry:
                                 print(f"Pulling image from registry: {registry_image}")
                                 try:
+                                    # Ensure all parameters are strings and credentials is properly formatted
+                                    registry_image_str = str(registry_image) if registry_image else ""
+                                    docker_image_str = str(docker_image) if docker_image else ""
+                                    effective_registry_str = str(effective_registry) if effective_registry else ""
+                                    
                                     # Pull registry image and tag it as docker_image
-                                    runner.pull_image(registry_image, docker_image, effective_registry, self.credentials)
-                                    actual_image = docker_image
-                                    print(f"Successfully pulled and tagged as: {docker_image}")
+                                    runner.pull_image(registry_image_str, docker_image_str, effective_registry_str, self.credentials)
+                                    actual_image = docker_image_str
+                                    print(f"Successfully pulled and tagged as: {docker_image_str}")
                                 except Exception as e:
                                     print(f"Failed to pull from registry, falling back to local image: {e}")
                                     actual_image = docker_image
@@ -256,9 +265,11 @@ class DistributedOrchestrator:
                                 # Registry image exists but no valid registry found, try to pull as-is and tag
                                 print(f"Attempting to pull registry image as-is: {registry_image}")
                                 try:
-                                    runner.pull_image(registry_image, docker_image)
-                                    actual_image = docker_image
-                                    print(f"Successfully pulled and tagged as: {docker_image}")
+                                    registry_image_str = str(registry_image) if registry_image else ""
+                                    docker_image_str = str(docker_image) if docker_image else ""
+                                    runner.pull_image(registry_image_str, docker_image_str)
+                                    actual_image = docker_image_str
+                                    print(f"Successfully pulled and tagged as: {docker_image_str}")
                                 except Exception as e:
                                     print(f"Failed to pull from registry, falling back to local image: {e}")
                                     actual_image = docker_image
@@ -331,10 +342,15 @@ class DistributedOrchestrator:
                             if effective_registry:
                                 print(f"Pulling image from registry: {registry_image}")
                                 try:
+                                    # Ensure all parameters are strings and credentials is properly formatted
+                                    registry_image_str = str(registry_image) if registry_image else ""
+                                    docker_image_str = str(docker_image) if docker_image else ""
+                                    effective_registry_str = str(effective_registry) if effective_registry else ""
+                                    
                                     # Pull registry image and tag it as docker_image
-                                    runner.pull_image(registry_image, docker_image, effective_registry, self.credentials)
-                                    actual_image = docker_image
-                                    print(f"Successfully pulled and tagged as: {docker_image}")
+                                    runner.pull_image(registry_image_str, docker_image_str, effective_registry_str, self.credentials)
+                                    actual_image = docker_image_str
+                                    print(f"Successfully pulled and tagged as: {docker_image_str}")
                                 except Exception as e:
                                     print(f"Failed to pull from registry, falling back to local image: {e}")
                                     actual_image = docker_image
@@ -342,9 +358,11 @@ class DistributedOrchestrator:
                                 # Registry image exists but no valid registry found, try to pull as-is and tag
                                 print(f"Attempting to pull registry image as-is: {registry_image}")
                                 try:
-                                    runner.pull_image(registry_image, docker_image)
-                                    actual_image = docker_image
-                                    print(f"Successfully pulled and tagged as: {docker_image}")
+                                    registry_image_str = str(registry_image) if registry_image else ""
+                                    docker_image_str = str(docker_image) if docker_image else ""
+                                    runner.pull_image(registry_image_str, docker_image_str)
+                                    actual_image = docker_image_str
+                                    print(f"Successfully pulled and tagged as: {docker_image_str}")
                                 except Exception as e:
                                     print(f"Failed to pull from registry, falling back to local image: {e}")
                                     actual_image = docker_image

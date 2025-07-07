@@ -173,20 +173,22 @@ class ContainerRunner:
             print(error_msg)
             raise RuntimeError(error_msg)
             
+        # Ensure credential values are strings
+        username = str(creds['username'])
+        password = str(creds['password'])
+            
         # Perform docker login
-        login_command = f"echo '{creds['password']}' | docker login"
+        login_command = f"echo '{password}' | docker login"
         
-        if registry and registry != "docker.io":
+        if registry and registry.lower() not in ["docker.io", "dockerhub"]:
             login_command += f" {registry}"
             
-        login_command += f" --username {creds['username']} --password-stdin"
+        login_command += f" --username {username} --password-stdin"
         
         try:
             self.console.sh(login_command, secret=True)
             print(f"Successfully logged in to registry: {registry or 'DockerHub'}")
         except Exception as e:
-            print(f"Failed to login to registry {registry}: {e}")
-            raise
             print(f"Failed to login to registry {registry}: {e}")
             # Don't raise exception here, as public images might still be pullable
 
