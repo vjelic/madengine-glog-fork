@@ -346,7 +346,6 @@ class TestDefaultConstants:
     def test_default_constants_defined(self):
         """Test that all default constants are defined."""
         assert distributed_cli.DEFAULT_MANIFEST_FILE == 'build_manifest.json'
-        assert distributed_cli.DEFAULT_EXECUTION_CONFIG == 'execution_config.json'
         assert distributed_cli.DEFAULT_PERF_OUTPUT == 'perf.csv'
         assert distributed_cli.DEFAULT_DATA_CONFIG == 'data.json'
         assert distributed_cli.DEFAULT_TOOLS_CONFIG == './scripts/common/tools.json'
@@ -552,14 +551,12 @@ class TestDistributedCLI:
         """Test the generate_ansible function."""
         mock_args = MagicMock()
         mock_args.manifest_file = "manifest.json"
-        mock_args.execution_config = "config.json"
         mock_args.output = "playbook.yml"
 
         result = distributed_cli.generate_ansible(mock_args)
         
         mock_create_ansible.assert_called_once_with(
             manifest_file="manifest.json",
-            execution_config="config.json",
             playbook_file="playbook.yml"
         )
         
@@ -570,65 +567,15 @@ class TestDistributedCLI:
         """Test the generate_k8s function."""
         mock_args = MagicMock()
         mock_args.manifest_file = "manifest.json"
-        mock_args.execution_config = "config.json"
         mock_args.namespace = "madengine-test"
 
         result = distributed_cli.generate_k8s(mock_args)
         
         mock_create_k8s.assert_called_once_with(
             manifest_file="manifest.json",
-            execution_config="config.json",
             namespace="madengine-test"
         )
         
-        assert result == distributed_cli.EXIT_SUCCESS
-
-    @patch('madengine.distributed_cli.DistributedOrchestrator')
-    @patch('madengine.tools.discover_models.DiscoverModels')
-    def test_export_config_function(self, mock_discover_models, mock_orchestrator):
-        """Test the export_config function."""
-        mock_args = MagicMock()
-        mock_args.output = "config.json"
-
-        # Mock DiscoverModels to return a list of models
-        mock_discover_instance = MagicMock()
-        mock_discover_models.return_value = mock_discover_instance
-        mock_discover_instance.run.return_value = ["model1", "model2"]
-
-        mock_instance = MagicMock()
-        mock_orchestrator.return_value = mock_instance
-        mock_instance.export_execution_config.return_value = True
-
-        result = distributed_cli.export_config(mock_args)
-        
-        mock_orchestrator.assert_called_once_with(mock_args)
-        mock_discover_models.assert_called_once_with(args=mock_args)
-        mock_discover_instance.run.assert_called_once()
-        mock_instance.export_execution_config.assert_called_once_with(["model1", "model2"], "config.json")
-        assert result == distributed_cli.EXIT_SUCCESS
-
-    @patch('madengine.distributed_cli.DistributedOrchestrator')
-    @patch('madengine.tools.discover_models.DiscoverModels')
-    def test_export_config_function_no_models(self, mock_discover_models, mock_orchestrator):
-        """Test the export_config function when no models are discovered."""
-        mock_args = MagicMock()
-        mock_args.output = "config.json"
-
-        # Mock DiscoverModels to return an empty list
-        mock_discover_instance = MagicMock()
-        mock_discover_models.return_value = mock_discover_instance
-        mock_discover_instance.run.return_value = []
-
-        mock_instance = MagicMock()
-        mock_orchestrator.return_value = mock_instance
-        mock_instance.export_execution_config.return_value = True
-
-        result = distributed_cli.export_config(mock_args)
-        
-        mock_orchestrator.assert_called_once_with(mock_args)
-        mock_discover_models.assert_called_once_with(args=mock_args)
-        mock_discover_instance.run.assert_called_once()
-        mock_instance.export_execution_config.assert_called_once_with([], "config.json")
         assert result == distributed_cli.EXIT_SUCCESS
 
     @patch('madengine.distributed_cli.DistributedOrchestrator')

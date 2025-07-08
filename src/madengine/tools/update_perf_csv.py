@@ -115,7 +115,7 @@ def handle_multiple_results(
     final_multiple_results_df = pd.DataFrame()
     # add results to perf.csv
     for r in multiple_results_df.to_dict(orient="records"):
-        row = common_info_json
+        row = common_info_json.copy()
         row["model"] = model_name + "_" + str(r["model"])
         row["performance"] = r["performance"]
         row["metric"] = r["metric"]
