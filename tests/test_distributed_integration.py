@@ -331,7 +331,8 @@ class TestDistributedIntegration:
         }
 
         # Test Ansible generation
-        with patch('madengine.distributed_cli.create_ansible_playbook') as mock_ansible:
+        with patch('madengine.distributed_cli.create_ansible_playbook') as mock_ansible, \
+             patch('os.path.exists', return_value=True):
             distributed_cli.generate_ansible(MagicMock(
                 manifest_file="test_manifest.json",
                 execution_config="test_config.json", 
@@ -340,12 +341,12 @@ class TestDistributedIntegration:
             
             mock_ansible.assert_called_once_with(
                 manifest_file="test_manifest.json",
-                execution_config="test_config.json",
                 playbook_file="test_playbook.yml"
             )
 
         # Test Kubernetes generation
-        with patch('madengine.distributed_cli.create_kubernetes_manifests') as mock_k8s:
+        with patch('madengine.distributed_cli.create_kubernetes_manifests') as mock_k8s, \
+             patch('os.path.exists', return_value=True):
             distributed_cli.generate_k8s(MagicMock(
                 manifest_file="test_manifest.json",
                 execution_config="test_config.json",
@@ -354,7 +355,6 @@ class TestDistributedIntegration:
             
             mock_k8s.assert_called_once_with(
                 manifest_file="test_manifest.json",
-                execution_config="test_config.json", 
                 namespace="madengine-test"
             )
 
