@@ -495,7 +495,13 @@ class DistributedOrchestrator:
             # check tools.json exists in scripts/common directory
             if os.path.exists("scripts/common/tools.json"):
                 # remove the scripts/common/tools.json file
-                self.console.sh("rm -rf scripts/common/tools.json")
+                # Use force removal and handle permission errors gracefully
+                try:
+                    self.console.sh("rm -rf scripts/common/tools")
+                except RuntimeError:
+                    # If normal removal fails due to permissions, try with force
+                    self.console.sh("chmod -R u+w scripts/common/tools 2>/dev/null || true")
+                    self.console.sh("rm -rf scripts/common/tools || true")
             # check test_echo.sh exists in scripts/common directory
             if os.path.exists("scripts/common/test_echo.sh"):
                 # remove the scripts/common/test_echo.sh file
