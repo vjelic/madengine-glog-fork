@@ -178,17 +178,41 @@ def clean_test_temp_files(request):
                 os.remove(file_path)
 
 
+# Cache for GPU vendor detection to avoid multiple Context initializations
+_gpu_vendor_cache = None
+
 def is_nvidia() -> bool:
     """Check if the GPU is NVIDIA or not.
 
     Returns:
         bool: True if NVIDIA GPU is present, False otherwise.
     """
-    context = Context()
-    if context.ctx["gpu_vendor"] == "NVIDIA":
-        return True
-    else:
-        return False
+    global _gpu_vendor_cache
+    
+    if _gpu_vendor_cache is None:
+        # Try to determine GPU vendor without full Context initialization
+        # to avoid repeated expensive operations during pytest collection
+        try:
+            # Use the same detection logic as Context.get_gpu_vendor()
+            console = Console(live_output=False)
+            gpu_vendor_cmd = ('bash -c \'if [[ -f /usr/bin/nvidia-smi ]] && $(/usr/bin/nvidia-smi > /dev/null 2>&1); '
+                             'then echo "NVIDIA"; elif [[ -f /opt/rocm/bin/rocm-smi ]]; then echo "AMD"; '
+                             'elif [[ -f /usr/local/bin/rocm-smi ]]; then echo "AMD"; '
+                             'else echo "Unable to detect GPU vendor"; fi || true\'')
+            
+            gpu_vendor_result = console.sh(gpu_vendor_cmd)
+            
+            if "Unable to detect GPU vendor" in gpu_vendor_result:
+                # On CPU-only machines, default to AMD for compatibility
+                _gpu_vendor_cache = "AMD"
+            else:
+                _gpu_vendor_cache = gpu_vendor_result.strip()
+                
+        except Exception:
+            # If all else fails, assume AMD (since that's the default test environment)
+            _gpu_vendor_cache = "AMD"
+    
+    return _gpu_vendor_cache == "NVIDIA"
 
 
 def get_gpu_nodeid_map() -> dict:

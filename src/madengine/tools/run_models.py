@@ -371,7 +371,13 @@ class RunModels:
                 self.console.sh("rm -rf scripts/common/post_scripts")
             if os.path.exists("scripts/common/tools"):
                 # remove the scripts/common/tools directory
-                self.console.sh("rm -rf scripts/common/tools")
+                # Use force removal and handle permission errors gracefully
+                try:
+                    self.console.sh("rm -rf scripts/common/tools")
+                except RuntimeError:
+                    # If normal removal fails due to permissions, try with force
+                    self.console.sh("chmod -R u+w scripts/common/tools 2>/dev/null || true")
+                    self.console.sh("rm -rf scripts/common/tools || true")
             print(f"scripts/common directory has been cleaned up.")
 
     def get_gpu_arg(self, requested_gpus: str) -> str:
