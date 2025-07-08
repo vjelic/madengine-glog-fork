@@ -547,14 +547,19 @@ class TestDistributedCLI:
         assert result == distributed_cli.EXIT_SUCCESS
 
     @patch('madengine.distributed_cli.create_ansible_playbook')
-    def test_generate_ansible_function(self, mock_create_ansible):
+    @patch('os.path.exists')
+    def test_generate_ansible_function(self, mock_exists, mock_create_ansible):
         """Test the generate_ansible function."""
         mock_args = MagicMock()
         mock_args.manifest_file = "manifest.json"
         mock_args.output = "playbook.yml"
 
+        # Mock that the manifest file exists
+        mock_exists.return_value = True
+
         result = distributed_cli.generate_ansible(mock_args)
         
+        mock_exists.assert_called_once_with("manifest.json")
         mock_create_ansible.assert_called_once_with(
             manifest_file="manifest.json",
             playbook_file="playbook.yml"
@@ -562,21 +567,62 @@ class TestDistributedCLI:
         
         assert result == distributed_cli.EXIT_SUCCESS
 
+    @patch('madengine.distributed_cli.create_ansible_playbook')
+    @patch('os.path.exists')
+    def test_generate_ansible_function_missing_manifest(self, mock_exists, mock_create_ansible):
+        """Test the generate_ansible function when manifest file doesn't exist."""
+        mock_args = MagicMock()
+        mock_args.manifest_file = "nonexistent.json"
+        mock_args.output = "playbook.yml"
+
+        # Mock that the manifest file doesn't exist
+        mock_exists.return_value = False
+
+        result = distributed_cli.generate_ansible(mock_args)
+        
+        mock_exists.assert_called_once_with("nonexistent.json")
+        mock_create_ansible.assert_not_called()
+        
+        assert result == distributed_cli.EXIT_FAILURE
+
     @patch('madengine.distributed_cli.create_kubernetes_manifests')
-    def test_generate_k8s_function(self, mock_create_k8s):
+    @patch('os.path.exists')
+    def test_generate_k8s_function(self, mock_exists, mock_create_k8s):
         """Test the generate_k8s function."""
         mock_args = MagicMock()
         mock_args.manifest_file = "manifest.json"
         mock_args.namespace = "madengine-test"
 
+        # Mock that the manifest file exists
+        mock_exists.return_value = True
+
         result = distributed_cli.generate_k8s(mock_args)
         
+        mock_exists.assert_called_once_with("manifest.json")
         mock_create_k8s.assert_called_once_with(
             manifest_file="manifest.json",
             namespace="madengine-test"
         )
         
         assert result == distributed_cli.EXIT_SUCCESS
+
+    @patch('madengine.distributed_cli.create_kubernetes_manifests')
+    @patch('os.path.exists')
+    def test_generate_k8s_function_missing_manifest(self, mock_exists, mock_create_k8s):
+        """Test the generate_k8s function when manifest file doesn't exist."""
+        mock_args = MagicMock()
+        mock_args.manifest_file = "nonexistent.json"
+        mock_args.namespace = "madengine-test"
+
+        # Mock that the manifest file doesn't exist
+        mock_exists.return_value = False
+
+        result = distributed_cli.generate_k8s(mock_args)
+        
+        mock_exists.assert_called_once_with("nonexistent.json")
+        mock_create_k8s.assert_not_called()
+        
+        assert result == distributed_cli.EXIT_FAILURE
 
     @patch('madengine.distributed_cli.DistributedOrchestrator')
     @patch('os.path.exists')
