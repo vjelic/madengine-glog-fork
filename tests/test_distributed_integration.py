@@ -659,8 +659,37 @@ class TestDistributedProfiling(TestDistributedIntegrationBase):
                 'stderr': ''
             }
             
-            # Mock shell commands
-            mock_sh.return_value = "rocm-libs version info"
+            # Mock shell commands with side effect for different commands
+            def mock_sh_side_effect(command):
+                if "nvidia-smi" in command and "rocm-smi" in command:
+                    # This is the GPU vendor detection command - return AMD for this test
+                    return "AMD"
+                elif "rocm-smi --showid --csv | grep card | wc -l" in command:
+                    # Mock GPU count for AMD
+                    return "1"
+                elif "/opt/rocm/bin/rocminfo" in command and "gfx" in command:
+                    # Mock GPU architecture detection for AMD
+                    return "gfx906"
+                elif "hipconfig --version" in command:
+                    # Mock HIP version for AMD
+                    return "5.0"
+                elif "cat /opt/rocm/.info/version" in command:
+                    # Mock ROCm version (>= 6.1.2 to use simpler code path)
+                    return "6.1.3"
+                elif "grep -r drm_render_minor /sys/devices/virtual/kfd/kfd/topology/nodes" in command:
+                    # Mock KFD renderD nodes
+                    return "/sys/devices/virtual/kfd/kfd/topology/nodes/1/drm_render_minor 128"
+                elif "rocm-smi --showhw" in command:
+                    # Mock rocm-smi hardware info for node ID mapping (ROCm >= 6.1.2)
+                    return "GPU ID: 0\nNodeID: 1\n0   1"
+                elif "grep -r unique_id /sys/devices/virtual/kfd/kfd/topology/nodes" in command:
+                    # Mock KFD unique IDs (not needed for ROCm >= 6.1.2 but keeping for completeness)
+                    return "/sys/devices/virtual/kfd/kfd/topology/nodes/1/unique_id 12345"
+                else:
+                    # Default return for other commands (like host OS detection)
+                    return "rocm-libs version info"
+            
+            mock_sh.side_effect = mock_sh_side_effect
             
             # Create args with profiling context
             args = self.create_mock_args(
