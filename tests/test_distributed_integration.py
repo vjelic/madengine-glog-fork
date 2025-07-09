@@ -49,7 +49,8 @@ class TestDistributedIntegrationBase:
                     "scripts": "scripts/dummy/run.sh",
                     "dockerfile": "docker/dummy.ubuntu.amd.Dockerfile",
                     "tags": ["dummy", "test"],
-                    "tools": ["rocprof"]
+                    "tools": ["rocprof"],
+                    "args": ""
                 }
             },
             "registry": "localhost:5000"
@@ -605,7 +606,7 @@ class TestDistributedProfiling(TestDistributedIntegrationBase):
     """Test profiling functionality in distributed scenarios."""
 
     @requires_gpu("Profiling tests require GPU hardware")
-    @patch('madengine.tools.container_runner.Docker')
+    @patch('madengine.core.docker.Docker')
     @patch('madengine.core.console.Console.sh')
     @patch('madengine.tools.distributed_orchestrator.Data')
     @patch('os.path.exists')
@@ -653,6 +654,8 @@ class TestDistributedProfiling(TestDistributedIntegrationBase):
             mock_docker.return_value = mock_docker_instance
             mock_docker_instance.pull.return_value = None
             mock_docker_instance.tag.return_value = None
+            mock_docker_instance.sh.return_value = "Test execution completed"
+            mock_docker_instance.__del__ = MagicMock()  # Mock destructor
             mock_docker_instance.run.return_value = {
                 'exit_code': 0,
                 'stdout': 'Test execution completed',
@@ -685,6 +688,9 @@ class TestDistributedProfiling(TestDistributedIntegrationBase):
                 elif "grep -r unique_id /sys/devices/virtual/kfd/kfd/topology/nodes" in command:
                     # Mock KFD unique IDs (not needed for ROCm >= 6.1.2 but keeping for completeness)
                     return "/sys/devices/virtual/kfd/kfd/topology/nodes/1/unique_id 12345"
+                elif "docker" in command:
+                    # Mock any docker commands
+                    return "Docker command successful"
                 else:
                     # Default return for other commands (like host OS detection)
                     return "rocm-libs version info"
