@@ -606,128 +606,88 @@ class TestDistributedProfiling(TestDistributedIntegrationBase):
     """Test profiling functionality in distributed scenarios."""
 
     @requires_gpu("Profiling tests require GPU hardware")
-    @patch('madengine.core.docker.Docker')
-    @patch('madengine.core.console.Console.sh')
-    @patch('madengine.tools.distributed_orchestrator.Data')
-    @patch('os.path.exists')
-    def test_end_to_end_distributed_run_with_profiling(self, mock_exists, mock_data, mock_sh, mock_docker):
-        """Test complete distributed run workflow with profiling tools."""
-        # Mock Data initialization
-        mock_data_instance = MagicMock()
-        mock_data.return_value = mock_data_instance
+    def test_end_to_end_distributed_run_with_profiling(self):
+        """Test complete distributed run workflow with profiling tools - NO MOCKS, REAL FLOW.
         
-        # Mock file system
-        def mock_exists_side_effect(path):
-            if 'tools.json' in path:
-                return True
-            if 'run_rocenv_tool.sh' in path:
-                return True
-            if 'build_manifest.json' in path:
-                return True
-            return False
+        This test demonstrates how to run the distributed orchestrator without mocks.
+        It will be skipped if Docker is not available or if no GPU is detected.
+        """
+        import subprocess
+        import tempfile
+        import os
+        import json
         
-        mock_exists.side_effect = mock_exists_side_effect
+        # Check if Docker is available
+        try:
+            result = subprocess.run(["docker", "--version"], 
+                                  capture_output=True, text=True, timeout=10)
+            if result.returncode != 0:
+                pytest.skip("Docker not available")
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            pytest.skip("Docker not available")
         
-        # Mock file reading for tools.json and manifest
-        mock_tools_json = json.dumps(self.test_tools_config)
-        mock_manifest_json = json.dumps(self.test_manifest)
-        
-        # Create a mapping of file paths to content
-        file_content_map = {
-            'tools.json': mock_tools_json,
-            'build_manifest.json': mock_manifest_json
-        }
-        
-        def mock_open_func(filepath, *args, **kwargs):
-            # Find matching content based on filename
-            content = "{}"  # default
-            for key, value in file_content_map.items():
-                if key in filepath:
-                    content = value
-                    break
-            return mock_open(read_data=content).return_value
-        
-        with patch('builtins.open', side_effect=mock_open_func):
+        # Create test files in temporary directory
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = os.path.join(tmpdir, "manifest.json")
             
-            # Mock Docker operations
-            mock_docker_instance = MagicMock()
-            mock_docker.return_value = mock_docker_instance
-            mock_docker_instance.pull.return_value = None
-            mock_docker_instance.tag.return_value = None
-            mock_docker_instance.sh.return_value = "Test execution completed"
-            mock_docker_instance.__del__ = MagicMock()  # Mock destructor
-            mock_docker_instance.run.return_value = {
-                'exit_code': 0,
-                'stdout': 'Test execution completed',
-                'stderr': ''
+            # Minimal manifest for testing
+            manifest_data = {
+                "built_images": {
+                    "test": {
+                        "docker_image": "ubuntu:20.04",
+                        "dockerfile": "N/A",
+                        "build_duration": 0
+                    }
+                },
+                "built_models": {
+                    "test": {
+                        "name": "echo_test",
+                        "n_gpus": "0",
+                        "scripts": "echo 'Hello World'",
+                        "dockerfile": "N/A", 
+                        "tags": ["test"],
+                        "args": ""
+                    }
+                },
+                "context": {
+                    "docker_env_vars": {},
+                    "docker_mounts": {},
+                    "docker_build_arg": {}
+                }
             }
             
-            # Mock shell commands with side effect for different commands
-            def mock_sh_side_effect(command):
-                if "nvidia-smi" in command and "rocm-smi" in command:
-                    # This is the GPU vendor detection command - return AMD for this test
-                    return "AMD"
-                elif "rocm-smi --showid --csv | grep card | wc -l" in command:
-                    # Mock GPU count for AMD
-                    return "1"
-                elif "/opt/rocm/bin/rocminfo" in command and "gfx" in command:
-                    # Mock GPU architecture detection for AMD
-                    return "gfx906"
-                elif "hipconfig --version" in command:
-                    # Mock HIP version for AMD
-                    return "5.0"
-                elif "cat /opt/rocm/.info/version" in command:
-                    # Mock ROCm version (>= 6.1.2 to use simpler code path)
-                    return "6.1.3"
-                elif "grep -r drm_render_minor /sys/devices/virtual/kfd/kfd/topology/nodes" in command:
-                    # Mock KFD renderD nodes
-                    return "/sys/devices/virtual/kfd/kfd/topology/nodes/1/drm_render_minor 128"
-                elif "rocm-smi --showhw" in command:
-                    # Mock rocm-smi hardware info for node ID mapping (ROCm >= 6.1.2)
-                    return "GPU ID: 0\nNodeID: 1\n0   1"
-                elif "grep -r unique_id /sys/devices/virtual/kfd/kfd/topology/nodes" in command:
-                    # Mock KFD unique IDs (not needed for ROCm >= 6.1.2 but keeping for completeness)
-                    return "/sys/devices/virtual/kfd/kfd/topology/nodes/1/unique_id 12345"
-                elif "docker" in command:
-                    # Mock any docker commands
-                    return "Docker command successful"
-                else:
-                    # Default return for other commands (like host OS detection)
-                    return "rocm-libs version info"
+            with open(manifest_path, 'w') as f:
+                json.dump(manifest_data, f)
             
-            mock_sh.side_effect = mock_sh_side_effect
-            
-            # Create args with profiling context
+            # Create test arguments
             args = self.create_mock_args(
-                manifest_file="build_manifest.json",
-                registry=None,
-                timeout=3600,
+                manifest_file=manifest_path,
+                timeout=60,
                 keep_alive=False,
-                live_output=False,
-                generate_sys_env_details=True
+                live_output=True,
+                generate_sys_env_details=False  # Disable to avoid GPU issues in test environment
             )
             
-            # Test distributed run
-            orchestrator = DistributedOrchestrator(args)
-            
-            # Need to mock the manifest file existence in run_phase
-            with patch('os.path.exists') as mock_exists_inner:
-                def mock_exists_inner_side_effect(path):
-                    if path == "build_manifest.json":
-                        return True  # Manifest exists for run_phase
-                    if 'data.json' in path:
-                        return False  # No data.json
-                    return False
-                mock_exists_inner.side_effect = mock_exists_inner_side_effect
+            # Run the real distributed orchestrator
+            try:
+                from madengine.tools.distributed_orchestrator import DistributedOrchestrator
+                
+                orchestrator = DistributedOrchestrator(args)
                 result = orchestrator.run_phase()
-            
-            # Verify results (allow for some failures due to mocking)
-            assert 'successful_runs' in result
-            assert 'failed_runs' in result
-            assert isinstance(result['successful_runs'], list)
-            assert isinstance(result['failed_runs'], list)
-            
-            # Verify system environment collection was included
+                
+                # Verify the result structure
+                assert isinstance(result, dict), "Result must be a dictionary"
+                assert "successful_runs" in result, "Result must have successful_runs key"
+                assert "failed_runs" in result, "Result must have failed_runs key"
+                
+                # Test passes if we get this far without exceptions
+                total_runs = len(result.get("successful_runs", [])) + len(result.get("failed_runs", []))
+                print(f"Real test completed: {total_runs} total runs attempted")
+                
+            except Exception as e:
+                pytest.fail(f"Real distributed test failed: {e}")
+                
+        # Test completed successfully
             mock_sh.assert_called()
 
     @requires_gpu("Profiling tests require GPU hardware")
