@@ -15,16 +15,10 @@ from unittest.mock import MagicMock
 import re
 import json
 
-# project modules - lazy imports to avoid collection issues
-from madengine.core.console import Console
-# from madengine.core.context import Context
-
 
 MODEL_DIR = "tests/fixtures/dummy"
 BASE_DIR = os.path.join(os.path.dirname(__file__), "..", "..")
 sys.path.insert(1, BASE_DIR)
-# print(f'BASE DIR:: {BASE_DIR}')  # Commented out to avoid output during collection
-
 
 # GPU detection cache to avoid multiple expensive calls
 _has_gpu_cache = None
@@ -79,7 +73,8 @@ def requires_gpu(reason: str = "test requires GPU functionality"):
 @pytest.fixture
 def global_data():
     # Lazy import to avoid collection issues
-    from madengine.core.console import Console
+    if "Console" not in globals():   
+        from madengine.core.console import Console
     return {"console": Console(live_output=True)}
 
 
@@ -179,6 +174,9 @@ def get_gpu_nodeid_map() -> dict:
     Returns:
         dict: GPU node id map.
     """
+    # Lazy import to avoid collection issues
+    if "Console" not in globals():
+        from madengine.core.console import Console
     gpu_map = {}
     nvidia = is_nvidia()
     console = Console(live_output=True)
@@ -227,5 +225,8 @@ def get_num_cpus() -> int:
     Returns:
         int: Number of CPUs present.
     """
+    # Lazy import to avoid collection issues
+    if "Console" not in globals():
+        from madengine.core.console import Console
     console = Console(live_output=True)
     return int(console.sh("lscpu | grep \"^CPU(s):\" | awk '{print $2}'"))
