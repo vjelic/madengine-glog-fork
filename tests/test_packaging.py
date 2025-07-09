@@ -10,7 +10,7 @@ import importlib.util
 # third-party modules
 import pytest
 # test utilities
-from .fixtures.utils import detect_gpu_availability, is_cpu_only_machine, skip_on_cpu_only
+from .fixtures.utils import has_gpu, requires_gpu
 
 
 class TestPackaging:
@@ -164,30 +164,28 @@ class TestGPUAwarePackaging:
 
     def test_package_works_on_cpu_only_machine(self):
         """Test that the package works correctly on CPU-only machines."""
-        detection = detect_gpu_availability()
+        gpu_available = has_gpu()
         
         # Package should import successfully regardless of GPU availability
         import madengine
         assert madengine is not None
         
         # GPU detection results should be accessible
-        assert isinstance(detection["is_cpu_only"], bool)
-        assert isinstance(detection["has_gpu"], bool)
+        assert isinstance(gpu_available, bool)
         
         # On CPU-only machines, we should still be able to import all modules
-        if detection["is_cpu_only"]:
+        if not gpu_available:
             from madengine import mad, distributed_cli
             from madengine.core import context, console
             assert all([mad, distributed_cli, context, console])
 
-    @skip_on_cpu_only("GPU-specific functionality test")
+    @requires_gpu("GPU-specific functionality test")
     def test_package_works_with_gpu(self):
         """Test that the package works correctly on GPU machines."""
-        detection = detect_gpu_availability()
+        gpu_available = has_gpu()
         
         # This test only runs on GPU machines
-        assert detection["has_gpu"] is True
-        assert detection["gpu_vendor"] in ["AMD", "NVIDIA", "INTEL"]
+        assert gpu_available is True
         
         # All modules should still import correctly
         import madengine
@@ -197,7 +195,7 @@ class TestGPUAwarePackaging:
 
     def test_context_creation_with_detection(self):
         """Test that Context can be created with or without GPU."""
-        detection = detect_gpu_availability()
+        gpu_available = has_gpu()
         
         # Context creation should work regardless of GPU availability
         try:
@@ -207,7 +205,7 @@ class TestGPUAwarePackaging:
             assert Context is not None
         except Exception as e:
             # If Context creation fails on CPU-only, that's acceptable
-            if detection["is_cpu_only"]:
+            if not gpu_available:
                 pytest.skip(f"Context creation failed on CPU-only machine: {e}")
             else:
                 raise

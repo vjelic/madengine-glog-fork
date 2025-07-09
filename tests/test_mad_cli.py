@@ -4,7 +4,7 @@ This module tests the modern Typer-based command-line interface functionality.
 
 GPU Hardware Support:
 - Tests automatically detect if the machine has GPU hardware
-- GPU-dependent tests are skipped on CPU-only machines using @skip_on_cpu_only and @requires_gpu decorators
+- GPU-dependent tests are skipped on CPU-only machines using @requires_gpu decorator
 - Tests use auto-generated additional context appropriate for the current machine
 - CPU-only machines default to AMD GPU vendor for build compatibility
 
@@ -38,18 +38,15 @@ from madengine.mad_cli import (
     VALID_GPU_VENDORS,
     VALID_GUEST_OS,
     DEFAULT_MANIFEST_FILE,
-    DEFAULT_EXECUTION_CONFIG,
     DEFAULT_PERF_OUTPUT,
     DEFAULT_DATA_CONFIG,
     DEFAULT_TOOLS_CONFIG,
     DEFAULT_ANSIBLE_OUTPUT,
-    DEFAULT_K8S_NAMESPACE,
     DEFAULT_TIMEOUT,
 )
 from .fixtures.utils import (
-    BASE_DIR, MODEL_DIR, detect_gpu_availability, is_cpu_only_machine,
-    requires_gpu, skip_on_cpu_only, get_detected_gpu_vendor,
-    generate_additional_context_for_machine, create_mock_args_with_auto_context
+    BASE_DIR, MODEL_DIR, has_gpu,
+    requires_gpu, generate_additional_context_for_machine
 )
 
 
@@ -599,7 +596,7 @@ class TestRunCommand:
         # run_phase should not be called if build fails
         mock_orchestrator.run_phase.assert_not_called()
 
-    @skip_on_cpu_only("GPU execution tests require GPU hardware")
+    @requires_gpu("GPU execution tests require GPU hardware")
     @patch('madengine.mad_cli.os.path.exists')
     @patch('madengine.mad_cli.DistributedOrchestrator')
     def test_run_command_execution_failure(self, mock_orchestrator_class, mock_exists):
@@ -631,7 +628,7 @@ class TestRunCommand:
         
         assert result.exit_code == ExitCode.INVALID_ARGS
 
-    @skip_on_cpu_only("GPU execution tests require GPU hardware")
+    @requires_gpu("GPU execution tests require GPU hardware")
     @patch('madengine.mad_cli.os.path.exists')
     @patch('madengine.mad_cli.DistributedOrchestrator')
     def test_run_command_with_options(self, mock_orchestrator_class, mock_exists):
@@ -670,12 +667,17 @@ class TestGenerateAnsibleCommand:
         """Set up test fixtures."""
         self.runner = CliRunner()
 
-    @patch('madengine.mad_cli.create_ansible_playbook')
+    @patch('madengine.mad_cli.generate_ansible_setup')
     @patch('madengine.mad_cli.os.path.exists')
-    def test_generate_ansible_success(self, mock_exists, mock_create_ansible):
+    def test_generate_ansible_success(self, mock_exists, mock_generate_ansible):
         """Test successful ansible generation."""
         # Mock manifest file exists
         mock_exists.return_value = True
+        
+        # Mock the return value of generate_ansible_setup
+        mock_generate_ansible.return_value = {
+            "playbook": "ansible-setup/madengine_playbook.yml"
+        }
         
         result = self.runner.invoke(app, [
             "generate", "ansible",
@@ -684,9 +686,10 @@ class TestGenerateAnsibleCommand:
         ])
         
         assert result.exit_code == ExitCode.SUCCESS
-        mock_create_ansible.assert_called_once_with(
+        mock_generate_ansible.assert_called_once_with(
             manifest_file="test_manifest.json",
-            playbook_file="test_playbook.yml"
+            environment="default",
+            output_dir="."
         )
 
     @patch('madengine.mad_cli.os.path.exists')
@@ -702,15 +705,15 @@ class TestGenerateAnsibleCommand:
         
         assert result.exit_code == ExitCode.FAILURE
 
-    @patch('madengine.mad_cli.create_ansible_playbook')
+    @patch('madengine.mad_cli.generate_ansible_setup')
     @patch('madengine.mad_cli.os.path.exists')
-    def test_generate_ansible_exception(self, mock_exists, mock_create_ansible):
+    def test_generate_ansible_exception(self, mock_exists, mock_generate_ansible):
         """Test ansible generation with exception."""
         # Mock manifest file exists
         mock_exists.return_value = True
         
-        # Mock exception in ansible creation
-        mock_create_ansible.side_effect = Exception("Test error")
+        # Mock exception in ansible generation
+        mock_generate_ansible.side_effect = Exception("Test error")
         
         result = self.runner.invoke(app, [
             "generate", "ansible",
@@ -719,21 +722,27 @@ class TestGenerateAnsibleCommand:
         
         assert result.exit_code == ExitCode.FAILURE
 
-    @patch('madengine.mad_cli.create_ansible_playbook')
+    @patch('madengine.mad_cli.generate_ansible_setup')
     @patch('madengine.mad_cli.os.path.exists')
-    def test_generate_ansible_default_values(self, mock_exists, mock_create_ansible):
+    def test_generate_ansible_default_values(self, mock_exists, mock_generate_ansible):
         """Test ansible generation with default values."""
         # Mock manifest file exists
         mock_exists.return_value = True
+        
+        # Mock the return value of generate_ansible_setup
+        mock_generate_ansible.return_value = {
+            "playbook": "ansible-setup/madengine_playbook.yml"
+        }
         
         result = self.runner.invoke(app, [
             "generate", "ansible"
         ])
         
         assert result.exit_code == ExitCode.SUCCESS
-        mock_create_ansible.assert_called_once_with(
+        mock_generate_ansible.assert_called_once_with(
             manifest_file=DEFAULT_MANIFEST_FILE,
-            playbook_file=DEFAULT_ANSIBLE_OUTPUT
+            environment="default",
+            output_dir="."
         )
 
 
@@ -744,23 +753,30 @@ class TestGenerateK8sCommand:
         """Set up test fixtures."""
         self.runner = CliRunner()
 
-    @patch('madengine.mad_cli.create_kubernetes_manifests')
+    @patch('madengine.mad_cli.generate_k8s_setup')
     @patch('madengine.mad_cli.os.path.exists')
-    def test_generate_k8s_success(self, mock_exists, mock_create_k8s):
+    def test_generate_k8s_success(self, mock_exists, mock_generate_k8s):
         """Test successful k8s generation."""
         # Mock manifest file exists
         mock_exists.return_value = True
         
+        # Mock the return value of generate_k8s_setup
+        mock_generate_k8s.return_value = {
+            "deployment": ["k8s-setup/deployment.yml"],
+            "service": ["k8s-setup/service.yml"]
+        }
+        
         result = self.runner.invoke(app, [
             "generate", "k8s",
             "--manifest-file", "test_manifest.json",
-            "--namespace", "test-namespace"
+            "--output-dir", "test-k8s"
         ])
         
         assert result.exit_code == ExitCode.SUCCESS
-        mock_create_k8s.assert_called_once_with(
+        mock_generate_k8s.assert_called_once_with(
             manifest_file="test_manifest.json",
-            namespace="test-namespace"
+            environment="default",
+            output_dir="test-k8s"
         )
 
     @patch('madengine.mad_cli.os.path.exists')
@@ -776,15 +792,15 @@ class TestGenerateK8sCommand:
         
         assert result.exit_code == ExitCode.FAILURE
 
-    @patch('madengine.mad_cli.create_kubernetes_manifests')
+    @patch('madengine.mad_cli.generate_k8s_setup')
     @patch('madengine.mad_cli.os.path.exists')
-    def test_generate_k8s_exception(self, mock_exists, mock_create_k8s):
+    def test_generate_k8s_exception(self, mock_exists, mock_generate_k8s):
         """Test k8s generation with exception."""
         # Mock manifest file exists
         mock_exists.return_value = True
         
-        # Mock exception in k8s creation
-        mock_create_k8s.side_effect = Exception("Test error")
+        # Mock exception in k8s generation
+        mock_generate_k8s.side_effect = Exception("Test error")
         
         result = self.runner.invoke(app, [
             "generate", "k8s",
@@ -793,21 +809,28 @@ class TestGenerateK8sCommand:
         
         assert result.exit_code == ExitCode.FAILURE
 
-    @patch('madengine.mad_cli.create_kubernetes_manifests')
+    @patch('madengine.mad_cli.generate_k8s_setup')
     @patch('madengine.mad_cli.os.path.exists')
-    def test_generate_k8s_default_values(self, mock_exists, mock_create_k8s):
+    def test_generate_k8s_default_values(self, mock_exists, mock_generate_k8s):
         """Test k8s generation with default values."""
         # Mock manifest file exists
         mock_exists.return_value = True
+        
+        # Mock the return value of generate_k8s_setup
+        mock_generate_k8s.return_value = {
+            "deployment": ["k8s-setup/deployment.yml"],
+            "service": ["k8s-setup/service.yml"]
+        }
         
         result = self.runner.invoke(app, [
             "generate", "k8s"
         ])
         
         assert result.exit_code == ExitCode.SUCCESS
-        mock_create_k8s.assert_called_once_with(
+        mock_generate_k8s.assert_called_once_with(
             manifest_file=DEFAULT_MANIFEST_FILE,
-            namespace=DEFAULT_K8S_NAMESPACE
+            environment="default",
+            output_dir="k8s-setup"
         )
 
 
@@ -858,12 +881,10 @@ class TestConstants:
     def test_default_values(self):
         """Test default value constants."""
         assert DEFAULT_MANIFEST_FILE == "build_manifest.json"
-        assert DEFAULT_EXECUTION_CONFIG == "execution_config.json"
         assert DEFAULT_PERF_OUTPUT == "perf.csv"
         assert DEFAULT_DATA_CONFIG == "data.json"
         assert DEFAULT_TOOLS_CONFIG == "./scripts/common/tools.json"
         assert DEFAULT_ANSIBLE_OUTPUT == "madengine_distributed.yml"
-        assert DEFAULT_K8S_NAMESPACE == "madengine"
         assert DEFAULT_TIMEOUT == -1
 
 
@@ -962,10 +983,10 @@ class TestCpuOnlyMachine:
         self.runner = CliRunner()
 
     def test_cpu_only_machine_detection(self):
-        """Test that CPU-only machine detection works."""
+        """Test that GPU detection works."""
         # This test should always pass, regardless of hardware
-        is_cpu_only = is_cpu_only_machine()
-        assert isinstance(is_cpu_only, bool)
+        has_gpu_available = has_gpu()
+        assert isinstance(has_gpu_available, bool)
 
     def test_auto_context_generation_cpu_only(self):
         """Test that auto-generated context is appropriate for CPU-only machines."""
@@ -976,7 +997,7 @@ class TestCpuOnlyMachine:
         assert "guest_os" in context
         
         # On CPU-only machines, should use default AMD for build compatibility
-        if is_cpu_only_machine():
+        if not has_gpu():
             assert context["gpu_vendor"] == "AMD"
             assert context["guest_os"] == "UBUNTU"
 
@@ -1018,7 +1039,7 @@ class TestGpuRequiredTests:
         """Set up test fixtures."""
         self.runner = CliRunner()
 
-    @requires_gpu(gpu_count=1)
+    @requires_gpu("Test requires GPU hardware")
     @patch('madengine.mad_cli.os.path.exists')
     @patch('madengine.mad_cli.DistributedOrchestrator')
     def test_run_with_gpu_required(self, mock_orchestrator_class, mock_exists):
@@ -1042,7 +1063,7 @@ class TestGpuRequiredTests:
         assert result.exit_code == ExitCode.SUCCESS
         mock_orchestrator.run_phase.assert_called_once()
 
-    @requires_gpu(gpu_vendor="AMD")
+    @requires_gpu("Test requires AMD GPU hardware")
     @patch('madengine.mad_cli.os.path.exists')
     @patch('madengine.mad_cli.DistributedOrchestrator')
     def test_run_with_amd_gpu_required(self, mock_orchestrator_class, mock_exists):
@@ -1066,7 +1087,7 @@ class TestGpuRequiredTests:
         assert result.exit_code == ExitCode.SUCCESS
         mock_orchestrator.run_phase.assert_called_once()
 
-    @requires_gpu(gpu_vendor="NVIDIA")
+    @requires_gpu("Test requires NVIDIA GPU hardware")
     @patch('madengine.mad_cli.os.path.exists')
     @patch('madengine.mad_cli.DistributedOrchestrator')
     def test_run_with_nvidia_gpu_required(self, mock_orchestrator_class, mock_exists):

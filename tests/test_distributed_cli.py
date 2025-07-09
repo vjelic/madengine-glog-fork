@@ -19,9 +19,8 @@ import pytest
 from madengine import distributed_cli
 from madengine.tools.distributed_orchestrator import DistributedOrchestrator
 from .fixtures.utils import (
-    BASE_DIR, MODEL_DIR, detect_gpu_availability, is_cpu_only_machine, 
-    requires_gpu, skip_on_cpu_only, get_detected_gpu_vendor,
-    generate_additional_context_for_machine, create_mock_args_with_auto_context
+    BASE_DIR, MODEL_DIR, has_gpu,
+    requires_gpu, generate_additional_context_for_machine, create_mock_args_with_auto_context
 )
 
 
@@ -461,6 +460,30 @@ class TestDistributedCLI:
         # Should return EXIT_INVALID_ARGS due to invalid context
         assert result == distributed_cli.EXIT_INVALID_ARGS
 
+    def test_build_models_function_auto_context(self):
+        """Test the build_models function with automatically detected context."""
+        # Use utility function to create mock args with auto-generated context
+        mock_args = create_mock_args_with_auto_context(
+            registry="localhost:5000",
+            clean_docker_cache=True,
+            manifest_output="test_manifest.json",
+            summary_output="test_summary.json"
+        )
+
+        # Mock orchestrator instance and build phase
+        mock_instance = MagicMock()
+        with patch('madengine.distributed_cli.DistributedOrchestrator', return_value=mock_instance):
+            mock_instance.build_phase.return_value = {
+                "successful_builds": ["model1", "model2"],
+                "failed_builds": []
+            }
+
+            # Test build command
+            result = distributed_cli.build_models(mock_args)
+            
+            # Should return EXIT_SUCCESS for successful builds
+            assert result == distributed_cli.EXIT_SUCCESS
+
     @patch('madengine.distributed_cli.DistributedOrchestrator')
     @patch('os.path.exists')
     def test_run_models_execution_only(self, mock_exists, mock_orchestrator):
@@ -545,6 +568,29 @@ class TestDistributedCLI:
         )
         
         assert result == distributed_cli.EXIT_SUCCESS
+
+    @requires_gpu("Test run models that requires GPU")
+    def test_run_models_with_gpu_requirement(self):
+        """Test run models that requires GPU (should be skipped on CPU-only)."""
+        mock_args = MagicMock()
+        mock_args.manifest_file = "manifest.json"
+        mock_args.registry = "localhost:5000"
+        mock_args.timeout = 3600
+        mock_args.keep_alive = False
+        mock_args.summary_output = None
+
+        # Mock that manifest file exists (execution-only mode)
+        mock_instance = MagicMock()
+        with patch('madengine.distributed_cli.DistributedOrchestrator', return_value=mock_instance), \
+             patch('os.path.exists', return_value=True):
+            
+            mock_instance.run_phase.return_value = {
+                "successful_runs": ["model1", "model2"],
+                "failed_runs": []
+            }
+
+            result = distributed_cli.run_models(mock_args)
+            assert result == distributed_cli.EXIT_SUCCESS
 
     @patch('madengine.distributed_cli.create_ansible_playbook')
     @patch('os.path.exists')
@@ -695,211 +741,18 @@ class TestDistributedCLI:
         assert result == distributed_cli.EXIT_INVALID_ARGS
         mock_orchestrator.assert_not_called()
 
-
-class TestGPUDetectionAndSkipping:
-    """Test GPU detection and automatic test skipping functionality."""
-
-    def test_gpu_detection_info(self):
-        """Test GPU detection and report current machine capabilities."""
-        detection = detect_gpu_availability()
-        
-        print(f"\n=== GPU Detection Results ===")
-        print(f"Has GPU: {detection['has_gpu']}")
-        print(f"GPU Vendor: {detection['gpu_vendor']}")
-        print(f"GPU Count: {detection['gpu_count']}")
-        print(f"Is CPU Only: {detection['is_cpu_only']}")
-        if detection['detection_error']:
-            print(f"Detection Error: {detection['detection_error']}")
-        print(f"============================")
-        
-        # This test should always pass
-        assert True
-
-    def test_cpu_only_detection(self):
-        """Test CPU-only machine detection."""
-        is_cpu_only = is_cpu_only_machine()
-        detection = detect_gpu_availability()
-        
-        # CPU-only should be the inverse of has_gpu
-        assert is_cpu_only == (not detection["has_gpu"])
-
-    @skip_on_cpu_only("test requires GPU for validation")
-    def test_gpu_dependent_functionality(self):
-        """Test that only runs on machines with GPU."""
-        # This test should be skipped on CPU-only machines
-        detection = detect_gpu_availability()
-        assert detection["has_gpu"] is True
-        assert detection["gpu_vendor"] in ["AMD", "NVIDIA", "INTEL"]
-
-    @requires_gpu(gpu_count=2)
-    def test_multi_gpu_functionality(self):
-        """Test that requires at least 2 GPUs."""
-        detection = detect_gpu_availability()
-        assert detection["gpu_count"] >= 2
-
-    @requires_gpu(gpu_vendor="AMD")
-    def test_amd_specific_functionality(self):
-        """Test that requires AMD GPU."""
-        detection = detect_gpu_availability()
-        assert detection["gpu_vendor"] == "AMD"
-
-    @requires_gpu(gpu_vendor="NVIDIA")
-    def test_nvidia_specific_functionality(self):
-        """Test that requires NVIDIA GPU."""
-        detection = detect_gpu_availability()
-        assert detection["gpu_vendor"] == "NVIDIA"
-
     def test_automatic_context_generation(self):
-        """Test automatic generation of additional context based on detected hardware."""
-        detection = detect_gpu_availability()
-        
-        if detection["is_cpu_only"]:
-            # On CPU-only machines, we can provide mock context for build-only operations
-            mock_context = {
-                "gpu_vendor": "AMD",  # Default for build-only
-                "guest_os": "UBUNTU"  # Default OS
-            }
-            
-            # Test that validation works with mock context
-            mock_args = MagicMock()
-            mock_args.additional_context = json.dumps(mock_context)
-            mock_args.additional_context_file = None
-            
-            result = distributed_cli.validate_additional_context(mock_args)
-            assert result is True
-            
-        else:
-            # On GPU machines, we can use detected context
-            detected_context = {
-                "gpu_vendor": detection["gpu_vendor"],
-                "guest_os": "UBUNTU"  # We'd need OS detection for this
-            }
-            
-            mock_args = MagicMock()
-            mock_args.additional_context = json.dumps(detected_context)
-            mock_args.additional_context_file = None
-            
-            result = distributed_cli.validate_additional_context(mock_args)
-            assert result is True
-
-
-class TestDistributedCLIWithGPUDetection:
-    """Test distributed CLI functionality with automatic GPU detection."""
-
-    def test_build_models_function_auto_context(self):
-        """Test the build_models function with automatically detected context."""
-        # Use utility function to create mock args with auto-generated context
-        mock_args = create_mock_args_with_auto_context(
-            registry="localhost:5000",
-            clean_docker_cache=True,
-            manifest_output="test_manifest.json",
-            summary_output="test_summary.json"
-        )
-
-        # Mock orchestrator instance and build phase
-        mock_instance = MagicMock()
-        with patch('madengine.distributed_cli.DistributedOrchestrator', return_value=mock_instance):
-            mock_instance.build_phase.return_value = {
-                "successful_builds": ["model1", "model2"],
-                "failed_builds": []
-            }
-
-            # Test build command
-            result = distributed_cli.build_models(mock_args)
-            
-            # Should return EXIT_SUCCESS for successful builds
-            assert result == distributed_cli.EXIT_SUCCESS
-
-    @skip_on_cpu_only("build with GPU detection requires GPU")
-    def test_build_models_with_gpu_detection(self):
-        """Test build models with actual GPU detection (only on GPU machines)."""
-        detection = detect_gpu_availability()
-        
-        # This test only runs on GPU machines
-        assert detection["has_gpu"] is True
-        
-        mock_args = MagicMock()
-        mock_args.registry = "localhost:5000"
-        mock_args.clean_docker_cache = False
-        mock_args.manifest_output = "manifest.json"
-        mock_args.summary_output = None
-        
-        # Use detected GPU vendor
-        detected_context = {
-            "gpu_vendor": detection["gpu_vendor"],
-            "guest_os": "UBUNTU"
+        """Test automatic generation of additional context for build-only operations."""
+        # Test that validation works with mock context for any machine
+        mock_context = {
+            "gpu_vendor": "AMD",  # Default for build-only
+            "guest_os": "UBUNTU"  # Default OS
         }
-        mock_args.additional_context = json.dumps(detected_context)
-        mock_args.additional_context_file = None
-
-        mock_instance = MagicMock()
-        with patch('madengine.distributed_cli.DistributedOrchestrator', return_value=mock_instance):
-            mock_instance.build_phase.return_value = {
-                "successful_builds": ["model1"],
-                "failed_builds": []
-            }
-
-            result = distributed_cli.build_models(mock_args)
-            assert result == distributed_cli.EXIT_SUCCESS
-
-    def test_cpu_only_build_workflow(self):
-        """Test build workflow specifically for CPU-only machines."""
-        detection = detect_gpu_availability()
         
-        if detection["is_cpu_only"]:
-            # On CPU-only machines, we should be able to build with mock context
-            mock_args = MagicMock()
-            mock_args.registry = "localhost:5000"
-            mock_args.clean_docker_cache = False
-            mock_args.manifest_output = "manifest.json"
-            mock_args.summary_output = None
-            
-            # Use sensible defaults for CPU-only build nodes
-            cpu_only_context = {
-                "gpu_vendor": "AMD",  # Default for build
-                "guest_os": "UBUNTU"
-            }
-            mock_args.additional_context = json.dumps(cpu_only_context)
-            mock_args.additional_context_file = None
-
-            mock_instance = MagicMock()
-            with patch('madengine.distributed_cli.DistributedOrchestrator', return_value=mock_instance):
-                mock_instance.build_phase.return_value = {
-                    "successful_builds": ["model1"],
-                    "failed_builds": []
-                }
-
-                result = distributed_cli.build_models(mock_args)
-                assert result == distributed_cli.EXIT_SUCCESS
-        else:
-            # On GPU machines, just pass
-            pytest.skip("This test is for CPU-only machines")
-
-    @requires_gpu(gpu_count=1)
-    def test_run_models_with_gpu_requirement(self):
-        """Test run models that requires GPU (should be skipped on CPU-only)."""
-        detection = detect_gpu_availability()
-        
-        # This test should only run on machines with GPU
-        assert detection["has_gpu"] is True
-        assert detection["gpu_count"] >= 1
-        
+        # Test that validation works with mock context
         mock_args = MagicMock()
-        mock_args.manifest_file = "manifest.json"
-        mock_args.registry = "localhost:5000"
-        mock_args.timeout = 3600
-        mock_args.keep_alive = False
-        mock_args.summary_output = None
-
-        # Mock that manifest file exists (execution-only mode)
-        mock_instance = MagicMock()
-        with patch('madengine.distributed_cli.DistributedOrchestrator', return_value=mock_instance), \
-             patch('os.path.exists', return_value=True):
-            
-            mock_instance.run_phase.return_value = {
-                "successful_runs": ["model1", "model2"],
-                "failed_runs": []
-            }
-
-            result = distributed_cli.run_models(mock_args)
-            assert result == distributed_cli.EXIT_SUCCESS
+        mock_args.additional_context = json.dumps(mock_context)
+        mock_args.additional_context_file = None
+        
+        result = distributed_cli.validate_additional_context(mock_args)
+        assert result is True

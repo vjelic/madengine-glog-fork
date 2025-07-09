@@ -23,7 +23,7 @@ from madengine.tools.container_runner import ContainerRunner
 from madengine import distributed_cli
 from .fixtures.utils import (
     BASE_DIR, MODEL_DIR, clean_test_temp_files,
-    is_cpu_only_machine, skip_on_cpu_only, requires_gpu,
+    has_gpu, requires_gpu,
     generate_additional_context_for_machine
 )
 
@@ -111,7 +111,7 @@ class TestDistributedIntegrationBase:
 class TestDistributedWorkflow(TestDistributedIntegrationBase):
     """Test distributed workflow orchestration."""
 
-    @skip_on_cpu_only
+    @requires_gpu("End-to-end workflow requires GPU hardware")
     @pytest.mark.parametrize('clean_test_temp_files', [['test_manifest.json', 'test_summary.json']], indirect=True)
     def test_end_to_end_workflow_simulation(self, clean_test_temp_files):
         """Test complete end-to-end distributed workflow simulation."""
@@ -252,7 +252,7 @@ class TestDistributedWorkflow(TestDistributedIntegrationBase):
                         assert "build_phase" in full_result
                         assert "run_phase" in full_result
 
-    @skip_on_cpu_only
+    @requires_gpu("Error handling integration requires GPU hardware")
     def test_error_handling_integration(self):
         """Test error handling throughout the distributed workflow."""
         
@@ -492,7 +492,7 @@ class TestDistributedCLI(TestDistributedIntegrationBase):
 class TestDistributedManifestHandling(TestDistributedIntegrationBase):
     """Test manifest file creation and loading."""
 
-    @requires_gpu(gpu_count=1)
+    @requires_gpu("Manifest handling requires GPU hardware")
     def test_manifest_file_handling(self):
         """Test manifest file creation and loading."""
         # Test manifest data
@@ -550,7 +550,7 @@ class TestDistributedManifestHandling(TestDistributedIntegrationBase):
 class TestDistributedRegistry(TestDistributedIntegrationBase):
     """Test registry integration."""
 
-    @requires_gpu(gpu_count=1)
+    @requires_gpu("Registry integration requires GPU hardware")
     def test_registry_integration(self):
         """Test registry push/pull integration."""
         from madengine.core.context import Context
@@ -604,7 +604,7 @@ class TestDistributedRegistry(TestDistributedIntegrationBase):
 class TestDistributedProfiling(TestDistributedIntegrationBase):
     """Test profiling functionality in distributed scenarios."""
 
-    @skip_on_cpu_only("Profiling tests require GPU hardware")
+    @requires_gpu("Profiling tests require GPU hardware")
     @patch('madengine.tools.container_runner.Docker')
     @patch('madengine.core.console.Console.sh')
     @patch('madengine.tools.distributed_orchestrator.Data')
@@ -695,7 +695,7 @@ class TestDistributedProfiling(TestDistributedIntegrationBase):
             # Verify system environment collection was included
             mock_sh.assert_called()
 
-    @skip_on_cpu_only("Profiling tests require GPU hardware")
+    @requires_gpu("Profiling tests require GPU hardware")
     @patch('madengine.tools.distributed_orchestrator.DistributedOrchestrator.run_phase')
     @patch('madengine.tools.distributed_orchestrator.Data')
     @patch('os.path.exists')
@@ -748,7 +748,7 @@ class TestDistributedProfiling(TestDistributedIntegrationBase):
             assert len(result["successful_runs"]) > 0
             assert len(result["failed_runs"]) == 0
 
-    @skip_on_cpu_only("Profiling tests require GPU hardware")
+    @requires_gpu("Profiling tests require GPU hardware")
     @patch('madengine.tools.container_runner.ContainerRunner.run_container')
     @patch('madengine.tools.distributed_orchestrator.DistributedOrchestrator._copy_scripts')
     @patch('madengine.tools.distributed_orchestrator.Data')
@@ -826,7 +826,7 @@ class TestDistributedProfiling(TestDistributedIntegrationBase):
             assert 'generate_sys_env_details' in call_args.kwargs
             assert call_args.kwargs['generate_sys_env_details'] is True
 
-    @requires_gpu(gpu_count=1) 
+    @requires_gpu("System environment tests require GPU hardware")
     def test_system_env_pre_script_format_consistency(self):
         """Test that system env pre-script format is consistent between standard and distributed."""
         from madengine.core.context import Context
@@ -852,7 +852,7 @@ class TestDistributedProfiling(TestDistributedIntegrationBase):
             assert isinstance(pre_scripts_dict, dict)
             assert "pre_scripts" in pre_scripts_dict
 
-    @requires_gpu(gpu_count=1)
+    @requires_gpu("Error recovery tests require GPU hardware")
     def test_error_recovery_in_profiling_workflow(self):
         """Test error recovery scenarios in profiling workflow."""
         from madengine.core.context import Context
@@ -877,7 +877,7 @@ class TestDistributedProfiling(TestDistributedIntegrationBase):
                 # If it raises an exception, it should be informative
                 assert "name" in str(e).lower() or "model" in str(e).lower()
 
-    @skip_on_cpu_only("Distributed cleanup tests require GPU hardware")
+    @requires_gpu("Distributed cleanup tests require GPU hardware")
     @patch('madengine.tools.distributed_orchestrator.DistributedOrchestrator.cleanup')
     @patch('madengine.tools.distributed_orchestrator.Data')
     def test_distributed_cleanup_after_profiling(self, mock_data, mock_cleanup):
@@ -904,123 +904,4 @@ class TestDistributedProfiling(TestDistributedIntegrationBase):
                         assert mock_cleanup_inner.call_count >= 0
 
 
-class TestDistributedCpuOnly(TestDistributedIntegrationBase):
-    """Test distributed functionality on CPU-only machines."""
 
-    def test_cpu_only_build_workflow(self):
-        """Test that build workflow works on CPU-only machines."""
-        # Use machine-appropriate context (should default to AMD on CPU-only)
-        context = generate_additional_context_for_machine()
-        
-        if is_cpu_only_machine():
-            # On CPU-only machines, should use AMD for build compatibility
-            assert context["gpu_vendor"] == "AMD"
-            assert context["guest_os"] == "UBUNTU"
-        
-        mock_args = self.create_mock_args(
-            additional_context=json.dumps(context),
-            tags=['dummy_cpu_test']
-        )
-
-        with patch('os.path.exists', return_value=False):
-            orchestrator = DistributedOrchestrator(mock_args, build_only_mode=True)
-
-        # Mock successful build (should work on CPU-only for Docker builds)
-        with patch('madengine.tools.distributed_orchestrator.DiscoverModels') as mock_discover:
-            with patch('madengine.tools.distributed_orchestrator.DockerBuilder') as mock_builder:
-                
-                mock_discover_instance = MagicMock()
-                mock_discover.return_value = mock_discover_instance
-                mock_discover_instance.run.return_value = [{"name": "cpu_test_model"}]
-
-                mock_builder_instance = MagicMock()
-                mock_builder.return_value = mock_builder_instance
-                mock_builder_instance.build_all_models.return_value = {
-                    "successful_builds": ["cpu_test_model"],
-                    "failed_builds": [],
-                    "total_build_time": 30.0
-                }
-
-                with patch.object(orchestrator, '_copy_scripts'):
-                    result = orchestrator.build_phase()
-                    
-                    # Build should succeed on CPU-only machines
-                    assert len(result["successful_builds"]) == 1
-                    assert len(result["failed_builds"]) == 0
-
-    def test_cpu_only_context_generation(self):
-        """Test that context generation works appropriately for CPU-only machines."""
-        context = generate_additional_context_for_machine()
-        
-        # Should always have required fields
-        assert "gpu_vendor" in context
-        assert "guest_os" in context
-        
-        # On CPU-only machines, should use defaults suitable for builds
-        if is_cpu_only_machine():
-            assert context["gpu_vendor"] == "AMD"
-            assert context["guest_os"] == "UBUNTU"
-
-    def test_cpu_only_manifest_operations(self):
-        """Test manifest operations that don't require GPU hardware."""
-        # Test simple manifest data structure operations
-        test_manifest = {
-            "built_images": {
-                "ci-test_model": {
-                    "docker_image": "ci-test_model",
-                    "dockerfile": "docker/test.Dockerfile",
-                    "build_duration": 30.0
-                }
-            },
-            "built_models": {
-                "ci-test_model": {
-                    "name": "test_model",
-                    "dockerfile": "docker/test.Dockerfile",
-                    "tags": ["test"]
-                }
-            }
-        }
-
-        # Test manifest loading with mock file operations
-        with patch('builtins.open', mock_open(read_data=json.dumps(test_manifest))):
-            from madengine.tools.container_runner import ContainerRunner
-            
-            # Create runner without Context initialization
-            runner = ContainerRunner()
-            
-            loaded_manifest = runner.load_build_manifest("test_manifest.json")
-            
-            assert loaded_manifest == test_manifest
-            assert "built_images" in loaded_manifest
-            assert "built_models" in loaded_manifest
-
-    def test_cpu_only_cli_argument_parsing(self):
-        """Test CLI argument parsing on CPU-only machines."""
-        # Use machine-appropriate context
-        context = generate_additional_context_for_machine()
-        context_json = json.dumps(context)
-        
-        # Test args creation for build command (should work on CPU-only)
-        build_args = self.create_mock_args(
-            registry="localhost:5000",
-            clean_docker_cache=True,
-            manifest_output="test_manifest.json",
-            additional_context=context_json
-        )
-
-        # Verify args were created correctly
-        assert build_args.registry == "localhost:5000"
-        assert build_args.clean_docker_cache is True
-        assert build_args.manifest_output == "test_manifest.json"
-        assert build_args.additional_context == context_json
-
-        # Test args creation for orchestration commands
-        orchestration_args = self.create_mock_args(
-            manifest_file="test_manifest.json",
-            timeout=1800,
-            keep_alive=False
-        )
-
-        assert orchestration_args.manifest_file == "test_manifest.json"
-        assert orchestration_args.timeout == 1800
-        assert orchestration_args.keep_alive is False

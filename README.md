@@ -16,9 +16,16 @@ A comprehensive AI model automation and benchmarking toolkit designed to work se
 - [MAD Model Discovery](#mad-model-discovery)
 - [Command Line Interface](#command-line-interface)
 - [Distributed Execution](#distributed-execution)
+  - [Distributed Runner System](#distributed-runner-system)
+  - [Runner Types](#runner-types)
+  - [Inventory Configuration](#inventory-configuration)
+  - [Examples](#examples)
 - [Configuration](#configuration)
 - [Advanced Usage](#advanced-usage)
 - [Deployment Scenarios](#deployment-scenarios)
+- [Best Practices](#best-practices)
+- [Troubleshooting](#troubleshooting)
+- [API Reference](#api-reference)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -139,6 +146,42 @@ pip install git+https://github.com/ROCm/madengine.git@main
 git clone git@github.com:ROCm/madengine.git
 cd madengine
 pip install .
+```
+
+### Distributed Runner Dependencies
+
+Install dependencies for specific runner types:
+
+```bash
+# SSH Runner
+pip install madengine[ssh]
+
+# Ansible Runner
+pip install madengine[ansible]
+
+# Kubernetes Runner
+pip install madengine[kubernetes]
+
+# All runners
+pip install madengine[runners]
+
+# Development environment
+pip install madengine[all]
+```
+
+### Manual Dependencies
+
+If you prefer to install dependencies manually:
+
+```bash
+# SSH Runner
+pip install paramiko>=2.7.0 scp>=0.14.0
+
+# Ansible Runner
+pip install ansible-runner>=2.0.0 PyYAML>=5.4.0
+
+# Kubernetes Runner
+pip install kubernetes>=20.0.0 PyYAML>=5.4.0
 ```
 
 ### Docker Environment Setup
@@ -380,13 +423,53 @@ madengine-cli run --tags dummy --registry localhost:5000 --timeout 3600
 madengine-cli run --tags models --live-output --verbose --keep-alive
 ```
 
+#### Distributed Runner Commands
+```bash
+madengine-cli runner <runner_type> [OPTIONS]
+```
+
+Execute models across multiple nodes with different infrastructure types:
+
+```bash
+# SSH Runner - Direct SSH connections to remote nodes
+madengine-cli runner ssh \
+    --inventory inventory.yml \
+    --manifest-file build_manifest.json \
+    --tags dummy resnet \
+    --timeout 3600 \
+    --parallelism 2 \
+    --verbose
+
+# Ansible Runner - Orchestrated deployment using playbooks
+madengine-cli runner ansible \
+    --inventory cluster.yml \
+    --manifest-file build_manifest.json \
+    --tags dummy \
+    --playbook-output generated_playbook.yml \
+    --verbose
+
+# Kubernetes Runner - Cloud-native execution in K8s clusters
+madengine-cli runner k8s \
+    --inventory k8s_inventory.yml \
+    --manifest-file build_manifest.json \
+    --tags dummy \
+    --namespace madengine-prod \
+    --manifests-output k8s_manifests/ \
+    --verbose
+```
+
 #### Generate Commands
 ```bash
-# Generate Ansible playbook
-madengine-cli generate ansible --output cluster-deployment.yml
+# Generate Ansible playbook for cluster deployment
+madengine-cli generate ansible \
+    --manifest-file build_manifest.json \
+    --output cluster-deployment.yml
 
 # Generate Kubernetes manifests
-madengine-cli generate k8s --namespace production
+madengine-cli generate k8s \
+    --manifest-file build_manifest.json \
+    --namespace madengine-prod \
+    --output k8s-manifests/
 ```
 
 #### Export Configuration
@@ -424,6 +507,55 @@ madengine-cli export-config --tags models --output execution.json
 
 madengine supports sophisticated distributed execution scenarios, enabling separation of build and runtime environments for optimal resource utilization and scalability.
 
+### Distributed Runner System
+
+The MADEngine distributed runner system provides a unified interface for orchestrating workloads across multiple nodes and clusters using different infrastructure types (SSH, Ansible, Kubernetes).
+
+#### Key Features
+
+- **Modular Architecture**: Pluggable runner implementations for different infrastructure types
+- **Unified Interface**: Consistent CLI and API across all runner types
+- **Flexible Inventory**: Support for JSON and YAML inventory formats
+- **Rich Reporting**: Detailed execution reports with performance metrics
+- **Error Handling**: Comprehensive error handling and recovery mechanisms
+- **Parallel Execution**: Configurable parallelism for optimal resource utilization
+- **Automated Setup**: Automatically clones ROCm/MAD repository and installs madengine on each node/pod
+- **Environment Management**: Runs madengine from the MAD directory using default MODEL_DIR
+
+#### Runner Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     MADEngine CLI                               │
+│                (madengine-cli runner)                           │
+└─────────────────────────────────────────────────────────────────┘
+                                │
+                                ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    Runner Factory                               │
+│              (RunnerFactory.create_runner)                      │
+└─────────────────────────────────────────────────────────────────┘
+                                │
+                                ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                 Base Distributed Runner                         │
+│                (BaseDistributedRunner)                          │
+└─────────────────────────────────────────────────────────────────┘
+                                │
+                ┌───────────────┼───────────────┐
+                ▼               ▼               ▼
+┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
+│   SSH Runner    │  │ Ansible Runner  │  │ Kubernetes      │
+│                 │  │                 │  │ Runner          │
+└─────────────────┘  └─────────────────┘  └─────────────────┘
+                                │
+                                ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                  Container Runner                               │
+│              (existing ContainerRunner)                        │
+└─────────────────────────────────────────────────────────────────┘
+```
+
 ### Use Cases
 
 #### 1. Single GPU Node (Development & Testing)
@@ -450,6 +582,309 @@ madengine supports sophisticated distributed execution scenarios, enabling separ
 - Continuous integration for ML model validation
 - Automated testing and quality gates
 - Reproducible benchmarking workflows
+
+### Runner Types
+
+#### Node/Pod Preparation Process
+
+Before executing any workload, all runners perform the following preparation steps on each node or pod:
+
+1. **Clone ROCm/MAD Repository**: If the MAD directory doesn't exist, it clones the repository from `https://github.com/ROCm/MAD.git`. If it exists, it pulls the latest changes.
+
+2. **Setup Virtual Environment**: Creates a Python virtual environment in the MAD directory (`MAD/venv/`).
+
+3. **Install MADEngine**: Installs madengine and all dependencies using `pip install -r requirements.txt` from the MAD repository.
+
+4. **Install Dependencies**: Installs all dependencies from the MAD repository's `requirements.txt` file, plus additional runner-specific dependencies (paramiko, scp, ansible-runner, kubernetes, PyYAML).
+
+5. **Copy Supporting Files**: Copies essential files like:
+   - `credential.json` - Authentication credentials
+   - `data.json` - Data configuration
+   - `models.json` - Model definitions
+   - `build_manifest.json` - Build manifest from the build phase
+   - `scripts/` directory - Supporting scripts
+
+6. **Verify Installation**: Validates that `madengine-cli` is accessible and working properly.
+
+7. **Execute from MAD Directory**: All madengine commands are executed from the MAD directory with the virtual environment activated, ensuring the default MODEL_DIR is used.
+
+This preparation ensures that each node/pod has a complete, isolated MADEngine environment ready for container execution.
+
+#### 1. SSH Runner
+
+Executes models on remote nodes via SSH connections with automatic environment setup.
+
+**Use Cases:**
+- Individual GPU workstations
+- Small to medium clusters
+- Development and testing
+- Simple deployment scenarios
+
+**Features:**
+- Direct SSH connections using paramiko
+- Secure file transfer with SCP
+- Parallel execution across nodes
+- Real-time command output capture
+- Automatic MAD repository cloning and setup
+- Virtual environment management per node
+
+**Installation:**
+```bash
+# SSH Runner dependencies
+pip install madengine[ssh]
+# Or manually: pip install paramiko>=2.7.0 scp>=0.14.0
+```
+
+**Example:**
+```bash
+madengine-cli runner ssh \
+    --inventory inventory.yml \
+    --manifest-file build_manifest.json \
+    --tags dummy resnet \
+    --timeout 3600 \
+    --parallelism 2 \
+    --verbose
+```
+
+#### 2. Ansible Runner
+
+Executes models using Ansible playbooks for orchestrated deployment with automated environment setup.
+
+**Use Cases:**
+- Large-scale clusters
+- Complex deployment scenarios
+- Configuration management
+- Automated infrastructure setup
+
+**Features:**
+- Ansible playbook generation
+- Inventory management
+- Parallel execution with Ansible
+- Rich error reporting and recovery
+- Automated MAD repository setup across all nodes
+- Consistent environment configuration
+
+**Installation:**
+```bash
+# Ansible Runner dependencies
+pip install madengine[ansible]
+# Or manually: pip install ansible-runner>=2.0.0 PyYAML>=5.4.0
+```
+
+**Example:**
+```bash
+madengine-cli runner ansible \
+    --inventory cluster.yml \
+    --manifest-file build_manifest.json \
+    --tags dummy \
+    --playbook-output generated_playbook.yml \
+    --verbose
+```
+
+#### 3. Kubernetes Runner
+
+Executes models as Kubernetes Jobs in a cluster with containerized MAD environment setup.
+
+**Use Cases:**
+- Cloud-native deployments
+- Container orchestration
+- Auto-scaling scenarios
+- Enterprise Kubernetes clusters
+
+**Features:**
+- Dynamic Job creation
+- ConfigMap management
+- Resource management
+- Namespace isolation
+- Containerized MAD environment setup
+- Automatic git repository cloning in pods
+
+**Installation:**
+```bash
+# Kubernetes Runner dependencies
+pip install madengine[kubernetes]
+# Or manually: pip install kubernetes>=20.0.0 PyYAML>=5.4.0
+```
+
+**Example:**
+```bash
+madengine-cli runner k8s \
+    --inventory k8s_inventory.yml \
+    --manifest-file build_manifest.json \
+    --tags dummy \
+    --namespace madengine-prod \
+    --manifests-output k8s_manifests/ \
+    --verbose
+```
+
+### Inventory Configuration
+
+#### SSH/Ansible Inventory (inventory.yml)
+
+```yaml
+# Simple format
+nodes:
+  - hostname: "gpu-node-1"
+    address: "192.168.1.101"
+    port: 22
+    username: "root"
+    ssh_key_path: "~/.ssh/id_rsa"
+    gpu_count: 4
+    gpu_vendor: "AMD"
+    labels:
+      gpu_architecture: "gfx908"
+      datacenter: "dc1"
+    environment:
+      ROCR_VISIBLE_DEVICES: "0,1,2,3"
+
+# Ansible-style format
+gpu_nodes:
+  - hostname: "gpu-node-2"
+    address: "192.168.1.102"
+    port: 22
+    username: "madengine"
+    ssh_key_path: "/opt/keys/madengine_key"
+    gpu_count: 8
+    gpu_vendor: "NVIDIA"
+    labels:
+      gpu_architecture: "V100"
+      datacenter: "dc2"
+    environment:
+      CUDA_VISIBLE_DEVICES: "0,1,2,3,4,5,6,7"
+```
+
+#### Kubernetes Inventory (k8s_inventory.yml)
+
+```yaml
+# Pod specifications
+pods:
+  - name: "madengine-pod-1"
+    node_selector:
+      gpu-type: "amd"
+      gpu-architecture: "gfx908"
+    resources:
+      requests:
+        amd.com/gpu: "2"
+      limits:
+        amd.com/gpu: "2"
+    gpu_count: 2
+    gpu_vendor: "AMD"
+    environment:
+      ROCR_VISIBLE_DEVICES: "0,1"
+      MAD_GPU_ARCH: "gfx908"
+
+# Node selectors
+node_selectors:
+  - labels:
+      gpu-type: "nvidia"
+      instance-type: "gpu-xlarge"
+    gpu_count: 8
+    gpu_vendor: "NVIDIA"
+    environment:
+      CUDA_VISIBLE_DEVICES: "0,1,2,3,4,5,6,7"
+```
+
+#### Node Selector Examples
+
+Filter nodes based on criteria:
+
+```bash
+# GPU vendor filtering
+--node-selector '{"gpu_vendor": "AMD"}'
+
+# Label-based filtering
+--node-selector '{"datacenter": "dc1", "gpu_architecture": "gfx908"}'
+
+# Multiple criteria
+--node-selector '{"gpu_vendor": "NVIDIA", "instance-type": "gpu-large"}'
+```
+
+#### Additional Context Examples
+
+Pass runtime configuration:
+
+```bash
+# Basic context
+--additional-context '{"timeout_multiplier": 2.0}'
+
+# GPU configuration
+--additional-context '{"tools": [{"name": "rocprof"}], "gpu_vendor": "AMD"}'
+
+# Complex context
+--additional-context '{"docker_env_vars": {"ROCR_VISIBLE_DEVICES": "0,1"}, "timeout_multiplier": 1.5}'
+```
+
+### Examples
+
+#### Example 1: Development Testing
+
+Test a model on a single GPU workstation:
+
+```bash
+# SSH to single node
+madengine-cli runner ssh \
+    --inventory dev_inventory.yml \
+    --manifest-file build_manifest.json \
+    --tags dummy \
+    --timeout 1800 \
+    --verbose
+```
+
+#### Example 2: Multi-Node Cluster
+
+Run models across multiple nodes in parallel:
+
+```bash
+# Ansible orchestration
+madengine-cli runner ansible \
+    --inventory cluster_inventory.yml \
+    --manifest-file build_manifest.json \
+    --tags dummy resnet bert \
+    --parallelism 4 \
+    --registry production.registry.com \
+    --additional-context '{"gpu_vendor": "AMD", "guest_os": "UBUNTU"}' \
+    --report-output cluster_results.json
+```
+
+#### Example 3: Cloud Kubernetes Deployment
+
+Deploy to cloud Kubernetes cluster:
+
+```bash
+# Generate manifests first
+madengine-cli generate k8s \
+    --manifest-file build_manifest.json \
+    --namespace madengine-prod \
+    --output k8s_manifests/
+
+# Or use runner for direct execution
+madengine-cli runner k8s \
+    --inventory k8s_prod_inventory.yml \
+    --manifest-file build_manifest.json \
+    --tags production_models \
+    --namespace madengine-prod \
+    --manifests-output k8s_manifests/ \
+    --kubeconfig ~/.kube/prod_config
+
+# Apply manifests manually if needed
+kubectl apply -f k8s_manifests/
+```
+
+#### Example 4: AMD GPU Cluster
+
+Specific configuration for AMD GPU cluster:
+
+```bash
+madengine-cli runner ansible \
+    --inventory amd_cluster.yml \
+    --manifest-file build_manifest.json \
+    --tags pytorch_models \
+    --node-selector '{"gpu_vendor": "AMD"}' \
+    --additional-context '{"tools": [{"name": "rocprof"}], "gpu_vendor": "AMD", "guest_os": "UBUNTU"}' \
+    --timeout 7200 \
+    --parallelism 2 \
+    --verbose
+```
 
 ### Registry Integration
 
@@ -754,6 +1189,208 @@ madengine-cli generate ansible --manifest-file build_manifest.json
 ansible-playbook -i secure_inventory cluster-deployment.yml \
   --extra-vars "audit_mode=true compliance_log=/audit/ml_bench.log"
 ```
+
+## Best Practices
+
+### 1. Inventory Management
+
+- **Version Control**: Store inventory files in version control
+- **Environment Separation**: Use different inventories for dev/test/prod
+- **Documentation**: Document node purposes and configurations
+- **Validation**: Validate inventory files before use
+
+### 2. Security
+
+- **SSH Keys**: Use SSH keys instead of passwords
+- **Least Privilege**: Use dedicated user accounts with minimal permissions
+- **Network Security**: Restrict network access to necessary ports
+- **Credential Management**: Store credentials securely
+
+### 3. Performance Optimization
+
+- **Parallelism**: Tune parallelism based on cluster size and network capacity
+- **Resource Allocation**: Match resource requests to actual needs
+- **Timeout Management**: Set appropriate timeouts for different model types
+- **Registry Optimization**: Use local or nearby registries for faster pulls
+
+### 4. Error Handling
+
+- **Retry Logic**: Implement retry logic for transient failures
+- **Monitoring**: Monitor execution progress and resource usage
+- **Logging**: Enable verbose logging for troubleshooting
+- **Cleanup**: Ensure proper cleanup of resources on failure
+
+### 5. Scalability
+
+- **Horizontal Scaling**: Add more nodes rather than larger nodes
+- **Load Balancing**: Distribute workloads evenly across nodes
+- **Resource Monitoring**: Monitor cluster resource usage
+- **Auto-scaling**: Use Kubernetes HPA for dynamic scaling
+
+## Troubleshooting
+
+### Common Issues
+
+#### 1. SSH Connection Failures
+
+**Problem**: Cannot connect to nodes via SSH
+
+**Solutions:**
+- Check network connectivity: `ping <node_address>`
+- Verify SSH key permissions: `chmod 600 ~/.ssh/id_rsa`
+- Test manual SSH: `ssh -i ~/.ssh/id_rsa user@node`
+- Check SSH service: `systemctl status sshd`
+
+#### 2. Ansible Playbook Errors
+
+**Problem**: Ansible playbook execution fails
+
+**Solutions:**
+- Test Ansible connectivity: `ansible all -i inventory.yml -m ping`
+- Check Python installation on nodes: `ansible all -i inventory.yml -m setup`
+- Verify inventory format: `ansible-inventory -i inventory.yml --list`
+- Run with increased verbosity: `--verbose`
+
+#### 3. Kubernetes Job Failures
+
+**Problem**: Kubernetes Jobs fail to start or complete
+
+**Solutions:**
+- Check cluster status: `kubectl get nodes`
+- Verify namespace: `kubectl get namespaces`
+- Check resource quotas: `kubectl describe quota -n madengine`
+- Inspect job logs: `kubectl logs job/madengine-job -n madengine`
+
+#### 4. Docker Image Pull Failures
+
+**Problem**: Cannot pull Docker images on nodes
+
+**Solutions:**
+- Test registry connectivity: `docker pull <registry>/<image>`
+- Check registry credentials: `docker login <registry>`
+- Verify image exists: `docker images`
+- Check network access to registry
+
+#### 5. GPU Resource Issues
+
+**Problem**: GPU not detected or allocated
+
+**Solutions:**
+- Check GPU drivers: `nvidia-smi` or `rocm-smi`
+- Verify GPU resource labels: `kubectl describe nodes`
+- Check device plugin status: `kubectl get pods -n kube-system`
+- Validate GPU configuration in inventory
+
+#### 6. MAD Environment Setup Issues
+
+**Problem**: MAD repository cloning or madengine installation fails
+
+**Solutions:**
+- Check network connectivity to GitHub: `ping github.com`
+- Verify git is installed: `git --version`
+- Check Python version: `python3 --version`
+- Verify pip is available: `pip --version`
+- Check disk space: `df -h`
+- Manually test git clone: `git clone https://github.com/ROCm/MAD.git`
+
+#### 7. Virtual Environment Issues
+
+**Problem**: Virtual environment creation or activation fails
+
+**Solutions:**
+- Check python3-venv package: `apt install python3-venv` (Ubuntu/Debian)
+- Verify Python path: `which python3`
+- Check permissions in working directory
+- Manually test venv creation: `python3 -m venv test_venv`
+
+### Debugging Tips
+
+1. **Enable Verbose Logging**: Always use `--verbose` for troubleshooting
+2. **Check Resource Usage**: Monitor CPU, memory, and GPU usage
+3. **Validate Inventory**: Test inventory files with small workloads first
+4. **Test Network Connectivity**: Ensure all nodes can communicate
+5. **Review Logs**: Check logs on all nodes for error messages
+
+### Performance Optimization
+
+1. **Network Optimization**:
+   - Use fast network connections (10GbE or better)
+   - Minimize network latency between nodes
+   - Use local registries when possible
+
+2. **Resource Allocation**:
+   - Match CPU and memory requests to actual needs
+   - Avoid resource over-subscription
+   - Use appropriate GPU counts per node
+
+3. **Parallelism Tuning**:
+   - Start with low parallelism and increase gradually
+   - Monitor resource usage during execution
+   - Consider network bandwidth limitations
+
+4. **Storage Optimization**:
+   - Use fast storage (NVMe SSD) for temporary files
+   - Implement proper cleanup of temporary files
+   - Consider using shared storage for large datasets
+
+## API Reference
+
+### Command Line Interface
+
+```bash
+madengine-cli runner <runner_type> [OPTIONS]
+```
+
+### Runner Types
+
+- `ssh`: SSH-based distributed runner
+- `ansible`: Ansible-based distributed runner  
+- `k8s`: Kubernetes-based distributed runner
+
+### Common Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--inventory, -i` | Path to inventory file | `inventory.yml` |
+| `--manifest-file, -m` | Build manifest file | `build_manifest.json` |
+| `--tags, -t` | Model tags to execute | `[]` |
+| `--timeout` | Execution timeout (seconds) | `3600` |
+| `--registry, -r` | Docker registry URL | Auto-detected |
+| `--additional-context, -c` | Additional context JSON | `{}` |
+| `--node-selector` | Node selector JSON | `{}` |
+| `--parallelism, -p` | Parallel executions | `1` |
+| `--report-output` | Report output file | `runner_report.json` |
+| `--verbose, -v` | Enable verbose logging | `false` |
+
+### Runner-Specific Options
+
+#### SSH Runner
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| No additional options | | |
+
+#### Ansible Runner
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--playbook-output` | Generate playbook file | None |
+
+#### Kubernetes Runner
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--namespace, -n` | Kubernetes namespace | `madengine` |
+| `--kubeconfig` | Path to kubeconfig file | Auto-detected |
+| `--manifests-output` | Generate manifest files | None |
+
+### Exit Codes
+
+- `0`: Success
+- `1`: General failure
+- `2`: Build failure
+- `3`: Run failure
+- `4`: Invalid arguments
 
 ## Contributing
 

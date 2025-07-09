@@ -35,11 +35,9 @@ install(show_locals=True)
 console = Console()
 
 # Import madengine components
-from madengine.tools.distributed_orchestrator import (
-    DistributedOrchestrator,
-    create_ansible_playbook,
-    create_kubernetes_manifests,
-)
+from madengine.tools.distributed_orchestrator import DistributedOrchestrator
+from madengine.runners.orchestrator_generation import generate_ansible_setup, generate_k8s_setup
+from madengine.runners.factory import RunnerFactory
 
 # Initialize the main Typer app
 app = typer.Typer(
@@ -58,15 +56,23 @@ generate_app = typer.Typer(
 )
 app.add_typer(generate_app, name="generate")
 
+# Runner application for distributed execution
+runner_app = typer.Typer(
+    name="runner",
+    help="🚀 Distributed runner for orchestrated execution across multiple nodes (SSH, Ansible, Kubernetes)",
+    rich_markup_mode="rich",
+)
+app.add_typer(runner_app, name="runner")
+
 # Constants
 DEFAULT_MANIFEST_FILE = "build_manifest.json"
-DEFAULT_EXECUTION_CONFIG = "execution_config.json"
 DEFAULT_PERF_OUTPUT = "perf.csv"
 DEFAULT_DATA_CONFIG = "data.json"
 DEFAULT_TOOLS_CONFIG = "./scripts/common/tools.json"
 DEFAULT_ANSIBLE_OUTPUT = "madengine_distributed.yml"
-DEFAULT_K8S_NAMESPACE = "madengine"
 DEFAULT_TIMEOUT = -1
+DEFAULT_INVENTORY_FILE = "inventory.yml"
+DEFAULT_RUNNER_REPORT = "runner_report.json"
 
 # Exit codes
 class ExitCode:
@@ -567,19 +573,22 @@ def run(
 @generate_app.command("ansible")
 def generate_ansible(
     manifest_file: Annotated[str, typer.Option("--manifest-file", "-m", help="Build manifest file")] = DEFAULT_MANIFEST_FILE,
+    environment: Annotated[str, typer.Option("--environment", "-e", help="Environment configuration")] = "default",
     output: Annotated[str, typer.Option("--output", "-o", help="Output Ansible playbook file")] = DEFAULT_ANSIBLE_OUTPUT,
     verbose: Annotated[bool, typer.Option("--verbose", "-v", help="Enable verbose logging")] = False,
 ) -> None:
     """
     📋 Generate Ansible playbook for distributed execution.
     
-    Uses the enhanced build manifest as the primary configuration source.
+    Uses the enhanced build manifest as the primary configuration source
+    with environment-specific values for customization.
     """
     setup_logging(verbose)
     
     console.print(Panel(
         f"📋 [bold cyan]Generating Ansible Playbook[/bold cyan]\n"
         f"Manifest: [yellow]{manifest_file}[/yellow]\n"
+        f"Environment: [yellow]{environment}[/yellow]\n"
         f"Output: [yellow]{output}[/yellow]",
         title="Ansible Generation",
         border_style="blue"
@@ -598,14 +607,18 @@ def generate_ansible(
         ) as progress:
             task = progress.add_task("Generating Ansible playbook...", total=None)
             
-            create_ansible_playbook(
+            # Use the new template system
+            result = generate_ansible_setup(
                 manifest_file=manifest_file,
-                playbook_file=output
+                environment=environment,
+                output_dir=str(Path(output).parent)
             )
             
             progress.update(task, description="Ansible playbook generated!")
         
-        console.print(f"✅ [bold green]Ansible playbook generated successfully: [cyan]{output}[/cyan][/bold green]")
+        console.print(f"✅ [bold green]Ansible setup generated successfully:[/bold green]")
+        for file_type, file_path in result.items():
+            console.print(f"  📄 {file_type}: [cyan]{file_path}[/cyan]")
         
     except Exception as e:
         console.print(f"💥 [bold red]Failed to generate Ansible playbook: {e}[/bold red]")
@@ -617,20 +630,23 @@ def generate_ansible(
 @generate_app.command("k8s")
 def generate_k8s(
     manifest_file: Annotated[str, typer.Option("--manifest-file", "-m", help="Build manifest file")] = DEFAULT_MANIFEST_FILE,
-    namespace: Annotated[str, typer.Option("--namespace", "-n", help="Kubernetes namespace")] = DEFAULT_K8S_NAMESPACE,
+    environment: Annotated[str, typer.Option("--environment", "-e", help="Environment configuration")] = "default",
+    output_dir: Annotated[str, typer.Option("--output-dir", "-o", help="Output directory for manifests")] = "k8s-setup",
     verbose: Annotated[bool, typer.Option("--verbose", "-v", help="Enable verbose logging")] = False,
 ) -> None:
     """
     ☸️  Generate Kubernetes manifests for distributed execution.
     
-    Uses the enhanced build manifest as the primary configuration source.
+    Uses the enhanced build manifest as the primary configuration source
+    with environment-specific values for customization.
     """
     setup_logging(verbose)
     
     console.print(Panel(
         f"☸️  [bold cyan]Generating Kubernetes Manifests[/bold cyan]\n"
         f"Manifest: [yellow]{manifest_file}[/yellow]\n"
-        f"Namespace: [yellow]{namespace}[/yellow]",
+        f"Environment: [yellow]{environment}[/yellow]\n"
+        f"Output Directory: [yellow]{output_dir}[/yellow]",
         title="Kubernetes Generation",
         border_style="blue"
     ))
@@ -648,17 +664,126 @@ def generate_k8s(
         ) as progress:
             task = progress.add_task("Generating Kubernetes manifests...", total=None)
             
-            create_kubernetes_manifests(
+            # Use the new template system
+            result = generate_k8s_setup(
                 manifest_file=manifest_file,
-                namespace=namespace
+                environment=environment,
+                output_dir=output_dir
             )
             
             progress.update(task, description="Kubernetes manifests generated!")
         
-        console.print(f"✅ [bold green]Kubernetes manifests generated successfully[/bold green]")
+        console.print(f"✅ [bold green]Kubernetes setup generated successfully:[/bold green]")
+        for file_type, file_paths in result.items():
+            console.print(f"  📄 {file_type}:")
+            if isinstance(file_paths, list):
+                for file_path in file_paths:
+                    console.print(f"    - [cyan]{file_path}[/cyan]")
+            else:
+                console.print(f"    - [cyan]{file_paths}[/cyan]")
         
     except Exception as e:
         console.print(f"💥 [bold red]Failed to generate Kubernetes manifests: {e}[/bold red]")
+        if verbose:
+            console.print_exception()
+        raise typer.Exit(ExitCode.FAILURE)
+
+
+@generate_app.command("list")
+def list_templates(
+    template_dir: Annotated[Optional[str], typer.Option("--template-dir", help="Custom template directory")] = None,
+    verbose: Annotated[bool, typer.Option("--verbose", "-v", help="Enable verbose logging")] = False,
+) -> None:
+    """
+    📋 List available templates.
+    
+    Shows all available Jinja2 templates organized by type (ansible, k8s, etc.).
+    """
+    setup_logging(verbose)
+    
+    console.print(Panel(
+        f"📋 [bold cyan]Available Templates[/bold cyan]",
+        title="Template Listing",
+        border_style="blue"
+    ))
+    
+    try:
+        # Create template generator
+        from madengine.runners.template_generator import TemplateGenerator
+        generator = TemplateGenerator(template_dir)
+        
+        templates = generator.list_templates()
+        
+        if not templates:
+            console.print("❌ [yellow]No templates found[/yellow]")
+            raise typer.Exit(ExitCode.SUCCESS)
+        
+        # Display templates in a formatted table
+        table = Table(title="Available Templates", show_header=True, header_style="bold magenta")
+        table.add_column("Type", style="cyan")
+        table.add_column("Templates", style="yellow")
+        
+        for template_type, template_files in templates.items():
+            files_str = "\n".join(template_files) if template_files else "No templates"
+            table.add_row(template_type.upper(), files_str)
+        
+        console.print(table)
+        
+    except Exception as e:
+        console.print(f"💥 [bold red]Failed to list templates: {e}[/bold red]")
+        if verbose:
+            console.print_exception()
+        raise typer.Exit(ExitCode.FAILURE)
+
+
+@generate_app.command("validate")
+def validate_template(
+    template_path: Annotated[str, typer.Argument(help="Path to template file to validate")],
+    template_dir: Annotated[Optional[str], typer.Option("--template-dir", help="Custom template directory")] = None,
+    verbose: Annotated[bool, typer.Option("--verbose", "-v", help="Enable verbose logging")] = False,
+) -> None:
+    """
+    ✅ Validate template syntax.
+    
+    Validates Jinja2 template syntax and checks for common issues.
+    """
+    setup_logging(verbose)
+    
+    console.print(Panel(
+        f"✅ [bold cyan]Validating Template[/bold cyan]\n"
+        f"Template: [yellow]{template_path}[/yellow]",
+        title="Template Validation",
+        border_style="green"
+    ))
+    
+    try:
+        # Create template generator
+        from madengine.runners.template_generator import TemplateGenerator
+        generator = TemplateGenerator(template_dir)
+        
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
+        ) as progress:
+            task = progress.add_task("Validating template...", total=None)
+            
+            is_valid = generator.validate_template(template_path)
+            
+            progress.update(task, description="Validation completed!")
+        
+        if is_valid:
+            console.print(f"✅ [bold green]Template validation successful:[/bold green]")
+            console.print(f"  📄 Template: [cyan]{template_path}[/cyan]")
+            console.print(f"  🎯 Syntax: [green]Valid[/green]")
+        else:
+            console.print(f"❌ [bold red]Template validation failed:[/bold red]")
+            console.print(f"  📄 Template: [cyan]{template_path}[/cyan]")
+            console.print(f"  🎯 Syntax: [red]Invalid[/red]")
+            raise typer.Exit(ExitCode.FAILURE)
+        
+    except Exception as e:
+        console.print(f"💥 [bold red]Failed to validate template: {e}[/bold red]")
         if verbose:
             console.print_exception()
         raise typer.Exit(ExitCode.FAILURE)
@@ -701,3 +826,409 @@ def cli_main() -> None:
 
 if __name__ == "__main__":
     cli_main()
+
+
+# ============================================================================
+# RUNNER COMMANDS
+# ============================================================================
+
+@runner_app.command("ssh")
+def runner_ssh(
+    inventory_file: Annotated[
+        str,
+        typer.Option(
+            "--inventory", "-i",
+            help="🗂️ Path to inventory file (YAML or JSON format)",
+        ),
+    ] = DEFAULT_INVENTORY_FILE,
+    manifest_file: Annotated[
+        str,
+        typer.Option(
+            "--manifest-file", "-m",
+            help="📋 Build manifest file (generated by 'madengine-cli build')",
+        ),
+    ] = DEFAULT_MANIFEST_FILE,
+    report_output: Annotated[
+        str,
+        typer.Option(
+            "--report-output",
+            help="📊 Output file for execution report",
+        ),
+    ] = DEFAULT_RUNNER_REPORT,
+    verbose: Annotated[
+        bool,
+        typer.Option(
+            "--verbose", "-v",
+            help="🔍 Enable verbose logging",
+        ),
+    ] = False,
+):
+    """
+    🔐 Execute models across multiple nodes using SSH.
+    
+    Distributes pre-built build manifest (created by 'madengine-cli build')
+    to remote nodes based on inventory configuration and executes 
+    'madengine-cli run' remotely through SSH client.
+    
+    The build manifest contains all configuration (tags, timeout, registry, etc.)
+    so only inventory and manifest file paths are needed.
+    
+    Example:
+        madengine-cli runner ssh --inventory nodes.yml --manifest-file build_manifest.json
+    """
+    setup_logging(verbose)
+    
+    try:
+        # Validate input files
+        if not os.path.exists(inventory_file):
+            console.print(f"❌ [bold red]Inventory file not found: {inventory_file}[/bold red]")
+            raise typer.Exit(ExitCode.FAILURE)
+        
+        if not os.path.exists(manifest_file):
+            console.print(f"❌ [bold red]Build manifest file not found: {manifest_file}[/bold red]")
+            console.print("💡 Generate it first using: [cyan]madengine-cli build[/cyan]")
+            raise typer.Exit(ExitCode.FAILURE)
+        
+        # Create SSH runner
+        console.print("🚀 [bold blue]Starting SSH distributed execution[/bold blue]")
+        
+        with console.status("Initializing SSH runner..."):
+            runner = RunnerFactory.create_runner(
+                "ssh",
+                inventory_path=inventory_file,
+                console=console,
+                verbose=verbose
+            )
+        
+        # Execute workload (minimal spec - most info is in the manifest)
+        console.print(f"� Distributing manifest: [cyan]{manifest_file}[/cyan]")
+        console.print(f"📋 Using inventory: [cyan]{inventory_file}[/cyan]")
+        
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
+        ) as progress:
+            task = progress.add_task("Executing SSH distributed workload...", total=None)
+            
+            # Create minimal workload spec (most info is in the manifest)
+            from madengine.runners.base import WorkloadSpec
+            workload = WorkloadSpec(
+                model_tags=[],  # Not needed - in manifest
+                manifest_file=manifest_file,  # This is the key input
+                timeout=3600,  # Default timeout, actual timeout from manifest
+                registry=None,  # Auto-detected from manifest
+                additional_context={},
+                node_selector={},
+                parallelism=1
+            )
+            
+            result = runner.run(workload)
+        
+        # Display results
+        _display_runner_results(result, "SSH")
+        
+        # Generate report
+        report_path = runner.generate_report(report_output)
+        console.print(f"📊 Execution report saved to: [bold green]{report_path}[/bold green]")
+        
+        # Exit with appropriate code
+        if result.failed_executions == 0:
+            console.print("✅ [bold green]All executions completed successfully[/bold green]")
+            raise typer.Exit(code=ExitCode.SUCCESS)
+        else:
+            console.print(f"❌ [bold red]{result.failed_executions} execution(s) failed[/bold red]")
+            raise typer.Exit(code=ExitCode.RUN_FAILURE)
+            
+    except ImportError as e:
+        console.print(f"💥 [bold red]SSH runner not available: {e}[/bold red]")
+        console.print("Install SSH dependencies: [bold cyan]pip install paramiko scp[/bold cyan]")
+        raise typer.Exit(code=ExitCode.FAILURE)
+    except Exception as e:
+        console.print(f"💥 [bold red]SSH execution failed: {e}[/bold red]")
+        if verbose:
+            console.print_exception()
+        raise typer.Exit(code=ExitCode.RUN_FAILURE)
+
+
+@runner_app.command("ansible")
+def runner_ansible(
+    inventory_file: Annotated[
+        str,
+        typer.Option(
+            "--inventory", "-i",
+            help="🗂️ Path to inventory file (YAML or JSON format)",
+        ),
+    ] = DEFAULT_INVENTORY_FILE,
+    playbook_file: Annotated[
+        str,
+        typer.Option(
+            "--playbook",
+            help="📋 Path to Ansible playbook file (generated by 'madengine-cli generate ansible')",
+        ),
+    ] = DEFAULT_ANSIBLE_OUTPUT,
+    report_output: Annotated[
+        str,
+        typer.Option(
+            "--report-output",
+            help="📊 Output file for execution report",
+        ),
+    ] = DEFAULT_RUNNER_REPORT,
+    verbose: Annotated[
+        bool,
+        typer.Option(
+            "--verbose", "-v",
+            help="🔍 Enable verbose logging",
+        ),
+    ] = False,
+):
+    """
+    ⚡ Execute models across cluster using Ansible.
+    
+    Runs pre-generated Ansible playbook (created by 'madengine-cli generate ansible') 
+    with inventory file leveraging ansible-runner to distribute
+    workload for parallel execution of models on cluster.
+    
+    The playbook contains all configuration (tags, timeout, registry, etc.)
+    so only inventory and playbook paths are needed.
+    
+    Example:
+        madengine-cli runner ansible --inventory cluster.yml --playbook madengine_distributed.yml
+    """
+    setup_logging(verbose)
+    
+    try:
+        # Validate input files
+        if not os.path.exists(inventory_file):
+            console.print(f"❌ [bold red]Inventory file not found: {inventory_file}[/bold red]")
+            raise typer.Exit(ExitCode.FAILURE)
+        
+        if not os.path.exists(playbook_file):
+            console.print(f"❌ [bold red]Playbook file not found: {playbook_file}[/bold red]")
+            console.print("💡 Generate it first using: [cyan]madengine-cli generate ansible[/cyan]")
+            raise typer.Exit(ExitCode.FAILURE)
+        
+        # Create Ansible runner
+        console.print("🚀 [bold blue]Starting Ansible distributed execution[/bold blue]")
+        
+        with console.status("Initializing Ansible runner..."):
+            runner = RunnerFactory.create_runner(
+                "ansible",
+                inventory_path=inventory_file,
+                playbook_path=playbook_file,
+                console=console,
+                verbose=verbose
+            )
+        
+        # Execute workload (no workload spec needed - everything is in the playbook)
+        console.print(f"� Executing playbook: [cyan]{playbook_file}[/cyan]")
+        console.print(f"📋 Using inventory: [cyan]{inventory_file}[/cyan]")
+        
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
+        ) as progress:
+            task = progress.add_task("Executing Ansible playbook...", total=None)
+            
+            # Create minimal workload spec (most info is in the playbook)
+            from madengine.runners.base import WorkloadSpec
+            workload = WorkloadSpec(
+                model_tags=[],  # Not needed - in playbook
+                manifest_file="",  # Not needed - in playbook
+            )
+            
+            result = runner.run(workload)
+        
+        # Display results
+        _display_runner_results(result, "Ansible")
+        
+        # Generate report
+        report_path = runner.generate_report(report_output)
+        console.print(f"📊 Execution report saved to: [bold green]{report_path}[/bold green]")
+        
+        # Exit with appropriate code
+        if result.failed_executions == 0:
+            console.print("✅ [bold green]All executions completed successfully[/bold green]")
+            raise typer.Exit(code=ExitCode.SUCCESS)
+        else:
+            console.print(f"❌ [bold red]{result.failed_executions} execution(s) failed[/bold red]")
+            raise typer.Exit(code=ExitCode.RUN_FAILURE)
+            
+    except ImportError as e:
+        console.print(f"💥 [bold red]Ansible runner not available: {e}[/bold red]")
+        console.print("Install Ansible dependencies: [bold cyan]pip install ansible-runner[/bold cyan]")
+        raise typer.Exit(code=ExitCode.FAILURE)
+    except Exception as e:
+        console.print(f"💥 [bold red]Ansible execution failed: {e}[/bold red]")
+        if verbose:
+            console.print_exception()
+        raise typer.Exit(code=ExitCode.RUN_FAILURE)
+
+
+@runner_app.command("k8s")
+def runner_k8s(
+    inventory_file: Annotated[
+        str,
+        typer.Option(
+            "--inventory", "-i",
+            help="🗂️ Path to inventory file (YAML or JSON format)",
+        ),
+    ] = DEFAULT_INVENTORY_FILE,
+    manifests_dir: Annotated[
+        str,
+        typer.Option(
+            "--manifests-dir", "-d",
+            help="📁 Directory containing Kubernetes manifests (generated by 'madengine-cli generate k8s')",
+        ),
+    ] = "k8s-setup",
+    kubeconfig: Annotated[
+        Optional[str],
+        typer.Option(
+            "--kubeconfig",
+            help="⚙️ Path to kubeconfig file",
+        ),
+    ] = None,
+    report_output: Annotated[
+        str,
+        typer.Option(
+            "--report-output",
+            help="📊 Output file for execution report",
+        ),
+    ] = DEFAULT_RUNNER_REPORT,
+    verbose: Annotated[
+        bool,
+        typer.Option(
+            "--verbose", "-v",
+            help="🔍 Enable verbose logging",
+        ),
+    ] = False,
+):
+    """
+    ☸️ Execute models across Kubernetes cluster.
+    
+    Runs pre-generated Kubernetes manifests (created by 'madengine-cli generate k8s')
+    with inventory file leveraging kubernetes python client to distribute
+    workload for parallel execution of models on cluster.
+    
+    The manifests contain all configuration (tags, timeout, registry, etc.)
+    so only inventory and manifests directory paths are needed.
+    
+    Example:
+        madengine-cli runner k8s --inventory cluster.yml --manifests-dir k8s-setup
+    """
+    setup_logging(verbose)
+    
+    try:
+        # Validate input files/directories
+        if not os.path.exists(inventory_file):
+            console.print(f"❌ [bold red]Inventory file not found: {inventory_file}[/bold red]")
+            raise typer.Exit(ExitCode.FAILURE)
+        
+        if not os.path.exists(manifests_dir):
+            console.print(f"❌ [bold red]Manifests directory not found: {manifests_dir}[/bold red]")
+            console.print("💡 Generate it first using: [cyan]madengine-cli generate k8s[/cyan]")
+            raise typer.Exit(ExitCode.FAILURE)
+        
+        # Create Kubernetes runner
+        console.print("🚀 [bold blue]Starting Kubernetes distributed execution[/bold blue]")
+        
+        with console.status("Initializing Kubernetes runner..."):
+            runner = RunnerFactory.create_runner(
+                "k8s",
+                inventory_path=inventory_file,
+                manifests_dir=manifests_dir,
+                kubeconfig_path=kubeconfig,
+                console=console,
+                verbose=verbose
+            )
+        
+        # Execute workload (no workload spec needed - everything is in the manifests)
+        console.print(f"☸️  Applying manifests from: [cyan]{manifests_dir}[/cyan]")
+        console.print(f"📋 Using inventory: [cyan]{inventory_file}[/cyan]")
+        
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
+        ) as progress:
+            task = progress.add_task("Executing Kubernetes manifests...", total=None)
+            
+            # Create minimal workload spec (most info is in the manifests)
+            from madengine.runners.base import WorkloadSpec
+            workload = WorkloadSpec(
+                model_tags=[],  # Not needed - in manifests
+                manifest_file="",  # Not needed - in manifests
+            )
+            
+            result = runner.run(workload)
+        
+        # Display results
+        _display_runner_results(result, "Kubernetes")
+        
+        # Generate report
+        report_path = runner.generate_report(report_output)
+        console.print(f"📊 Execution report saved to: [bold green]{report_path}[/bold green]")
+        
+        # Exit with appropriate code
+        if result.failed_executions == 0:
+            console.print("✅ [bold green]All executions completed successfully[/bold green]")
+            raise typer.Exit(code=ExitCode.SUCCESS)
+        else:
+            console.print(f"❌ [bold red]{result.failed_executions} execution(s) failed[/bold red]")
+            raise typer.Exit(code=ExitCode.RUN_FAILURE)
+            
+    except ImportError as e:
+        console.print(f"💥 [bold red]Kubernetes runner not available: {e}[/bold red]")
+        console.print("Install Kubernetes dependencies: [bold cyan]pip install kubernetes[/bold cyan]")
+        raise typer.Exit(code=ExitCode.FAILURE)
+    except Exception as e:
+        console.print(f"💥 [bold red]Kubernetes execution failed: {e}[/bold red]")
+        if verbose:
+            console.print_exception()
+        raise typer.Exit(code=ExitCode.RUN_FAILURE)
+
+
+def _display_runner_results(result, runner_type: str):
+    """Display runner execution results in a formatted table.
+    
+    Args:
+        result: DistributedResult object
+        runner_type: Type of runner (SSH, Ansible, Kubernetes)
+    """
+    console.print(f"\n📊 [bold blue]{runner_type} Execution Results[/bold blue]")
+    
+    # Summary table
+    summary_table = Table(title="Execution Summary")
+    summary_table.add_column("Metric", style="cyan")
+    summary_table.add_column("Value", style="magenta")
+    
+    summary_table.add_row("Total Nodes", str(result.total_nodes))
+    summary_table.add_row("Successful Executions", str(result.successful_executions))
+    summary_table.add_row("Failed Executions", str(result.failed_executions))
+    summary_table.add_row("Total Duration", f"{result.total_duration:.2f}s")
+    
+    console.print(summary_table)
+    
+    # Detailed results table
+    if result.node_results:
+        results_table = Table(title="Detailed Results")
+        results_table.add_column("Node", style="cyan")
+        results_table.add_column("Model", style="yellow")
+        results_table.add_column("Status", style="green")
+        results_table.add_column("Duration", style="magenta")
+        results_table.add_column("Error", style="red")
+        
+        for exec_result in result.node_results:
+            status_color = "green" if exec_result.status == "SUCCESS" else "red"
+            status_text = f"[{status_color}]{exec_result.status}[/{status_color}]"
+            
+            results_table.add_row(
+                exec_result.node_id,
+                exec_result.model_tag,
+                status_text,
+                f"{exec_result.duration:.2f}s",
+                exec_result.error_message or ""
+            )
+        
+        console.print(results_table)

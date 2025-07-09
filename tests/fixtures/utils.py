@@ -15,137 +15,54 @@ from unittest.mock import MagicMock
 import re
 import json
 
-# project modules
-from madengine.core.console import Console
-from madengine.core.context import Context
+# project modules - lazy imports to avoid collection issues
+# from madengine.core.console import Console
+# from madengine.core.context import Context
 
 
 MODEL_DIR = "tests/fixtures/dummy"
 BASE_DIR = os.path.join(os.path.dirname(__file__), "..", "..")
 sys.path.insert(1, BASE_DIR)
-print(f'BASE DIR:: {BASE_DIR}')
+# print(f'BASE DIR:: {BASE_DIR}')  # Commented out to avoid output during collection
 
 
-def detect_gpu_availability() -> dict:
-    """Detect GPU availability and type on the current machine.
+# GPU detection cache to avoid multiple expensive calls
+_has_gpu_cache = None
+
+def has_gpu() -> bool:
+    """Simple function to check if GPU is available for testing.
     
-    Returns:
-        dict: GPU detection results with keys:
-            - has_gpu: bool - True if any GPU is detected
-            - gpu_vendor: str - "AMD", "NVIDIA", "INTEL", or "NONE"
-            - gpu_count: int - Number of GPUs detected
-            - is_cpu_only: bool - True if no GPU is detected
-            - detection_error: str or None - Error message if detection fails
-    """
-    detection_result = {
-        "has_gpu": False,
-        "gpu_vendor": "NONE",
-        "gpu_count": 0,
-        "is_cpu_only": True,
-        "detection_error": None
-    }
-    
-    try:
-        console = Console(live_output=False)  # Disable live output for detection
-        
-        # Try to detect GPU vendor using the same logic as Context.get_gpu_vendor()
-        gpu_vendor_cmd = ('bash -c \'if [[ -f /usr/bin/nvidia-smi ]] && $(/usr/bin/nvidia-smi > /dev/null 2>&1); '
-                         'then echo "NVIDIA"; elif [[ -f /opt/rocm/bin/rocm-smi ]]; then echo "AMD"; '
-                         'elif [[ -f /usr/local/bin/rocm-smi ]]; then echo "AMD"; '
-                         'else echo "Unable to detect GPU vendor"; fi || true\'')
-        
-        gpu_vendor_result = console.sh(gpu_vendor_cmd)
-        
-        if "Unable to detect GPU vendor" not in gpu_vendor_result:
-            detection_result["has_gpu"] = True
-            detection_result["is_cpu_only"] = False
-            detection_result["gpu_vendor"] = gpu_vendor_result.strip()
-            
-            # Try to get GPU count
-            try:
-                gpu_count = get_num_gpus()
-                detection_result["gpu_count"] = gpu_count
-            except Exception as e:
-                # If we can't get the count, assume at least 1 GPU if vendor is detected
-                detection_result["gpu_count"] = 1 if detection_result["has_gpu"] else 0
-                detection_result["detection_error"] = f"GPU count detection failed: {str(e)}"
-        
-    except Exception as e:
-        detection_result["detection_error"] = f"GPU detection failed: {str(e)}"
-    
-    return detection_result
-
-
-def is_gpu_available() -> bool:
-    """Check if any GPU is available on the current machine.
+    This is the primary function for test skipping decisions.
+    Uses caching to avoid repeated expensive detection calls.
     
     Returns:
         bool: True if GPU is available, False if CPU-only machine
     """
-    return detect_gpu_availability()["has_gpu"]
+    global _has_gpu_cache
+    
+    if _has_gpu_cache is not None:
+        return _has_gpu_cache
+    
+    try:
+        # Ultra-simple file existence check (no subprocess calls)
+        # This is safe for pytest collection and avoids hanging
+        nvidia_exists = os.path.exists('/usr/bin/nvidia-smi')
+        amd_rocm_exists = (os.path.exists('/opt/rocm/bin/rocm-smi') or 
+                          os.path.exists('/usr/local/bin/rocm-smi'))
+        
+        _has_gpu_cache = nvidia_exists or amd_rocm_exists
+            
+    except Exception:
+        # If file checks fail, assume no GPU (safe default for tests)
+        _has_gpu_cache = False
+    
+    return _has_gpu_cache
 
 
-def is_cpu_only_machine() -> bool:
-    """Check if this is a CPU-only machine (no GPU detected).
+def requires_gpu(reason: str = "test requires GPU functionality"):
+    """Simple decorator to skip tests that require GPU.
     
-    Returns:
-        bool: True if no GPU is detected, False if GPU is available
-    """
-    return detect_gpu_availability()["is_cpu_only"]
-
-
-def get_detected_gpu_vendor() -> str:
-    """Get the detected GPU vendor or 'NONE' if no GPU.
-    
-    Returns:
-        str: "AMD", "NVIDIA", "INTEL", or "NONE"
-    """
-    return detect_gpu_availability()["gpu_vendor"]
-
-
-def requires_gpu(gpu_count: int = 1, gpu_vendor: str = None):
-    """Pytest decorator to skip tests that require GPU on CPU-only machines.
-    
-    Args:
-        gpu_count: Minimum number of GPUs required (default: 1)
-        gpu_vendor: Required GPU vendor ("AMD", "NVIDIA", "INTEL") or None for any
-    
-    Returns:
-        pytest.mark.skipif decorator
-    """
-    detection = detect_gpu_availability()
-    
-    skip_conditions = []
-    reasons = []
-    
-    # Check if GPU is available
-    if detection["is_cpu_only"]:
-        skip_conditions.append(True)
-        reasons.append("test requires GPU but running on CPU-only machine")
-    
-    # Check GPU count requirement
-    elif detection["gpu_count"] < gpu_count:
-        skip_conditions.append(True)
-        reasons.append(f"test requires {gpu_count} GPUs but only {detection['gpu_count']} detected")
-    
-    # Check GPU vendor requirement
-    elif gpu_vendor and detection["gpu_vendor"] != gpu_vendor:
-        skip_conditions.append(True)
-        reasons.append(f"test requires {gpu_vendor} GPU but {detection['gpu_vendor']} detected")
-    
-    # If no skip conditions, don't skip
-    if not skip_conditions:
-        skip_conditions.append(False)
-        reasons.append("GPU requirements satisfied")
-    
-    return pytest.mark.skipif(
-        any(skip_conditions), 
-        reason="; ".join(reasons)
-    )
-
-
-def skip_on_cpu_only(reason: str = "test requires GPU functionality"):
-    """Simple decorator to skip tests on CPU-only machines.
+    This is the only decorator needed for GPU-dependent tests.
     
     Args:
         reason: Custom reason for skipping
@@ -154,13 +71,15 @@ def skip_on_cpu_only(reason: str = "test requires GPU functionality"):
         pytest.mark.skipif decorator
     """
     return pytest.mark.skipif(
-        is_cpu_only_machine(),
+        not has_gpu(),
         reason=reason
     )
 
 
 @pytest.fixture
 def global_data():
+    # Lazy import to avoid collection issues
+    from madengine.core.console import Console
     return {"console": Console(live_output=True)}
 
 
@@ -178,120 +97,24 @@ def clean_test_temp_files(request):
                 os.remove(file_path)
 
 
-# Cache for GPU vendor detection to avoid multiple Context initializations
-_gpu_vendor_cache = None
-
-def is_nvidia() -> bool:
-    """Check if the GPU is NVIDIA or not.
-
-    Returns:
-        bool: True if NVIDIA GPU is present, False otherwise.
-    """
-    global _gpu_vendor_cache
-    
-    if _gpu_vendor_cache is None:
-        # Try to determine GPU vendor without full Context initialization
-        # to avoid repeated expensive operations during pytest collection
-        try:
-            # Use the same detection logic as Context.get_gpu_vendor()
-            console = Console(live_output=False)
-            gpu_vendor_cmd = ('bash -c \'if [[ -f /usr/bin/nvidia-smi ]] && $(/usr/bin/nvidia-smi > /dev/null 2>&1); '
-                             'then echo "NVIDIA"; elif [[ -f /opt/rocm/bin/rocm-smi ]]; then echo "AMD"; '
-                             'elif [[ -f /usr/local/bin/rocm-smi ]]; then echo "AMD"; '
-                             'else echo "Unable to detect GPU vendor"; fi || true\'')
-            
-            gpu_vendor_result = console.sh(gpu_vendor_cmd)
-            
-            if "Unable to detect GPU vendor" in gpu_vendor_result:
-                # On CPU-only machines, default to AMD for compatibility
-                _gpu_vendor_cache = "AMD"
-            else:
-                _gpu_vendor_cache = gpu_vendor_result.strip()
-                
-        except Exception:
-            # If all else fails, assume AMD (since that's the default test environment)
-            _gpu_vendor_cache = "AMD"
-    
-    return _gpu_vendor_cache == "NVIDIA"
-
-
-def get_gpu_nodeid_map() -> dict:
-    """Get the GPU node id map.
-
-    Returns:
-        dict: GPU node id map.
-    """
-    gpu_map = {}
-    nvidia = is_nvidia()
-    console = Console(live_output=True)
-    command = "nvidia-smi --list-gpus"
-    if not nvidia:
-        rocm_version = console.sh("hipconfig --version")
-        rocm_version = float(".".join(rocm_version.split(".")[:2]))
-        command = (
-            "rocm-smi --showuniqueid" if rocm_version < 6.1 else "rocm-smi --showhw"
-        )
-    output = console.sh(command)
-    lines = output.split("\n")
-
-    for line in lines:
-        if nvidia:
-            gpu_id = int(line.split(":")[0].split()[1])
-            unique_id = line.split(":")[2].split(")")[0].strip()
-            gpu_map[unique_id] = gpu_id
-        else:
-            if rocm_version < 6.1:
-                if "Unique ID:" in line:
-                    gpu_id = int(line.split(":")[0].split("[")[1].split("]")[0])
-                    unique_id = line.split(":")[2].strip()
-                    gpu_map[unique_id] = gpu_id
-            else:
-                if re.match(r"\d+\s+\d+", line):
-                    gpu_id = int(line.split()[0])
-                    node_id = line.split()[1]
-                    gpu_map[node_id] = gpu_id
-    return gpu_map
-
-
-def get_num_gpus() -> int:
-    """Get the number of GPUs present.
-
-    Returns:
-        int: Number of GPUs present.
-    """
-    gpu_map = get_gpu_nodeid_map()
-    return len(gpu_map)
-
-
-def get_num_cpus() -> int:
-    """Get the number of CPUs present.
-
-    Returns:
-        int: Number of CPUs present.
-    """
-    console = Console(live_output=True)
-    return int(console.sh("lscpu | grep \"^CPU(s):\" | awk '{print $2}'"))
-
-
 def generate_additional_context_for_machine() -> dict:
     """Generate appropriate additional context based on detected machine capabilities.
     
     Returns:
         dict: Additional context with gpu_vendor and guest_os suitable for current machine
     """
-    detection = detect_gpu_availability()
-    
-    if detection["is_cpu_only"]:
+    if has_gpu():
+        # Simple vendor detection for GPU machines
+        vendor = "NVIDIA" if os.path.exists('/usr/bin/nvidia-smi') else "AMD"
+        return {
+            "gpu_vendor": vendor,
+            "guest_os": "UBUNTU"
+        }
+    else:
         # On CPU-only machines, use defaults suitable for build-only operations
         return {
             "gpu_vendor": "AMD",  # Default for build-only nodes
             "guest_os": "UBUNTU"  # Default OS
-        }
-    else:
-        # On GPU machines, use detected GPU vendor
-        return {
-            "gpu_vendor": detection["gpu_vendor"],
-            "guest_os": "UBUNTU"  # We could detect this too if needed
         }
 
 
@@ -324,3 +147,27 @@ def create_mock_args_with_auto_context(**kwargs) -> MagicMock:
         setattr(mock_args, key, value)
     
     return mock_args
+
+
+def is_nvidia() -> bool:
+    """Simple function to check if NVIDIA GPU tools are available.
+    
+    Returns:
+        bool: True if NVIDIA GPU tools are detected
+    """
+    try:
+        return os.path.exists('/usr/bin/nvidia-smi')
+    except Exception:
+        return False
+
+def is_amd() -> bool:
+    """Simple function to check if AMD GPU tools are available.
+    
+    Returns:
+        bool: True if AMD GPU tools are detected
+    """
+    try:
+        return (os.path.exists('/opt/rocm/bin/rocm-smi') or 
+                os.path.exists('/usr/bin/rocm-smi'))
+    except Exception:
+        return False

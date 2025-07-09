@@ -15,10 +15,8 @@ from .fixtures.utils import (
     MODEL_DIR, 
     global_data,
     clean_test_temp_files,
-    is_nvidia,
     requires_gpu,
-    skip_on_cpu_only,
-    is_cpu_only_machine
+    is_nvidia
 )
 
 
@@ -48,7 +46,7 @@ class TestProfilingFunctionality:
         if not os.path.exists( os.path.join(BASE_DIR, "rpd_output", "trace.rpd") ):
             pytest.fail("rpd_output/trace.rpd not generated with rpd profiling run.")
     
-    @skip_on_cpu_only("gpu_info_power_profiler requires GPU hardware")
+    @requires_gpu("gpu_info_power_profiler requires GPU hardware")
     @pytest.mark.skip(reason="Skipping this test for debugging purposes")
     @pytest.mark.parametrize('clean_test_temp_files', [['perf.csv', 'perf.html', 'gpu_info_power_profiler_output.csv']], indirect=True)
     def test_gpu_info_power_profiling_tool_runs_correctly(self, global_data, clean_test_temp_files):
@@ -60,7 +58,7 @@ class TestProfilingFunctionality:
         if not os.path.exists( os.path.join(BASE_DIR, "gpu_info_power_profiler_output.csv") ):
             pytest.fail("gpu_info_power_profiler_output.csv not generated with gpu_info_power_profiler run.")
     
-    @skip_on_cpu_only("gpu_info_vram_profiler requires GPU hardware")
+    @requires_gpu("gpu_info_vram_profiler requires GPU hardware")
     @pytest.mark.parametrize('clean_test_temp_files', [['perf.csv', 'perf.html', 'gpu_info_vram_profiler_output.csv']], indirect=True)
     def test_gpu_info_vram_profiling_tool_runs_correctly(self, global_data, clean_test_temp_files):
         """ 
