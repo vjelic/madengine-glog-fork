@@ -451,10 +451,7 @@ madengine-cli runner ansible \
 # Kubernetes Runner - Cloud-native execution in K8s clusters
 madengine-cli runner k8s \
     --inventory k8s_inventory.yml \
-    --manifest-file build_manifest.json \
-    --tags dummy \
-    --namespace madengine-prod \
-    --manifests-output k8s_manifests/ \
+    --manifests-dir k8s-setup \
     --verbose
 ```
 
@@ -468,14 +465,7 @@ madengine-cli generate ansible \
 # Generate Kubernetes manifests
 madengine-cli generate k8s \
     --manifest-file build_manifest.json \
-    --namespace madengine-prod \
-    --output k8s-manifests/
-```
-
-#### Export Configuration
-```bash
-# Export execution configuration for external tools
-madengine-cli export-config --tags models --output execution.json
+    --namespace madengine-prod
 ```
 
 ### Command Options
@@ -710,10 +700,7 @@ pip install madengine[kubernetes]
 ```bash
 madengine-cli runner k8s \
     --inventory k8s_inventory.yml \
-    --manifest-file build_manifest.json \
-    --tags dummy \
-    --namespace madengine-prod \
-    --manifests-output k8s_manifests/ \
+    --manifests-dir k8s-setup \
     --verbose
 ```
 
@@ -854,20 +841,15 @@ Deploy to cloud Kubernetes cluster:
 # Generate manifests first
 madengine-cli generate k8s \
     --manifest-file build_manifest.json \
-    --namespace madengine-prod \
-    --output k8s_manifests/
+    --namespace madengine-prod
 
-# Or use runner for direct execution
+# Run using the generated manifests
 madengine-cli runner k8s \
     --inventory k8s_prod_inventory.yml \
-    --manifest-file build_manifest.json \
-    --tags production_models \
-    --namespace madengine-prod \
-    --manifests-output k8s_manifests/ \
+    --manifests-dir k8s-manifests \
     --kubeconfig ~/.kube/prod_config
 
-# Apply manifests manually if needed
-kubectl apply -f k8s_manifests/
+# Manifests are automatically applied by the runner
 ```
 
 #### Example 4: AMD GPU Cluster
@@ -1167,9 +1149,11 @@ madengine-cli build --tags customer_models --registry gcr.io/ml-bench \
   --additional-context-file customer_context.json
 
 # Generate K8s deployment
-madengine-cli generate k8s --namespace customer-bench-${CUSTOMER_ID}
+madengine-cli generate k8s \
+  --manifest-file build_manifest.json \
+  --namespace customer-bench-${CUSTOMER_ID}
 
-# Auto-scaling deployment
+# Auto-scaling deployment  
 kubectl apply -f k8s-manifests/ --namespace customer-bench-${CUSTOMER_ID}
 ```
 
@@ -1380,9 +1364,8 @@ madengine-cli runner <runner_type> [OPTIONS]
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `--namespace, -n` | Kubernetes namespace | `madengine` |
+| `--manifests-dir, -d` | Directory containing Kubernetes manifests | `k8s-setup` |
 | `--kubeconfig` | Path to kubeconfig file | Auto-detected |
-| `--manifests-output` | Generate manifest files | None |
 
 ### Exit Codes
 
