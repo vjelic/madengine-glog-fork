@@ -16,7 +16,7 @@ import re
 import json
 
 # project modules - lazy imports to avoid collection issues
-# from madengine.core.console import Console
+from madengine.core.console import Console
 # from madengine.core.context import Context
 
 
@@ -171,3 +171,61 @@ def is_amd() -> bool:
                 os.path.exists('/usr/bin/rocm-smi'))
     except Exception:
         return False
+
+
+def get_gpu_nodeid_map() -> dict:
+    """Get the GPU node id map.
+
+    Returns:
+        dict: GPU node id map.
+    """
+    gpu_map = {}
+    nvidia = is_nvidia()
+    console = Console(live_output=True)
+    command = "nvidia-smi --list-gpus"
+    if not nvidia:
+        rocm_version = console.sh("hipconfig --version")
+        rocm_version = float(".".join(rocm_version.split(".")[:2]))
+        command = (
+            "rocm-smi --showuniqueid" if rocm_version < 6.1 else "rocm-smi --showhw"
+        )
+    output = console.sh(command)
+    lines = output.split("\n")
+
+    for line in lines:
+        if nvidia:
+            gpu_id = int(line.split(":")[0].split()[1])
+            unique_id = line.split(":")[2].split(")")[0].strip()
+            gpu_map[unique_id] = gpu_id
+        else:
+            if rocm_version < 6.1:
+                if "Unique ID:" in line:
+                    gpu_id = int(line.split(":")[0].split("[")[1].split("]")[0])
+                    unique_id = line.split(":")[2].strip()
+                    gpu_map[unique_id] = gpu_id
+            else:
+                if re.match(r"\d+\s+\d+", line):
+                    gpu_id = int(line.split()[0])
+                    node_id = line.split()[1]
+                    gpu_map[node_id] = gpu_id
+    return gpu_map
+
+
+def get_num_gpus() -> int:
+    """Get the number of GPUs present.
+
+    Returns:
+        int: Number of GPUs present.
+    """
+    gpu_map = get_gpu_nodeid_map()
+    return len(gpu_map)
+
+
+def get_num_cpus() -> int:
+    """Get the number of CPUs present.
+
+    Returns:
+        int: Number of CPUs present.
+    """
+    console = Console(live_output=True)
+    return int(console.sh("lscpu | grep \"^CPU(s):\" | awk '{print $2}'"))
