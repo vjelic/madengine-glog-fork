@@ -70,7 +70,7 @@ class DistributedOrchestrator:
                 self.credentials = {}
             
             # Override or add Docker Hub credentials
-            self.credentials['docker.io'] = {
+            self.credentials['dockerhub'] = {
                 'username': docker_hub_user,
                 'password': docker_hub_password
             }
