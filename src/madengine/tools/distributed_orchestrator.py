@@ -61,8 +61,16 @@ class DistributedOrchestrator:
             print(f"Warning: Could not load credentials: {e}")
         
         # Check for Docker Hub environment variables and override credentials
-        docker_hub_user = os.environ.get('dockerHubUser')
-        docker_hub_password = os.environ.get('dockerHubPassword')
+        docker_hub_user = None
+        docker_hub_password = None
+        docker_hub_repo = None
+
+        if 'MAD_DOCKERHUB_USER' in os.environ:
+            docker_hub_user = os.environ['MAD_DOCKERHUB_USER']
+        if 'MAD_DOCKERHUB_PASSWORD' in os.environ:
+            docker_hub_password = os.environ['MAD_DOCKERHUB_PASSWORD']
+        if 'MAD_DOCKERHUB_REPO' in os.environ:
+            docker_hub_repo = os.environ['MAD_DOCKERHUB_REPO']
         
         if docker_hub_user and docker_hub_password:
             print("Found Docker Hub credentials in environment variables")
@@ -71,10 +79,12 @@ class DistributedOrchestrator:
             
             # Override or add Docker Hub credentials
             self.credentials['dockerhub'] = {
+                'repository': docker_hub_repo,
                 'username': docker_hub_user,
                 'password': docker_hub_password
             }
             print("Docker Hub credentials updated from environment variables")
+            print(f"Docker Hub credentials: {self.credentials['dockerhub']}")
     
     def build_phase(self, registry: str = None, clean_cache: bool = False, 
                    manifest_output: str = "build_manifest.json") -> typing.Dict:
