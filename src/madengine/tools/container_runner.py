@@ -150,6 +150,7 @@ class ContainerRunner:
                 error_msg += f"\nPlease add dockerhub credentials to credential.json:\n"
                 error_msg += "{\n"
                 error_msg += '  "dockerhub": {\n'
+                error_msg += '    "repository": "your-repository",\n'
                 error_msg += '    "username": "your-dockerhub-username",\n'
                 error_msg += '    "password": "your-dockerhub-password-or-token"\n'
                 error_msg += "  }\n"
@@ -158,6 +159,7 @@ class ContainerRunner:
                 error_msg += f"\nPlease add {registry_key} credentials to credential.json:\n"
                 error_msg += "{\n"
                 error_msg += f'  "{registry_key}": {{\n'
+                error_msg += f'    "repository": "your-repository",\n'
                 error_msg += f'    "username": "your-{registry_key}-username",\n'
                 error_msg += f'    "password": "your-{registry_key}-password"\n'
                 error_msg += "  }\n"
