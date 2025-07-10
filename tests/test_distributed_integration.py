@@ -73,7 +73,7 @@ class TestDistributedIntegrationBase:
     def teardown_method(self):
         """Clean up after each test."""
         test_files = [
-            "test_manifest.json",
+            "build_manifest.json",
             "profiling_context.json",
             "build_manifest.json",
             "execution_config.json",
@@ -113,7 +113,7 @@ class TestDistributedWorkflow(TestDistributedIntegrationBase):
     """Test distributed workflow orchestration."""
 
     @requires_gpu("End-to-end workflow requires GPU hardware")
-    @pytest.mark.parametrize('clean_test_temp_files', [['test_manifest.json', 'test_summary.json']], indirect=True)
+    @pytest.mark.parametrize('clean_test_temp_files', [['build_manifest.json', 'test_summary.json']], indirect=True)
     def test_end_to_end_workflow_simulation(self, clean_test_temp_files):
         """Test complete end-to-end distributed workflow simulation."""
         
@@ -217,7 +217,7 @@ class TestDistributedWorkflow(TestDistributedIntegrationBase):
                         build_result = orchestrator.build_phase(
                             registry="localhost:5000",
                             clean_cache=True,
-                            manifest_output="test_manifest.json"
+                            manifest_output="build_manifest.json"
                         )
                         
                         # Verify build phase results
@@ -229,7 +229,7 @@ class TestDistributedWorkflow(TestDistributedIntegrationBase):
                             with patch('builtins.open', mock_open(read_data=json.dumps(test_manifest_for_run))):
                                 with patch('json.load', return_value=test_manifest_for_run):
                                     run_result = orchestrator.run_phase(
-                                        manifest_file="test_manifest.json",
+                                        manifest_file="build_manifest.json",
                                         registry="localhost:5000",
                                         timeout=1800
                                     )
@@ -425,13 +425,13 @@ class TestDistributedCLI(TestDistributedIntegrationBase):
         with patch('madengine.distributed_cli.create_ansible_playbook') as mock_ansible, \
              patch('os.path.exists', return_value=True):
             distributed_cli.generate_ansible(MagicMock(
-                manifest_file="test_manifest.json",
+                manifest_file="build_manifest.json",
                 execution_config="test_config.json", 
                 output="test_playbook.yml"
             ))
             
             mock_ansible.assert_called_once_with(
-                manifest_file="test_manifest.json",
+                manifest_file="build_manifest.json",
                 playbook_file="test_playbook.yml"
             )
 
@@ -439,13 +439,13 @@ class TestDistributedCLI(TestDistributedIntegrationBase):
         with patch('madengine.distributed_cli.create_kubernetes_manifests') as mock_k8s, \
              patch('os.path.exists', return_value=True):
             distributed_cli.generate_k8s(MagicMock(
-                manifest_file="test_manifest.json",
+                manifest_file="build_manifest.json",
                 execution_config="test_config.json",
                 namespace="madengine-test"
             ))
             
             mock_k8s.assert_called_once_with(
-                manifest_file="test_manifest.json",
+                manifest_file="build_manifest.json",
                 namespace="madengine-test"
             )
 
@@ -609,86 +609,101 @@ class TestDistributedProfiling(TestDistributedIntegrationBase):
     def test_end_to_end_distributed_run_with_profiling(self):
         """Test complete distributed run workflow with profiling tools - NO MOCKS, REAL FLOW.
         
-        This test demonstrates how to run the distributed orchestrator without mocks.
-        It will be skipped if Docker is not available or if no GPU is detected.
+        This test runs the real distributed orchestrator without any mocks.
+        It provides pre-configured GPU context to avoid detection issues.
         """
+        # Skip if Docker is not available
         import subprocess
-        import tempfile
-        import os
-        import json
-        
-        # Check if Docker is available
         try:
-            result = subprocess.run(["docker", "--version"], 
-                                  capture_output=True, text=True, timeout=10)
-            if result.returncode != 0:
-                pytest.skip("Docker not available")
-        except (FileNotFoundError, subprocess.TimeoutExpired):
-            pytest.skip("Docker not available")
+            subprocess.run(["docker", "--version"], check=True, capture_output=True, timeout=5)
+        except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
+            pytest.skip("Docker not available - skipping real integration test")
         
-        # Create test files in temporary directory
+        # Create test manifest and run real orchestrator
+        import tempfile
+        import json
+        import os
+        
         with tempfile.TemporaryDirectory() as tmpdir:
-            manifest_path = os.path.join(tmpdir, "manifest.json")
-            
-            # Minimal manifest for testing
+            # Create real manifest file
+            manifest_file = os.path.join(tmpdir, "build_manifest.json")
             manifest_data = {
                 "built_images": {
-                    "test": {
+                    "ubuntu-test": {
                         "docker_image": "ubuntu:20.04",
                         "dockerfile": "N/A",
                         "build_duration": 0
                     }
                 },
                 "built_models": {
-                    "test": {
-                        "name": "echo_test",
-                        "n_gpus": "0",
-                        "scripts": "echo 'Hello World'",
-                        "dockerfile": "N/A", 
-                        "tags": ["test"],
+                    "ubuntu-test": {
+                        "name": "hello_test",
+                        "n_gpus": "0",  # CPU-only test to avoid GPU issues
+                        "scripts": "echo 'Real integration test successful'",
+                        "dockerfile": "N/A",
+                        "tags": ["test", "integration"],
                         "args": ""
                     }
                 },
                 "context": {
-                    "docker_env_vars": {},
+                    "docker_env_vars": {
+                        "TEST_ENV": "real_integration"
+                    },
                     "docker_mounts": {},
                     "docker_build_arg": {}
                 }
             }
             
-            with open(manifest_path, 'w') as f:
+            with open(manifest_file, 'w') as f:
                 json.dump(manifest_data, f)
             
-            # Create test arguments
+            # Configure args for real test - provide GPU context to avoid detection
             args = self.create_mock_args(
-                manifest_file=manifest_path,
+                manifest_file=manifest_file,
                 timeout=60,
                 keep_alive=False,
                 live_output=True,
-                generate_sys_env_details=False  # Disable to avoid GPU issues in test environment
+                generate_sys_env_details=False,  # Disable to prevent GPU detection
+                additional_context=json.dumps({
+                    # Pre-configure GPU context to avoid runtime detection
+                    "gpu_vendor": "AMD",
+                    "docker_env_vars": {
+                        "MAD_GPU_VENDOR": "AMD",
+                        "MAD_SYSTEM_NGPUS": "1",
+                        "MAD_SYSTEM_GPU_ARCHITECTURE": "gfx906",
+                        "MAD_SYSTEM_HIP_VERSION": "5.0"
+                    },
+                    "docker_gpus": "all",
+                    "gpu_renderDs": [128]
+                })
             )
             
-            # Run the real distributed orchestrator
+            # Execute real distributed orchestrator
             try:
+                # Import here to avoid import-time issues
                 from madengine.tools.distributed_orchestrator import DistributedOrchestrator
                 
+                # Create and run real orchestrator
                 orchestrator = DistributedOrchestrator(args)
                 result = orchestrator.run_phase()
                 
-                # Verify the result structure
+                # Verify result structure
                 assert isinstance(result, dict), "Result must be a dictionary"
-                assert "successful_runs" in result, "Result must have successful_runs key"
-                assert "failed_runs" in result, "Result must have failed_runs key"
+                assert "successful_runs" in result, "Missing successful_runs in result"
+                assert "failed_runs" in result, "Missing failed_runs in result"
                 
-                # Test passes if we get this far without exceptions
-                total_runs = len(result.get("successful_runs", [])) + len(result.get("failed_runs", []))
-                print(f"Real test completed: {total_runs} total runs attempted")
+                # Log results
+                successful = len(result.get("successful_runs", []))
+                failed = len(result.get("failed_runs", []))
+                print(f"Real integration test completed: {successful} successful, {failed} failed")
+                
+                # Test is successful if it runs without exceptions
+                # We don't enforce specific success/failure counts since this depends on environment
                 
             except Exception as e:
-                pytest.fail(f"Real distributed test failed: {e}")
-                
-        # Test completed successfully
-            mock_sh.assert_called()
+                pytest.fail(f"Real distributed integration test failed with error: {str(e)}")
+        
+        print("Real integration test completed successfully")
 
     @requires_gpu("Profiling tests require GPU hardware")
     @patch('madengine.tools.distributed_orchestrator.DistributedOrchestrator.run_phase')
@@ -723,7 +738,7 @@ class TestDistributedProfiling(TestDistributedIntegrationBase):
         with patch('builtins.open', mock_open(read_data=json.dumps(profiling_context))):
             # Create args with profiling context file
             args = self.create_mock_args(
-                manifest_file="test_manifest.json",
+                manifest_file="build_manifest.json",
                 additional_context_file="profiling_context.json",
                 generate_sys_env_details=True,
                 timeout=3600,
