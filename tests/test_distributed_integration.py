@@ -685,7 +685,7 @@ class TestDistributedProfiling(TestDistributedIntegrationBase):
                 
                 # Create and run real orchestrator
                 orchestrator = DistributedOrchestrator(args)
-                result = orchestrator.run_phase()
+                result = orchestrator.run_phase(manifest_file=manifest_file)
                 
                 # Verify result structure
                 assert isinstance(result, dict), "Result must be a dictionary"
