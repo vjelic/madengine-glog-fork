@@ -11,8 +11,8 @@ import os
 import json
 import logging
 from typing import Dict, Any
-from madengine.tools.distributed_orchestrator import (
-    DistributedOrchestrator, 
+from madengine.tools.distributed_orchestrator import DistributedOrchestrator
+from madengine.runners.template_generator import (
     create_ansible_playbook, 
     create_kubernetes_manifests
 )
