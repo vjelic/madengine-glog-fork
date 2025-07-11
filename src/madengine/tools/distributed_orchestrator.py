@@ -311,10 +311,15 @@ class DistributedOrchestrator:
                             generate_sys_env_details=getattr(self.args, 'generate_sys_env_details', True)
                         )
                         
-                        execution_summary["successful_runs"].append(run_results)
-                        execution_summary["total_execution_time"] += run_results.get("test_duration", 0)
+                        # Add to appropriate list based on actual status
+                        if run_results.get("status") == "SUCCESS":
+                            execution_summary["successful_runs"].append(run_results)
+                            print(f"Successfully completed: {model_info['name']} -> {run_results['status']}")
+                        else:
+                            execution_summary["failed_runs"].append(run_results)
+                            print(f"Failed to complete: {model_info['name']} -> {run_results['status']}")
                         
-                        print(f"Successfully completed: {model_info['name']} -> {run_results['status']}")
+                        execution_summary["total_execution_time"] += run_results.get("test_duration", 0)
                         
                     except Exception as e:
                         print(f"Failed to run {model_info['name']} with image {image_name}: {e}")
@@ -404,10 +409,15 @@ class DistributedOrchestrator:
                             generate_sys_env_details=getattr(self.args, 'generate_sys_env_details', True)
                         )
                         
-                        execution_summary["successful_runs"].append(run_results)
-                        execution_summary["total_execution_time"] += run_results.get("test_duration", 0)
+                        # Add to appropriate list based on actual status
+                        if run_results.get("status") == "SUCCESS":
+                            execution_summary["successful_runs"].append(run_results)
+                            print(f"Successfully completed: {model_name} -> {run_results['status']}")
+                        else:
+                            execution_summary["failed_runs"].append(run_results)
+                            print(f"Failed to complete: {model_name} -> {run_results['status']}")
                         
-                        print(f"Successfully completed: {model_name} -> {run_results['status']}")
+                        execution_summary["total_execution_time"] += run_results.get("test_duration", 0)
                         
                     except Exception as e:
                         print(f"Failed to run {model_name} with image {image_name}: {e}")

@@ -706,8 +706,50 @@ class ContainerRunner:
                         except Exception as e:
                             print(f"Warning: Could not extract performance metrics: {e}")
                         
-                        # Set status based on performance
-                        run_results["status"] = 'SUCCESS' if run_results.get("performance") else 'FAILURE'
+                        # Set status based on performance and error patterns
+                        # First check for obvious failure patterns in the logs
+                        try:
+                            # Check for common failure patterns in the log file
+                            error_patterns = [
+                                "OutOfMemoryError", "HIP out of memory", "CUDA out of memory",
+                                "RuntimeError", "AssertionError", "ValueError", "SystemExit",
+                                "failed (exitcode:", "Traceback (most recent call last):",
+                                "Error:", "FAILED", "Exception:"
+                            ]
+                            
+                            has_errors = False
+                            if log_file_path and os.path.exists(log_file_path):
+                                try:
+                                    # Check for error patterns in the log
+                                    for pattern in error_patterns:
+                                        error_check_cmd = f"grep -q '{pattern}' {log_file_path} && echo 'FOUND' || echo 'NOT_FOUND'"
+                                        result = self.console.sh(error_check_cmd, canFail=True)
+                                        if result.strip() == "FOUND":
+                                            has_errors = True
+                                            print(f"Found error pattern '{pattern}' in logs")
+                                            break
+                                except Exception:
+                                    pass  # Error checking is optional
+                            
+                            # Status logic: Must have performance AND no errors to be considered success
+                            performance_value = run_results.get("performance")
+                            has_performance = performance_value and performance_value.strip() and performance_value.strip() != "N/A"
+                            
+                            if has_errors:
+                                run_results["status"] = 'FAILURE'
+                                print(f"Status: FAILURE (error patterns detected in logs)")
+                            elif has_performance:
+                                run_results["status"] = 'SUCCESS'
+                                print(f"Status: SUCCESS (performance metrics found, no errors)")
+                            else:
+                                run_results["status"] = 'FAILURE' 
+                                print(f"Status: FAILURE (no performance metrics)")
+                                
+                        except Exception as e:
+                            print(f"Warning: Error in status determination: {e}")
+                            # Fallback to simple performance check
+                            run_results["status"] = 'SUCCESS' if run_results.get("performance") else 'FAILURE'
+                        
                         print(f"{model_info['name']} performance is {run_results.get('performance', 'N/A')} {run_results.get('metric', '')}")
 
                         # Generate performance results and update perf.csv
