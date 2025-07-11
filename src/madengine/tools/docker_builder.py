@@ -91,8 +91,11 @@ class DockerBuilder:
         Returns:
             dict: Build information including image name, build duration, etc.
         """
-        print(f"Building Docker image for model {model_info['name']} from {dockerfile}")
-        print(f"Building Docker image...")
+        print(f"\n🔨 Starting Docker build for model: {model_info['name']}")
+        print(f"📁 Dockerfile: {dockerfile}")
+        print(f"🏷️  Target image: {docker_image}")
+        print(f"📝 Build log: {log_file_path}")
+        print(f"{'='*80}")
         
         # Generate image name
         image_docker_name = (
@@ -114,9 +117,6 @@ class DockerBuilder:
         )
         # Replace / with _ in log file path (already done above, but keeping for safety)
         log_file_path = log_file_path.replace("/", "_")
-        
-        print(f"Processing Dockerfile: {dockerfile}")
-        print(f"Build log will be written to: {log_file_path}")
         
         # Get docker context
         docker_context = self.get_context_path(model_info)
@@ -148,13 +148,15 @@ class DockerBuilder:
         # Execute build with log redirection
         with open(log_file_path, mode="w", buffering=1) as outlog:
             with redirect_stdout(PythonicTee(outlog, self.live_output)), redirect_stderr(PythonicTee(outlog, self.live_output)):
-                print(f"Executing: {build_command}")
+                print(f"🔨 Executing build command...")
                 self.console.sh(build_command, timeout=None)
                 
                 build_duration = time.time() - build_start_time
                 
-                print(f"Build Duration: {build_duration} seconds")
-                print(f"MAD_CONTAINER_IMAGE is {docker_image}")
+                print(f"⏱️  Build Duration: {build_duration:.2f} seconds")
+                print(f"🏷️  MAD_CONTAINER_IMAGE is {docker_image}")
+                print(f"✅ Docker build completed successfully")
+                print(f"{'='*80}")
                 
                 # Get base docker info
                 base_docker = ""
@@ -294,15 +296,18 @@ class DockerBuilder:
             # Tag the image if different from local name
             if registry_image != docker_image:
                 tag_command = f"docker tag {docker_image} {registry_image}"
-                print(f"Tagging image: {tag_command}")
+                print(f"🏷️  Tagging image: {tag_command}")
                 self.console.sh(tag_command)
             
             # Push the image
             push_command = f"docker push {registry_image}"
-            print(f"Pushing image: {push_command}")
+            print(f"\n🚀 Starting docker push to registry...")
+            print(f"📤 Registry: {registry}")
+            print(f"🏷️  Image: {registry_image}")
             self.console.sh(push_command)
             
-            print(f"Successfully pushed image to registry: {registry_image}")
+            print(f"✅ Successfully pushed image to registry: {registry_image}")
+            print(f"{'='*80}")
             return registry_image
             
         except Exception as e:

@@ -123,7 +123,7 @@ def process_batch_manifest(batch_manifest_file: str) -> Dict[str, List[str]]:
     """Process batch manifest file and extract model tags based on build_new flag.
     
     Args:
-        batch_manifest_file: Path to the input manifest.json file
+        batch_manifest_file: Path to the input batch.json file
         
     Returns:
         Dict containing 'build_tags' and 'all_tags' lists
@@ -436,7 +436,7 @@ def display_results_table(summary: Dict, title: str) -> None:
 def build(
     tags: Annotated[List[str], typer.Option("--tags", "-t", help="Model tags to build (can specify multiple)")] = [],
     registry: Annotated[Optional[str], typer.Option("--registry", "-r", help="Docker registry to push images to")] = None,
-    batch_manifest: Annotated[Optional[str], typer.Option("--batch-manifest", help="Input manifest.json file for batch build mode")] = None,
+    batch_manifest: Annotated[Optional[str], typer.Option("--batch-manifest", help="Input batch.json file for batch build mode")] = None,
     additional_context: Annotated[str, typer.Option("--additional-context", "-c", help="Additional context as JSON string")] = "{}",
     additional_context_file: Annotated[Optional[str], typer.Option("--additional-context-file", "-f", help="File containing additional context JSON")] = None,
     clean_docker_cache: Annotated[bool, typer.Option("--clean-docker-cache", help="Rebuild images without using cache")] = False,
@@ -460,11 +460,11 @@ def build(
     is required for build-only operations.
     
     Batch Build Mode:
-    Use --batch-manifest to specify a manifest.json file containing a list of models.
+    Use --batch-manifest to specify a batch.json file containing a list of models.
     For each model with build_new=true, the image will be built. For all models
     (regardless of build_new), entries will be created in the build_manifest.json.
     
-    Example batch manifest.json:
+    Example batch batch.json:
     [
         {
             "model_name": "dummy",

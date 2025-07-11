@@ -211,15 +211,21 @@ class ContainerRunner:
         if registry and credentials:
             self.login_to_registry(registry, credentials)
         
-        print(f"Pulling image: {registry_image}")
+        print(f"\n📥 Starting docker pull from registry...")
+        print(f"📍 Registry: {registry or 'Default'}")
+        print(f"🏷️  Image: {registry_image}")
         try:
             self.console.sh(f"docker pull {registry_image}")
             
             if local_name:
                 self.console.sh(f"docker tag {registry_image} {local_name}")
-                print(f"Tagged as: {local_name}")
+                print(f"🏷️  Tagged as: {local_name}")
+                print(f"✅ Successfully pulled and tagged image")
+                print(f"{'='*80}")
                 return local_name
             
+            print(f"✅ Successfully pulled image: {registry_image}")
+            print(f"{'='*80}")
             return registry_image
             
         except Exception as e:
@@ -542,7 +548,14 @@ class ContainerRunner:
         print(f"Docker options: {docker_options}")
         
         # set timeout
-        print(f"Setting timeout to {str(timeout)} seconds.")
+        print(f"⏰ Setting timeout to {str(timeout)} seconds.")
+        
+        print(f"\n🏃 Starting Docker container execution...")
+        print(f"🏷️  Image: {docker_image}")
+        print(f"📦 Container: {container_name}")
+        print(f"📝 Log file: {log_file_path}")
+        print(f"🎮 GPU Vendor: {gpu_vendor}")
+        print(f"{'='*80}")
 
         # Run the container with logging
         try:
@@ -554,13 +567,15 @@ class ContainerRunner:
                         
                         # Check user
                         whoami = model_docker.sh("whoami")
-                        print(f"USER is {whoami}")
+                        print(f"👤 Running as user: {whoami}")
 
                         # Show GPU info
                         if gpu_vendor.find("AMD") != -1:
+                            print(f"🎮 Checking AMD GPU status...")
                             smi = model_docker.sh("/opt/rocm/bin/rocm-smi || true")
                             print(smi)
                         elif gpu_vendor.find("NVIDIA") != -1:
+                            print(f"🎮 Checking NVIDIA GPU status...")
                             smi = model_docker.sh("/usr/bin/nvidia-smi || true")
                             print(smi)
 
