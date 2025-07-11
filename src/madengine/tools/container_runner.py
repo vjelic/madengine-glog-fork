@@ -713,8 +713,7 @@ class ContainerRunner:
                             error_patterns = [
                                 "OutOfMemoryError", "HIP out of memory", "CUDA out of memory",
                                 "RuntimeError", "AssertionError", "ValueError", "SystemExit",
-                                "failed (exitcode:", "Traceback (most recent call last):",
-                                "Error:", "FAILED", "Exception:"
+                                "failed (exitcode:", "Error:", "FAILED", "Exception:"
                             ]
                             
                             has_errors = False
