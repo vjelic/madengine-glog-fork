@@ -31,31 +31,41 @@ def format_dataframe_for_log(df: pd.DataFrame, title: str = "DataFrame", max_row
     if df.empty:
         return f"\n📊 {title}\n{'='*60}\n❌ DataFrame is empty\n{'='*60}\n"
     
-    # Truncate if necessary
-    display_df = df.copy()
-    truncated_rows = False
-    truncated_cols = False
+    # Define key columns to display for performance results
+    key_columns = [
+        "model", "n_gpus", "docker_file", "machine_name", "gpu_architecture", 
+        "performance", "metric", "status", "dataname"
+    ]
     
-    if len(df) > max_rows:
+    # Filter DataFrame to show only key columns that exist
+    available_columns = [col for col in key_columns if col in df.columns]
+    if available_columns:
+        display_df = df[available_columns].copy()
+        total_columns_note = f"(showing {len(available_columns)} of {len(df.columns)} columns)"
+    else:
+        # If no key columns found, show all columns as fallback with truncation
+        display_df = df.copy()
+        total_columns_note = f"(showing all {len(df.columns)} columns)"
+        if len(df.columns) > max_cols:
+            display_df = display_df.iloc[:, :max_cols]
+            total_columns_note = f"(showing first {max_cols} of {len(df.columns)} columns)"
+    
+    # Truncate rows if necessary
+    truncated_rows = False
+    if len(display_df) > max_rows:
         display_df = display_df.head(max_rows)
         truncated_rows = True
     
-    if len(df.columns) > max_cols:
-        display_df = display_df.iloc[:, :max_cols]
-        truncated_cols = True
-    
     # Create header
-    header = f"\n📊 {title}\n"
+    header = f"\n📊 {title} {total_columns_note}\n"
     header += f"{'='*80}\n"
-    header += f"📏 Shape: {df.shape[0]} rows × {df.shape[1]} columns\n"
+    if available_columns:
+        header += f"📏 Shape: {df.shape[0]} rows × {len(available_columns)} key columns (total: {df.shape[1]} columns)\n"
+    else:
+        header += f"📏 Shape: {df.shape[0]} rows × {df.shape[1]} columns\n"
     
-    if truncated_rows or truncated_cols:
-        header += "⚠️  Display truncated: "
-        if truncated_rows:
-            header += f"showing first {max_rows} rows "
-        if truncated_cols:
-            header += f"showing first {max_cols} columns"
-        header += "\n"
+    if truncated_rows:
+        header += f"⚠️  Display truncated: showing first {max_rows} rows\n"
     
     header += f"{'='*80}\n"
     
@@ -63,7 +73,6 @@ def format_dataframe_for_log(df: pd.DataFrame, title: str = "DataFrame", max_row
     formatted_df = display_df.to_string(
         index=True,
         max_rows=max_rows,
-        max_cols=max_cols,
         width=None,
         float_format='{:.4f}'.format
     )
@@ -89,22 +98,38 @@ def format_dataframe_rich(df: pd.DataFrame, title: str = "DataFrame", max_rows: 
         console.print(f"📊 [bold cyan]{title}[/bold cyan]: [red]DataFrame is empty[/red]")
         return
     
+    # Define key columns to display for performance results
+    key_columns = [
+        "model", "n_gpus", "machine_name", "gpu_architecture", 
+        "performance", "metric", "status", "dataname"
+    ]
+    
+    # Filter DataFrame to show only key columns that exist
+    available_columns = [col for col in key_columns if col in df.columns]
+    if available_columns:
+        display_df = df[available_columns]
+        total_columns_note = f"(showing {len(available_columns)} of {len(df.columns)} columns)"
+    else:
+        # If no key columns found, show all columns as fallback
+        display_df = df
+        total_columns_note = f"(showing all {len(df.columns)} columns)"
+    
     # Create Rich table
-    table = Table(title=f"📊 {title}", show_header=True, header_style="bold magenta")
+    table = Table(title=f"📊 {title} {total_columns_note}", show_header=True, header_style="bold magenta")
     
     # Add index column
     table.add_column("Index", style="dim", width=8)
     
     # Add data columns
-    for col in df.columns:
+    for col in display_df.columns:
         table.add_column(str(col), style="cyan")
     
     # Add rows (truncate if necessary)
-    display_rows = min(len(df), max_rows)
+    display_rows = min(len(display_df), max_rows)
     for i in range(display_rows):
-        row_data = [str(df.index[i])]
-        for col in df.columns:
-            value = df.iloc[i][col]
+        row_data = [str(display_df.index[i])]
+        for col in display_df.columns:
+            value = display_df.iloc[i][col]
             if pd.isna(value):
                 row_data.append("[dim]NaN[/dim]")
             elif isinstance(value, float):
@@ -114,12 +139,12 @@ def format_dataframe_rich(df: pd.DataFrame, title: str = "DataFrame", max_rows: 
         table.add_row(*row_data)
     
     # Show truncation info
-    if len(df) > max_rows:
-        table.add_row(*["..." for _ in range(len(df.columns) + 1)])
-        console.print(f"[yellow]⚠️  Showing first {max_rows} of {len(df)} rows[/yellow]")
+    if len(display_df) > max_rows:
+        table.add_row(*["..." for _ in range(len(display_df.columns) + 1)])
+        console.print(f"[yellow]⚠️  Showing first {max_rows} of {len(display_df)} rows[/yellow]")
     
     console.print(table)
-    console.print(f"[green]✨ DataFrame shape: {df.shape[0]} rows × {df.shape[1]} columns[/green]")
+    console.print(f"[green]✨ DataFrame shape: {df.shape[0]} rows × {len(available_columns)} key columns (total: {df.shape[1]} columns)[/green]")
 
 
 def print_dataframe_beautiful(df: pd.DataFrame, title: str = "Data", use_rich: bool = True) -> None:
