@@ -1156,22 +1156,28 @@ madengine-cli generate k8s \
 # Auto-scaling deployment  
 kubectl apply -f k8s-manifests/ --namespace customer-bench-${CUSTOMER_ID}
 ```
+### Scenario 3: Data Center
 
-### Scenario 3: Financial Institution
-
-**Setup**: Secure on-premise network, compliance requirements  
-**Goal**: Regular model validation with audit trails
+**Setup**: Large-scale on-premise data center with heterogeneous GPU nodes  
+**Goal**: Centralized model benchmarking and resource utilization optimization
 
 ```bash
-# Secure build environment
-madengine-cli build --tags risk_models --registry secure-registry.internal \
-  --additional-context '{"gpu_vendor": "AMD", "guest_os": "CENTOS"}' \
-  --summary-output audit_build_$(date +%Y%m%d).json
+# Centralized build on dedicated build server
+madengine-cli build --tags datacenter_models --registry dc-registry.local \
+  --additional-context '{"gpu_vendor": "NVIDIA", "guest_os": "UBUNTU"}' \
+  --summary-output datacenter_build_$(date +%Y%m%d).json
 
-# Compliance deployment
-madengine-cli generate ansible --manifest-file build_manifest.json
-ansible-playbook -i secure_inventory cluster-deployment.yml \
-  --extra-vars "audit_mode=true compliance_log=/audit/ml_bench.log"
+# Distribute manifest to compute nodes via shared storage or automation
+cp datacenter_build_$(date +%Y%m%d).json /mnt/shared/madengine/
+
+# Execute distributed runs across GPU nodes using Ansible
+madengine-cli runner ansible \
+  --inventory datacenter_inventory.yml \
+  --manifest-file /mnt/shared/madengine/datacenter_build_$(date +%Y%m%d).json \
+  --tags datacenter_models \
+  --parallelism 8 \
+  --report-output datacenter_results.json \
+  --verbose
 ```
 
 ## Best Practices
