@@ -119,6 +119,56 @@ def create_args_namespace(**kwargs) -> object:
     return Args(**kwargs)
 
 
+def process_batch_manifest(batch_manifest_file: str) -> Dict[str, List[str]]:
+    """Process batch manifest file and extract model tags based on build_new flag.
+    
+    Args:
+        batch_manifest_file: Path to the input manifest.json file
+        
+    Returns:
+        Dict containing 'build_tags' and 'all_tags' lists
+        
+    Raises:
+        FileNotFoundError: If the manifest file doesn't exist
+        ValueError: If the manifest format is invalid
+    """
+    if not os.path.exists(batch_manifest_file):
+        raise FileNotFoundError(f"Batch manifest file not found: {batch_manifest_file}")
+    
+    try:
+        with open(batch_manifest_file, 'r') as f:
+            manifest_data = json.load(f)
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Invalid JSON in batch manifest file: {e}")
+    
+    if not isinstance(manifest_data, list):
+        raise ValueError("Batch manifest must be a list of model objects")
+    
+    build_tags = []  # Models that need to be built (build_new=true)
+    all_tags = []    # All models in the manifest
+    
+    for i, model in enumerate(manifest_data):
+        if not isinstance(model, dict):
+            raise ValueError(f"Model entry {i} must be a dictionary")
+        
+        if "model_name" not in model:
+            raise ValueError(f"Model entry {i} missing required 'model_name' field")
+        
+        model_name = model["model_name"]
+        build_new = model.get("build_new", False)
+        
+        all_tags.append(model_name)
+        if build_new:
+            build_tags.append(model_name)
+    
+    return {
+        "build_tags": build_tags,
+        "all_tags": all_tags,
+        "manifest_data": manifest_data
+    }
+
+
+
 def validate_additional_context(
     additional_context: str,
     additional_context_file: Optional[str] = None,
@@ -219,6 +269,127 @@ def save_summary_with_feedback(summary: Dict, output_path: Optional[str], summar
             raise typer.Exit(ExitCode.FAILURE)
 
 
+def _process_batch_manifest_entries(batch_data: Dict, manifest_output: str, registry: Optional[str]) -> None:
+    """Process batch manifest and add entries for all models to build_manifest.json.
+    
+    Args:
+        batch_data: Processed batch manifest data
+        manifest_output: Path to the build manifest file
+        registry: Registry used for the build
+    """
+    from madengine.tools.discover_models import DiscoverModels
+    
+    # Load the existing build manifest
+    if os.path.exists(manifest_output):
+        with open(manifest_output, 'r') as f:
+            build_manifest = json.load(f)
+    else:
+        # Create a minimal manifest structure
+        build_manifest = {
+            "built_images": {},
+            "built_models": {},
+            "context": {},
+            "credentials_required": [],
+            "registry": registry or ""
+        }
+    
+    # Process each model in the batch manifest
+    for model_entry in batch_data["manifest_data"]:
+        model_name = model_entry["model_name"]
+        build_new = model_entry.get("build_new", False)
+        model_registry_image = model_entry.get("registry_image", "")
+        model_registry = model_entry.get("registry", "")
+        
+        # If the model was not built (build_new=false), create an entry for it
+        if not build_new:
+            # Find the model configuration by discovering models with this tag
+            try:
+                # Create a temporary args object to discover the model
+                temp_args = create_args_namespace(
+                    tags=[model_name],
+                    registry=registry,
+                    additional_context="{}",
+                    additional_context_file=None,
+                    clean_docker_cache=False,
+                    manifest_output=manifest_output,
+                    live_output=False,
+                    output="perf.csv",
+                    ignore_deprecated_flag=False,
+                    data_config_file_name="data.json",
+                    tools_json_file_name="scripts/common/tools.json",
+                    generate_sys_env_details=True,
+                    force_mirror_local=None,
+                    disable_skip_gpu_arch=False,
+                    verbose=False,
+                    _separate_phases=True,
+                )
+                
+                discover_models = DiscoverModels(args=temp_args)
+                models = discover_models.run()
+                
+                for model_info in models:
+                    if model_info["name"] == model_name:
+                        # Create a synthetic image name for this model
+                        synthetic_image_name = f"ci-{model_name}_{model_name}.ubuntu.amd"
+                        
+                        # Add to built_images (even though it wasn't actually built)
+                        build_manifest["built_images"][synthetic_image_name] = {
+                            "docker_image": synthetic_image_name,
+                            "dockerfile": model_info.get("dockerfile", f"docker/{model_name}"),
+                            "base_docker": "rocm/pytorch",  # Default base
+                            "docker_sha": "",  # No SHA since not built
+                            "build_duration": 0,
+                            "build_command": f"# Skipped build for {model_name} (build_new=false)",
+                            "log_file": f"{model_name}_{model_name}.ubuntu.amd.build.skipped.log",
+                            "registry_image": model_registry_image or f"{model_registry or registry or 'dockerhub'}/{synthetic_image_name}" if model_registry_image or model_registry or registry else ""
+                        }
+                        
+                        # Add to built_models
+                        build_manifest["built_models"][synthetic_image_name] = {
+                            "name": model_info["name"],
+                            "dockerfile": model_info.get("dockerfile", f"docker/{model_name}"),
+                            "scripts": model_info.get("scripts", f"scripts/{model_name}/run.sh"),
+                            "n_gpus": model_info.get("n_gpus", "1"),
+                            "owner": model_info.get("owner", ""),
+                            "training_precision": model_info.get("training_precision", ""),
+                            "tags": model_info.get("tags", []),
+                            "args": model_info.get("args", ""),
+                            "cred": model_info.get("cred", "")
+                        }
+                        break
+                        
+            except Exception as e:
+                console.print(f"Warning: Could not process model {model_name}: {e}")
+                # Create a minimal entry anyway
+                synthetic_image_name = f"ci-{model_name}_{model_name}.ubuntu.amd"
+                build_manifest["built_images"][synthetic_image_name] = {
+                    "docker_image": synthetic_image_name,
+                    "dockerfile": f"docker/{model_name}",
+                    "base_docker": "rocm/pytorch",
+                    "docker_sha": "",
+                    "build_duration": 0,
+                    "build_command": f"# Skipped build for {model_name} (build_new=false)",
+                    "log_file": f"{model_name}_{model_name}.ubuntu.amd.build.skipped.log",
+                    "registry_image": model_registry_image or ""
+                }
+                build_manifest["built_models"][synthetic_image_name] = {
+                    "name": model_name,
+                    "dockerfile": f"docker/{model_name}",
+                    "scripts": f"scripts/{model_name}/run.sh",
+                    "n_gpus": "1",
+                    "owner": "",
+                    "training_precision": "",
+                    "tags": [],
+                    "args": ""
+                }
+    
+    # Save the updated manifest
+    with open(manifest_output, 'w') as f:
+        json.dump(build_manifest, f, indent=2)
+    
+    console.print(f"✅ Added entries for all models from batch manifest to {manifest_output}")
+
+
 def display_results_table(summary: Dict, title: str) -> None:
     """Display results in a formatted table."""
     table = Table(title=title, show_header=True, header_style="bold magenta")
@@ -265,6 +436,7 @@ def display_results_table(summary: Dict, title: str) -> None:
 def build(
     tags: Annotated[List[str], typer.Option("--tags", "-t", help="Model tags to build (can specify multiple)")] = [],
     registry: Annotated[Optional[str], typer.Option("--registry", "-r", help="Docker registry to push images to")] = None,
+    batch_manifest: Annotated[Optional[str], typer.Option("--batch-manifest", help="Input manifest.json file for batch build mode")] = None,
     additional_context: Annotated[str, typer.Option("--additional-context", "-c", help="Additional context as JSON string")] = "{}",
     additional_context_file: Annotated[Optional[str], typer.Option("--additional-context-file", "-f", help="File containing additional context JSON")] = None,
     clean_docker_cache: Annotated[bool, typer.Option("--clean-docker-cache", help="Rebuild images without using cache")] = False,
@@ -286,16 +458,62 @@ def build(
     This command builds Docker images for the specified model tags and optionally
     pushes them to a registry. Additional context with gpu_vendor and guest_os
     is required for build-only operations.
+    
+    Batch Build Mode:
+    Use --batch-manifest to specify a manifest.json file containing a list of models.
+    For each model with build_new=true, the image will be built. For all models
+    (regardless of build_new), entries will be created in the build_manifest.json.
+    
+    Example batch manifest.json:
+    [
+        {
+            "model_name": "dummy",
+            "build_new": false,
+            "registry_image": "rocm/mad-private:ci-dummy_dummy.ubuntu.amd",
+            "registry": "dockerhub"
+        },
+        {
+            "model_name": "dummy2", 
+            "build_new": true,
+            "registry_image": "",
+            "registry": ""
+        }
+    ]
     """
     setup_logging(verbose)
     
-    console.print(Panel(
-        f"🔨 [bold cyan]Building Models[/bold cyan]\n"
-        f"Tags: [yellow]{', '.join(tags) if tags else 'All models'}[/yellow]\n"
-        f"Registry: [yellow]{registry or 'Local only'}[/yellow]",
-        title="Build Configuration",
-        border_style="blue"
-    ))
+    # Validate mutually exclusive options
+    if batch_manifest and tags:
+        console.print("❌ [bold red]Error: Cannot specify both --batch-manifest and --tags options[/bold red]")
+        raise typer.Exit(ExitCode.INVALID_ARGS)
+    
+    # Process batch manifest if provided
+    batch_data = None
+    effective_tags = tags
+    if batch_manifest:
+        try:
+            batch_data = process_batch_manifest(batch_manifest)
+            effective_tags = batch_data["build_tags"]
+            console.print(Panel(
+                f"� [bold cyan]Batch Build Mode[/bold cyan]\n"
+                f"Input manifest: [yellow]{batch_manifest}[/yellow]\n"
+                f"Total models: [yellow]{len(batch_data['all_tags'])}[/yellow]\n"
+                f"Models to build: [yellow]{len(batch_data['build_tags'])}[/yellow] ({', '.join(batch_data['build_tags']) if batch_data['build_tags'] else 'none'})\n"
+                f"Registry: [yellow]{registry or 'Local only'}[/yellow]",
+                title="Batch Build Configuration",
+                border_style="blue"
+            ))
+        except (FileNotFoundError, ValueError) as e:
+            console.print(f"❌ [bold red]Error processing batch manifest: {e}[/bold red]")
+            raise typer.Exit(ExitCode.INVALID_ARGS)
+    else:
+        console.print(Panel(
+            f"�🔨 [bold cyan]Building Models[/bold cyan]\n"
+            f"Tags: [yellow]{', '.join(tags) if tags else 'All models'}[/yellow]\n"
+            f"Registry: [yellow]{registry or 'Local only'}[/yellow]",
+            title="Build Configuration",
+            border_style="blue"
+        ))
     
     try:
         # Validate additional context
@@ -303,7 +521,7 @@ def build(
         
         # Create arguments object
         args = create_args_namespace(
-            tags=tags,
+            tags=effective_tags,
             registry=registry,
             additional_context=additional_context,
             additional_context_file=additional_context_file,
@@ -337,6 +555,12 @@ def build(
                 manifest_output=manifest_output
             )
             progress.update(task, description="Build completed!")
+        
+        # Handle batch manifest post-processing
+        if batch_data:
+            with console.status("Processing batch manifest..."):
+                _process_batch_manifest_entries(batch_data, manifest_output, registry)
+        
         
         # Display results
         display_results_table(build_summary, "Build Results")
