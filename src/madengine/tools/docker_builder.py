@@ -91,13 +91,7 @@ class DockerBuilder:
         Returns:
             dict: Build information including image name, build duration, etc.
         """
-        print(f"\n🔨 Starting Docker build for model: {model_info['name']}")
-        print(f"📁 Dockerfile: {dockerfile}")
-        print(f"🏷️  Target image: {docker_image}")
-        print(f"📝 Build log: {log_file_path}")
-        print(f"{'='*80}")
-        
-        # Generate image name
+        # Generate image name first
         image_docker_name = (
             model_info["name"].replace("/", "_").lower()
             + "_"
@@ -117,6 +111,12 @@ class DockerBuilder:
         )
         # Replace / with _ in log file path (already done above, but keeping for safety)
         log_file_path = log_file_path.replace("/", "_")
+        
+        print(f"\n🔨 Starting Docker build for model: {model_info['name']}")
+        print(f"📁 Dockerfile: {dockerfile}")
+        print(f"🏷️  Target image: {docker_image}")
+        print(f"📝 Build log: {log_file_path}")
+        print(f"{'='*80}")
         
         # Get docker context
         docker_context = self.get_context_path(model_info)
