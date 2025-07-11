@@ -720,9 +720,10 @@ class ContainerRunner:
                             has_errors = False
                             if log_file_path and os.path.exists(log_file_path):
                                 try:
-                                    # Check for error patterns in the log
+                                    # Check for error patterns in the log (exclude our own grep commands and output messages)
                                     for pattern in error_patterns:
-                                        error_check_cmd = f"grep -q '{pattern}' {log_file_path} && echo 'FOUND' || echo 'NOT_FOUND'"
+                                        # Use grep with -v to exclude our own commands and output to avoid false positives
+                                        error_check_cmd = f"grep -v -E '(grep -q.*{pattern}|Found error pattern.*{pattern})' {log_file_path} | grep -q '{pattern}' && echo 'FOUND' || echo 'NOT_FOUND'"
                                         result = self.console.sh(error_check_cmd, canFail=True)
                                         if result.strip() == "FOUND":
                                             has_errors = True
