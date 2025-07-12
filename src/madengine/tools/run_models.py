@@ -118,7 +118,17 @@ class RunDetails:
 
         Method to print stage perf results of a model.
         """
-        print(f"{self.model} performance is {self.performance} {self.metric}")
+        print("\n" + "="*60)
+        print(f"📊 PERFORMANCE RESULTS")
+        print("="*60)
+        print(f"🏷️  Model: {self.model}")
+        print(f"⚡ Performance: {self.performance} {self.metric}")
+        print(f"📈 Status: {self.status}")
+        if self.machine_name:
+            print(f"🖥️  Machine: {self.machine_name}")
+        if self.gpu_architecture:
+            print(f"🎮 GPU Architecture: {self.gpu_architecture}")
+        print("="*60 + "\n")
 
     # Exports all info in json format to json_name
     # multiple_results excludes the info provided on csv

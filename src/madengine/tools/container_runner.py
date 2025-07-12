@@ -211,15 +211,21 @@ class ContainerRunner:
         if registry and credentials:
             self.login_to_registry(registry, credentials)
         
-        print(f"Pulling image: {registry_image}")
+        print(f"\n📥 Starting docker pull from registry...")
+        print(f"📍 Registry: {registry or 'Default'}")
+        print(f"🏷️  Image: {registry_image}")
         try:
             self.console.sh(f"docker pull {registry_image}")
             
             if local_name:
                 self.console.sh(f"docker tag {registry_image} {local_name}")
-                print(f"Tagged as: {local_name}")
+                print(f"🏷️  Tagged as: {local_name}")
+                print(f"✅ Successfully pulled and tagged image")
+                print(f"{'='*80}")
                 return local_name
             
+            print(f"✅ Successfully pulled image: {registry_image}")
+            print(f"{'='*80}")
             return registry_image
             
         except Exception as e:
@@ -542,7 +548,14 @@ class ContainerRunner:
         print(f"Docker options: {docker_options}")
         
         # set timeout
-        print(f"Setting timeout to {str(timeout)} seconds.")
+        print(f"⏰ Setting timeout to {str(timeout)} seconds.")
+        
+        print(f"\n🏃 Starting Docker container execution...")
+        print(f"🏷️  Image: {docker_image}")
+        print(f"📦 Container: {container_name}")
+        print(f"📝 Log file: {log_file_path}")
+        print(f"🎮 GPU Vendor: {gpu_vendor}")
+        print(f"{'='*80}")
 
         # Run the container with logging
         try:
@@ -554,13 +567,15 @@ class ContainerRunner:
                         
                         # Check user
                         whoami = model_docker.sh("whoami")
-                        print(f"USER is {whoami}")
+                        print(f"👤 Running as user: {whoami}")
 
                         # Show GPU info
                         if gpu_vendor.find("AMD") != -1:
+                            print(f"🎮 Checking AMD GPU status...")
                             smi = model_docker.sh("/opt/rocm/bin/rocm-smi || true")
                             print(smi)
                         elif gpu_vendor.find("NVIDIA") != -1:
+                            print(f"🎮 Checking NVIDIA GPU status...")
                             smi = model_docker.sh("/usr/bin/nvidia-smi || true")
                             print(smi)
 
@@ -691,8 +706,50 @@ class ContainerRunner:
                         except Exception as e:
                             print(f"Warning: Could not extract performance metrics: {e}")
                         
-                        # Set status based on performance
-                        run_results["status"] = 'SUCCESS' if run_results.get("performance") else 'FAILURE'
+                        # Set status based on performance and error patterns
+                        # First check for obvious failure patterns in the logs
+                        try:
+                            # Check for common failure patterns in the log file
+                            error_patterns = [
+                                "OutOfMemoryError", "HIP out of memory", "CUDA out of memory",
+                                "RuntimeError", "AssertionError", "ValueError", "SystemExit",
+                                "failed (exitcode:", "Error:", "FAILED", "Exception:"
+                            ]
+                            
+                            has_errors = False
+                            if log_file_path and os.path.exists(log_file_path):
+                                try:
+                                    # Check for error patterns in the log (exclude our own grep commands and output messages)
+                                    for pattern in error_patterns:
+                                        # Use grep with -v to exclude our own commands and output to avoid false positives
+                                        error_check_cmd = f"grep -v -E '(grep -q.*{pattern}|Found error pattern.*{pattern})' {log_file_path} | grep -q '{pattern}' && echo 'FOUND' || echo 'NOT_FOUND'"
+                                        result = self.console.sh(error_check_cmd, canFail=True)
+                                        if result.strip() == "FOUND":
+                                            has_errors = True
+                                            print(f"Found error pattern '{pattern}' in logs")
+                                            break
+                                except Exception:
+                                    pass  # Error checking is optional
+                            
+                            # Status logic: Must have performance AND no errors to be considered success
+                            performance_value = run_results.get("performance")
+                            has_performance = performance_value and performance_value.strip() and performance_value.strip() != "N/A"
+                            
+                            if has_errors:
+                                run_results["status"] = 'FAILURE'
+                                print(f"Status: FAILURE (error patterns detected in logs)")
+                            elif has_performance:
+                                run_results["status"] = 'SUCCESS'
+                                print(f"Status: SUCCESS (performance metrics found, no errors)")
+                            else:
+                                run_results["status"] = 'FAILURE' 
+                                print(f"Status: FAILURE (no performance metrics)")
+                                
+                        except Exception as e:
+                            print(f"Warning: Error in status determination: {e}")
+                            # Fallback to simple performance check
+                            run_results["status"] = 'SUCCESS' if run_results.get("performance") else 'FAILURE'
+                        
                         print(f"{model_info['name']} performance is {run_results.get('performance', 'N/A')} {run_results.get('metric', '')}")
 
                         # Generate performance results and update perf.csv

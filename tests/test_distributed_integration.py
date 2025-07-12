@@ -774,8 +774,8 @@ class TestDistributedProfiling(TestDistributedIntegrationBase):
         
         # Mock successful container run
         mock_run_container.return_value = {
-            "model": "dummy",
-            "status": "success",
+            "model": "dummy_prof",
+            "status": "SUCCESS",
             "test_duration": 30.5,
             "profiling_data": {
                 "rocprof_output": "/tmp/rocprof/output.csv"
@@ -785,22 +785,38 @@ class TestDistributedProfiling(TestDistributedIntegrationBase):
         # Mock manifest with profiling tools
         manifest_with_profiling = {
             "built_images": {
-                "ci-dummy_profiling.ubuntu.amd": {
-                    "docker_image": "ci-dummy_profiling.ubuntu.amd",
+                "ci-dummy_prof_dummy.ubuntu.amd": {
+                    "docker_image": "ci-dummy_prof_dummy.ubuntu.amd",
                     "dockerfile": "docker/dummy.ubuntu.amd.Dockerfile",
-                    "build_duration": 45.2
+                    "base_docker": "rocm/pytorch",
+                    "docker_sha": "sha256:47efe367d76c620ee828750fb294303f3f9f5fb6c184362a4741ce5e55ed3769",
+                    "build_duration": 0.559730052947998,
+                    "build_command": "docker build  --network=host -t ci-dummy_prof_dummy.ubuntu.amd --pull -f docker/dummy.ubuntu.amd.Dockerfile  ./docker",
+                    "log_file": "dummy_prof_dummy.ubuntu.amd.build.live.log"
                 }
             },
             "built_models": {
-                "ci-dummy_profiling.ubuntu.amd": {
-                    "name": "dummy_profiling",
+                "ci-dummy_prof_dummy.ubuntu.amd": {
+                    "name": "dummy_prof",
+                    "dockerfile": "docker/dummy",
+                    "scripts": "scripts/dummy/run_prof.sh",
                     "n_gpus": "1",
-                    "scripts": "scripts/dummy/run.sh",
-                    "dockerfile": "docker/dummy.ubuntu.amd.Dockerfile",
-                    "tags": ["dummy", "profiling"],
-                    "tools": ["rocprof", "roctracer"]
+                    "owner": "mmelesse@amd.com",
+                    "training_precision": "",
+                    "tags": [
+                        "dummies"
+                    ],
+                    "args": ""
                 }
-            }
+            },
+            "context": {
+                "docker_env_vars": {},
+                "docker_mounts": {},
+                "docker_build_arg": {},
+                "gpu_vendor": "AMD",
+                "docker_gpus": ""
+            },
+            "credentials_required": []
         }
         
         with patch('builtins.open', mock_open(read_data=json.dumps(manifest_with_profiling))):
