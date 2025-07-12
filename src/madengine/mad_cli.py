@@ -458,27 +458,6 @@ def build(
     This command builds Docker images for the specified model tags and optionally
     pushes them to a registry. Additional context with gpu_vendor and guest_os
     is required for build-only operations.
-    
-    Batch Build Mode:
-    Use --batch-manifest to specify a batch.json file containing a list of models.
-    For each model with build_new=true, the image will be built. For all models
-    (regardless of build_new), entries will be created in the build_manifest.json.
-    
-    Example batch batch.json:
-    [
-        {
-            "model_name": "dummy",
-            "build_new": false,
-            "registry_image": "rocm/mad-private:ci-dummy_dummy.ubuntu.amd",
-            "registry": "dockerhub"
-        },
-        {
-            "model_name": "dummy2", 
-            "build_new": true,
-            "registry_image": "",
-            "registry": ""
-        }
-    ]
     """
     setup_logging(verbose)
     
