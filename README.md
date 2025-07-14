@@ -65,7 +65,9 @@ madengine is designed to work within the **MAD (Model Automation and Dashboardin
 🔐 **Credential Management**: Centralized authentication for repositories and registries  
 📈 **Monitoring & Reporting**: Comprehensive metrics collection and analysis  
 🌐 **Multi-Platform**: Support for AMD ROCm, NVIDIA CUDA, and Intel architectures  
-🔧 **Extensible**: Plugin architecture for custom tools and integrations
+🔧 **Extensible**: Plugin architecture for custom tools and integrations  
+📦 **Batch Processing**: Support for batch manifest files with selective building  
+🏃 **Streamlined Runners**: Simplified distributed execution interface with comprehensive reporting
 
 ## Architecture
 
@@ -254,6 +256,11 @@ madengine-cli build --tags dummy resnet --registry docker.io \
   --additional-context '{"gpu_vendor": "AMD", "guest_os": "UBUNTU"}' \
   --clean-docker-cache
 
+# Alternative: Batch build mode
+madengine-cli build --batch-manifest batch.json \
+  --registry docker.io \
+  --additional-context '{"gpu_vendor": "AMD", "guest_os": "UBUNTU"}'
+
 # Run Phase (on GPU nodes)
 madengine-cli run --manifest-file build_manifest.json --timeout 1800
 ```
@@ -360,6 +367,50 @@ madengine discover --tags dummy2:dummy_2
 madengine discover --tags dummy3:dummy_3:batch_size=256
 ```
 
+### Batch Build Mode
+
+The CLI supports batch building mode using a batch manifest file that specifies which models to build and their configurations:
+
+#### Batch Manifest Format (batch.json)
+
+```json
+[
+  {
+    "model_name": "dummy",
+    "build_new": true,
+    "registry": "docker.io",
+    "registry_image": "my-org/dummy:latest"
+  },
+  {
+    "model_name": "resnet",
+    "build_new": false,
+    "registry_image": "existing-registry/resnet:v1.0"
+  },
+  {
+    "model_name": "bert",
+    "build_new": true,
+    "registry": "localhost:5000"
+  }
+]
+```
+
+#### Batch Build Usage
+
+```bash
+# Build only models marked with build_new=true
+madengine-cli build --batch-manifest batch.json \
+  --registry docker.io \
+  --additional-context '{"gpu_vendor": "AMD", "guest_os": "UBUNTU"}'
+
+# Note: Cannot use both --batch-manifest and --tags together
+```
+
+**Batch Manifest Features:**
+- **Selective Building**: Only models with `build_new=true` are built
+- **Registry Override**: Per-model registry configuration
+- **Image Tracking**: Tracks both built and pre-existing images
+- **Manifest Integration**: All models (built and existing) are included in final build manifest
+
 ## Command Line Interface
 
 madengine provides two CLI interfaces: the traditional `madengine` command and the modern `madengine-cli` for distributed workflows.
@@ -403,6 +454,11 @@ madengine-cli build --tags production_models \
   --additional-context '{"gpu_vendor": "AMD", "guest_os": "UBUNTU"}' \
   --clean-docker-cache \
   --summary-output build_summary.json
+
+# Batch build mode using batch manifest file
+madengine-cli build --batch-manifest batch.json \
+  --registry docker.io \
+  --additional-context '{"gpu_vendor": "AMD", "guest_os": "UBUNTU"}'
 ```
 
 #### Run Command
@@ -435,23 +491,21 @@ Execute models across multiple nodes with different infrastructure types:
 madengine-cli runner ssh \
     --inventory inventory.yml \
     --manifest-file build_manifest.json \
-    --tags dummy resnet \
-    --timeout 3600 \
-    --parallelism 2 \
+    --report-output ssh_execution_report.json \
     --verbose
 
 # Ansible Runner - Orchestrated deployment using playbooks
 madengine-cli runner ansible \
     --inventory cluster.yml \
-    --manifest-file build_manifest.json \
-    --tags dummy \
-    --playbook-output generated_playbook.yml \
+    --playbook madengine_distributed.yml \
+    --report-output ansible_execution_report.json \
     --verbose
 
 # Kubernetes Runner - Cloud-native execution in K8s clusters
 madengine-cli runner k8s \
     --inventory k8s_inventory.yml \
     --manifests-dir k8s-setup \
+    --report-output k8s_execution_report.json \
     --verbose
 ```
 
@@ -486,12 +540,14 @@ madengine-cli generate k8s \
 - `--clean-docker-cache`: Rebuild without cache
 - `--manifest-output, -m`: Build manifest output file
 - `--summary-output, -s`: Summary report output file
+- `--batch-manifest`: Input batch.json file for batch build mode
 
 **Advanced Configuration:**
 - `--data-config`: Custom data configuration file
 - `--tools-config`: Custom tools configuration
 - `--force-mirror-local`: Local data mirroring path
 - `--disable-skip-gpu-arch`: Disable GPU architecture filtering
+- `--sys-env-details`: Generate system config env details
 
 ## Distributed Execution
 
@@ -506,11 +562,12 @@ The MADEngine distributed runner system provides a unified interface for orchest
 - **Modular Architecture**: Pluggable runner implementations for different infrastructure types
 - **Unified Interface**: Consistent CLI and API across all runner types
 - **Flexible Inventory**: Support for JSON and YAML inventory formats
-- **Rich Reporting**: Detailed execution reports with performance metrics
+- **Rich Reporting**: Detailed execution reports with performance metrics saved to specified output files
 - **Error Handling**: Comprehensive error handling and recovery mechanisms
-- **Parallel Execution**: Configurable parallelism for optimal resource utilization
+- **Parallel Execution**: Automatic parallel execution based on inventory configuration
 - **Automated Setup**: Automatically clones ROCm/MAD repository and installs madengine on each node/pod
 - **Environment Management**: Runs madengine from the MAD directory using default MODEL_DIR
+- **Simplified Interface**: Streamlined command interface focusing on essential options (inventory, manifest/playbook files, and reporting)
 
 #### Runner Architecture
 
@@ -630,9 +687,7 @@ pip install madengine[ssh]
 madengine-cli runner ssh \
     --inventory inventory.yml \
     --manifest-file build_manifest.json \
-    --tags dummy resnet \
-    --timeout 3600 \
-    --parallelism 2 \
+    --report-output ssh_execution_report.json \
     --verbose
 ```
 
@@ -665,9 +720,8 @@ pip install madengine[ansible]
 ```bash
 madengine-cli runner ansible \
     --inventory cluster.yml \
-    --manifest-file build_manifest.json \
-    --tags dummy \
-    --playbook-output generated_playbook.yml \
+    --playbook madengine_distributed.yml \
+    --report-output ansible_execution_report.json \
     --verbose
 ```
 
@@ -701,6 +755,7 @@ pip install madengine[kubernetes]
 madengine-cli runner k8s \
     --inventory k8s_inventory.yml \
     --manifests-dir k8s-setup \
+    --report-output k8s_execution_report.json \
     --verbose
 ```
 
@@ -1148,6 +1203,11 @@ madengine-cli run --manifest-file /shared/nfs/madengine/build_manifest.json \
 madengine-cli build --tags customer_models --registry gcr.io/ml-bench \
   --additional-context-file customer_context.json
 
+# Alternative: Use batch manifest for selective builds
+madengine-cli build --batch-manifest customer_models.json \
+  --registry gcr.io/ml-bench \
+  --additional-context-file customer_context.json
+
 # Generate K8s deployment
 madengine-cli generate k8s \
   --manifest-file build_manifest.json \
@@ -1328,8 +1388,49 @@ madengine-cli runner ansible \
 ### Command Line Interface
 
 ```bash
-madengine-cli runner <runner_type> [OPTIONS]
+# Build Command
+madengine-cli build [OPTIONS]
+
+# Run Command  
+madengine-cli run [OPTIONS]
+
+# Generate Commands
+madengine-cli generate <ansible|k8s> [OPTIONS]
+
+# Runner Commands
+madengine-cli runner <ssh|ansible|k8s> [OPTIONS]
 ```
+
+### Build Command Options
+
+| Option | Short | Description | Default |
+|--------|-------|-------------|---------|
+| `--tags` | `-t` | Model tags to build (can specify multiple) | `[]` |
+| `--registry` | `-r` | Docker registry to push images to | `None` |
+| `--batch-manifest` | | Input batch.json file for batch build mode | `None` |
+| `--additional-context` | `-c` | Additional context as JSON string | `"{}"` |
+| `--additional-context-file` | `-f` | File containing additional context JSON | `None` |
+| `--clean-docker-cache` | | Rebuild images without using cache | `false` |
+| `--manifest-output` | `-m` | Output file for build manifest | `build_manifest.json` |
+| `--summary-output` | `-s` | Output file for build summary JSON | `None` |
+| `--live-output` | `-l` | Print output in real-time | `false` |
+| `--verbose` | `-v` | Enable verbose logging | `false` |
+
+### Run Command Options
+
+| Option | Short | Description | Default |
+|--------|-------|-------------|---------|
+| `--tags` | `-t` | Model tags to run (can specify multiple) | `[]` |
+| `--manifest-file` | `-m` | Build manifest file path | `""` |
+| `--registry` | `-r` | Docker registry URL | `None` |
+| `--timeout` | | Timeout for model run in seconds | `-1` |
+| `--additional-context` | `-c` | Additional context as JSON string | `"{}"` |
+| `--additional-context-file` | `-f` | File containing additional context JSON | `None` |
+| `--keep-alive` | | Keep Docker containers alive after run | `false` |
+| `--keep-model-dir` | | Keep model directory after run | `false` |
+| `--skip-model-run` | | Skip running the model | `false` |
+| `--live-output` | `-l` | Print output in real-time | `false` |
+| `--verbose` | `-v` | Enable verbose logging | `false` |
 
 ### Runner Types
 
@@ -1337,18 +1438,17 @@ madengine-cli runner <runner_type> [OPTIONS]
 - `ansible`: Ansible-based distributed runner  
 - `k8s`: Kubernetes-based distributed runner
 
+### Build Modes
+
+- **Tag-based builds**: `--tags dummy resnet` - Build specific models by tags
+- **Batch builds**: `--batch-manifest batch.json` - Build from batch manifest file with selective building
+
 ### Common Options
 
 | Option | Description | Default |
 |--------|-------------|---------|
 | `--inventory, -i` | Path to inventory file | `inventory.yml` |
 | `--manifest-file, -m` | Build manifest file | `build_manifest.json` |
-| `--tags, -t` | Model tags to execute | `[]` |
-| `--timeout` | Execution timeout (seconds) | `3600` |
-| `--registry, -r` | Docker registry URL | Auto-detected |
-| `--additional-context, -c` | Additional context JSON | `{}` |
-| `--node-selector` | Node selector JSON | `{}` |
-| `--parallelism, -p` | Parallel executions | `1` |
 | `--report-output` | Report output file | `runner_report.json` |
 | `--verbose, -v` | Enable verbose logging | `false` |
 
@@ -1358,20 +1458,26 @@ madengine-cli runner <runner_type> [OPTIONS]
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| No additional options | | |
+| `--inventory, -i` | Path to inventory file (YAML or JSON format) | `inventory.yml` |
+| `--manifest-file, -m` | Build manifest file (generated by 'madengine-cli build') | `build_manifest.json` |
+| `--report-output` | Output file for execution report | `runner_report.json` |
 
 #### Ansible Runner
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `--playbook-output` | Generate playbook file | None |
+| `--inventory, -i` | Path to inventory file (YAML or JSON format) | `inventory.yml` |
+| `--playbook` | Path to Ansible playbook file (generated by 'madengine-cli generate ansible') | `madengine_distributed.yml` |
+| `--report-output` | Output file for execution report | `runner_report.json` |
 
 #### Kubernetes Runner
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `--manifests-dir, -d` | Directory containing Kubernetes manifests | `k8s-setup` |
+| `--inventory, -i` | Path to inventory file (YAML or JSON format) | `inventory.yml` |
+| `--manifests-dir, -d` | Directory containing Kubernetes manifests (generated by 'madengine-cli generate k8s') | `k8s-setup` |
 | `--kubeconfig` | Path to kubeconfig file | Auto-detected |
+| `--report-output` | Output file for execution report | `runner_report.json` |
 
 ### Exit Codes
 
