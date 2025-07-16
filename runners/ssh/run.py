@@ -153,7 +153,7 @@ class SSHMultiNodeRunner:
             if stdout != "exists":
                 return False, (
                     f"{self.config.madengine.working_directory} folder not found on {hostname}. "
-                    f"Please run: git clone https://github.com/ROCm/DeepLearningModels.git {self.config.madengine.working_directory}"
+                    f"Please run: git clone https://github.com/ROCm/MAD.git {self.config.madengine.working_directory}"
                 )
             
             # Check if madengine is accessible
@@ -236,7 +236,7 @@ To prepare your remote nodes for multi-node training:
 
 2. MAD Engine Installation:
    • Install madengine on each remote node
-   • Command: pip install madengine
+   • Command: pip install git+https://github.com/ROCm/madengine.git@main
    • Verify with: {self.config.madengine.path} --help
 
 3. Shared Data Path:
@@ -275,7 +275,7 @@ To prepare your remote nodes for multi-node training:
             # Compose setup and run commands
             setup_commands = [
                 f"cd {self.config.madengine.working_directory}",
-                "pip install -r requirements.txt"
+                "pip install git+https://github.com/ROCm/madengine.git@main
             ]
             full_command = f"{' && '.join(setup_commands)} && {command}"
             self.logger.info(f"🚀 Executing on {hostname} (rank {node_rank}): {full_command}")
@@ -480,8 +480,8 @@ Examples:
     
     parser.add_argument(
         '--working-directory',
-        default='DeepLearningModels',
-        help='Working directory on remote nodes (default: DeepLearningModels)'
+        default='MAD',
+        help='Working directory on remote nodes (default: MAD)'
     )
     
     parser.add_argument(

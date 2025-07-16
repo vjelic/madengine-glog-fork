@@ -74,7 +74,7 @@ class TrainingConfig:
 class MadEngineConfig:
     """MAD Engine specific configuration."""
     path: str = 'madengine'
-    working_directory: str = 'DeepLearningModels'
+    working_directory: str = 'MAD'
 
 
 @dataclass
@@ -123,7 +123,7 @@ class MultiNodeConfig:
         
         madengine_config = MadEngineConfig(
             path=getattr(args, 'madengine_path', 'madengine'),
-            working_directory=getattr(args, 'working_directory', 'DeepLearningModels')
+            working_directory=getattr(args, 'working_directory', 'MAD')
         )
         
         return cls(
@@ -189,7 +189,7 @@ class MultiNodeConfig:
         madengine_section = config['madengine'] if 'madengine' in config else {}
         madengine_config = MadEngineConfig(
             path=madengine_section.get('path', 'madengine'),
-            working_directory=madengine_section.get('working_directory', 'DeepLearningModels')
+            working_directory=madengine_section.get('working_directory', 'MAD')
         )
         
         return cls(

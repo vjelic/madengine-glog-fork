@@ -98,7 +98,7 @@ class TestConfigManager(unittest.TestCase):
             ('timeout', 3600),
             ('additional_args', ''),
             ('madengine_path', 'madengine'),
-            ('working_directory', 'DeepLearningModels'),
+            ('working_directory', 'MAD'),
             ('ssh_timeout', 30),
             ('ssh_max_retries', 3)
         ]:
@@ -265,7 +265,7 @@ class TestSSHMultiNodeRunner(unittest.TestCase):
         mock_execute.side_effect = [
             (0, "exists", ""),      # Working directory exists
             (0, "found", ""),       # madengine found
-            (0, "/home/user/DeepLearningModels", "")  # Directory accessible
+            (0, "/home/user/MAD", "")  # Directory accessible
         ]
         
         runner = SSHMultiNodeRunner(self.config)
@@ -283,7 +283,7 @@ class TestSSHMultiNodeRunner(unittest.TestCase):
         success, error_msg = runner._validate_remote_prerequisites("node1")
         
         self.assertFalse(success)
-        self.assertIn("DeepLearningModels folder not found", error_msg)
+        self.assertIn("MAD folder not found", error_msg)
 
 
 class TestIntegration(unittest.TestCase):
