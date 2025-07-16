@@ -160,7 +160,7 @@ class SSHMultiNodeRunner:
             # Install madengine in venv
             self.logger.info(f"Installing madengine in venv on {hostname}...")
             exit_code, stdout, stderr = ssh_manager.execute_command(
-                f'cd {self.config.madengine.working_directory} && source venv/bin/activate && pip install --upgrade pip && pip install git+https://github.com/ROCm/madengine.git@main'
+                f'cd {self.config.madengine.working_directory} && source venv/bin/activate && pip install --upgrade pip && pip install git+https://github.com/ROCm/madengine.git@main -q'
             )
             if exit_code != 0:
                 return False, f"Failed to install madengine in venv on {hostname}: {stderr}"
@@ -269,7 +269,7 @@ To prepare your remote nodes for multi-node training:
             setup_commands = [
                 f"cd {self.config.madengine.working_directory}",
                 "venv/bin/python -m pip install --upgrade pip",
-                "venv/bin/python -m pip install git+https://github.com/ROCm/madengine.git@main"
+                "venv/bin/python -m pip install git+https://github.com/ROCm/madengine.git@main -q"
             ]
             full_command = f"{' && '.join(setup_commands)} && {command}"
             self.logger.info(f"🚀 Executing on {hostname} (rank {node_rank}): {full_command}")
