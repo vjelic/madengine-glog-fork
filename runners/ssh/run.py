@@ -268,7 +268,7 @@ To prepare your remote nodes for multi-node training:
             # Compose setup and run commands
             setup_commands = [
                 f"cd {self.config.madengine.working_directory}",
-                "pip install git+https://github.com/ROCm/madengine.git@main
+                "pip install git+https://github.com/ROCm/madengine.git@main"
             ]
             full_command = f"{' && '.join(setup_commands)} && {command}"
             self.logger.info(f"🚀 Executing on {hostname} (rank {node_rank}): {full_command}")
