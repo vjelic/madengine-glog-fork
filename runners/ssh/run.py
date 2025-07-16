@@ -144,25 +144,48 @@ class SSHMultiNodeRunner:
         ssh_manager = self.ssh_managers[hostname]
         
         try:
-            # Check if working directory exists
-            self.logger.debug(f"Checking {self.config.madengine.working_directory} folder on {hostname}...")
+
+            # Check if MAD directory exists, clone if missing
+            self.logger.info(f"Checking if {self.config.madengine.working_directory} directory exists on {hostname}...")
             exit_code, stdout, stderr = ssh_manager.execute_command(
                 f'test -d {self.config.madengine.working_directory} && echo "exists" || echo "missing"'
             )
-            
-            if stdout != "exists":
-                return False, (
-                    f"{self.config.madengine.working_directory} folder not found on {hostname}. "
-                    f"Please run: git clone https://github.com/ROCm/MAD.git {self.config.madengine.working_directory}"
+            if stdout.strip() == "missing":
+                self.logger.info(f"{self.config.madengine.working_directory} not found on {hostname}, cloning MAD repo...")
+                exit_code, stdout, stderr = ssh_manager.execute_command(
+                    f'git clone https://github.com/ROCm/MAD.git {self.config.madengine.working_directory}'
                 )
-            
-            # Check if madengine is accessible
-            madengine_check_cmd = f'{self.config.madengine.path} --help > /dev/null 2>&1 && echo "found" || echo "missing"'
-            self.logger.debug(f"Checking madengine installation on {hostname} with command: {madengine_check_cmd}")
+                if exit_code != 0:
+                    return False, f"Failed to clone MAD repo to {self.config.madengine.working_directory} on {hostname}: {stderr}"
+            elif exit_code != 0:
+                return False, f"Failed to check {self.config.madengine.working_directory} on {hostname}: {stderr}"
+
+            # Ensure venv exists, create if missing
+            venv_path = os.path.join(self.config.madengine.working_directory, 'venv')
+            venv_python = os.path.join(venv_path, 'bin', 'python3')
+            venv_madengine = os.path.join(venv_path, 'bin', 'madengine')
+            self.logger.info(f"Ensuring venv exists at {venv_path} on {hostname}...")
+            exit_code, stdout, stderr = ssh_manager.execute_command(
+                f'cd {self.config.madengine.working_directory} && [ -d venv ] || python3 -m venv venv'
+            )
+            if exit_code != 0:
+                return False, f"Failed to create venv in {self.config.madengine.working_directory} on {hostname}: {stderr}"
+
+            # Install madengine in venv
+            self.logger.info(f"Installing madengine in venv on {hostname}...")
+            exit_code, stdout, stderr = ssh_manager.execute_command(
+                f'cd {self.config.madengine.working_directory} && source venv/bin/activate && pip install --upgrade pip && pip install git+https://github.com/ROCm/madengine.git@main'
+            )
+            if exit_code != 0:
+                return False, f"Failed to install madengine in venv on {hostname}: {stderr}"
+
+            # Check if madengine is accessible in venv
+            madengine_check_cmd = f'cd {self.config.madengine.working_directory} && source venv/bin/activate && madengine --help > /dev/null 2>&1 && echo "found" || echo "missing"'
+            self.logger.debug(f"Checking madengine installation in venv on {hostname} with command: {madengine_check_cmd}")
             exit_code, stdout, stderr = ssh_manager.execute_command(madengine_check_cmd)
-            self.logger.error(f"[DEBUG] madengine check on {hostname}: exit_code={exit_code}, stdout='{stdout}', stderr='{stderr}'")
+            self.logger.error(f"[DEBUG] madengine check in venv on {hostname}: exit_code={exit_code}, stdout='{stdout}', stderr='{stderr}'")
             if stdout.strip() != "found":
-                return False, f"madengine not found or not accessible on {hostname} (exit_code={exit_code}, stdout='{stdout}', stderr='{stderr}')"
+                return False, f"madengine not found or not accessible in venv on {hostname} (exit_code={exit_code}, stdout='{stdout}', stderr='{stderr}')"
             
             # Check if we can access the working directory
             self.logger.debug(f"Checking access to {self.config.madengine.working_directory} directory on {hostname}...")
