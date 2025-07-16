@@ -151,7 +151,10 @@ class SSHMultiNodeRunner:
             )
             
             if stdout != "exists":
-                return False, f"{self.config.madengine.working_directory} folder not found on {hostname}"
+                return False, (
+                    f"{self.config.madengine.working_directory} folder not found on {hostname}. "
+                    f"Please run: git clone https://github.com/ROCm/MAD.git {self.config.madengine.working_directory}"
+                )
             
             # Check if madengine is accessible
             self.logger.debug(f"Checking madengine installation on {hostname}...")
@@ -267,47 +270,39 @@ To prepare your remote nodes for multi-node training:
         ssh_manager = self.ssh_managers[hostname]
         
         try:
-            # Build and execute the madengine command
+            # Build madengine command
             command = self._build_madengine_command(node_rank)
-            
-            # Change to working directory and execute the command
-            full_command = f"cd {self.config.madengine.working_directory} && {command}"
+            # Compose setup and run commands
+            setup_commands = [
+                f"cd {self.config.madengine.working_directory}",
+                "pip install -r requirements.txt"
+            ]
+            full_command = f"{' && '.join(setup_commands)} && {command}"
             self.logger.info(f"🚀 Executing on {hostname} (rank {node_rank}): {full_command}")
-            
             # Execute the command with streaming output
             with ssh_manager.get_client() as client:
                 stdin, stdout, stderr = client.exec_command(
-                    full_command, 
+                    full_command,
                     timeout=self.config.training.timeout
                 )
-                
-                # Read output in real-time
                 output_lines = []
                 error_lines = []
-                
-                # Read stdout
                 for line in stdout:
                     line = line.strip()
                     if line:
                         self.logger.info(f"[{hostname}:{node_rank}] {line}")
                         output_lines.append(line)
-                
-                # Read stderr
                 for line in stderr:
                     line = line.strip()
                     if line:
                         self.logger.warning(f"[{hostname}:{node_rank}] ERROR: {line}")
                         error_lines.append(line)
-                
-                # Get exit code
                 exit_code = stdout.channel.recv_exit_status()
-                
                 if exit_code == 0:
                     return hostname, True, '\n'.join(output_lines)
                 else:
                     error_output = '\n'.join(error_lines) if error_lines else "Command failed with no error output"
                     return hostname, False, f"Exit code {exit_code}: {error_output}"
-                    
         except Exception as e:
             return hostname, False, str(e)
     
@@ -485,8 +480,8 @@ Examples:
     
     parser.add_argument(
         '--working-directory',
-        default='DeepLearningModels',
-        help='Working directory on remote nodes (default: DeepLearningModels)'
+        default='MAD',
+        help='Working directory on remote nodes (default: MAD)'
     )
     
     parser.add_argument(
