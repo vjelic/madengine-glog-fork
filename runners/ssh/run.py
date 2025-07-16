@@ -159,17 +159,10 @@ class SSHMultiNodeRunner:
             # Check if madengine is accessible
             self.logger.debug(f"Checking madengine installation on {hostname}...")
             exit_code, stdout, stderr = ssh_manager.execute_command(
-                f'which {self.config.madengine.path} > /dev/null 2>&1 && echo "found" || echo "missing"'
+                f'{self.config.madengine.path} --help > /dev/null 2>&1 && echo "found" || echo "missing"'
             )
-            
-            if stdout != "found":
-                # Try alternative check
-                exit_code, stdout, stderr = ssh_manager.execute_command(
-                    f'{self.config.madengine.path} --help > /dev/null 2>&1 && echo "found" || echo "missing"'
-                )
-                
-                if stdout != "found":
-                    return False, f"madengine not found or not accessible on {hostname}"
+            if stdout.strip() != "found":
+                return False, f"madengine not found or not accessible on {hostname}"
             
             # Check if we can access the working directory
             self.logger.debug(f"Checking access to {self.config.madengine.working_directory} directory on {hostname}...")
