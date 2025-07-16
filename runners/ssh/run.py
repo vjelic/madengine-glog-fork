@@ -153,7 +153,7 @@ class SSHMultiNodeRunner:
             if stdout != "exists":
                 return False, (
                     f"{self.config.madengine.working_directory} folder not found on {hostname}. "
-                    f"Please run: git clone https://github.com/ROCm/MAD.git {self.config.madengine.working_directory}"
+                    f"Please run: git clone https://github.com/ROCm/DeepLearningModels.git {self.config.madengine.working_directory}"
                 )
             
             # Check if madengine is accessible
@@ -480,8 +480,8 @@ Examples:
     
     parser.add_argument(
         '--working-directory',
-        default='MAD',
-        help='Working directory on remote nodes (default: MAD)'
+        default='DeepLearningModels',
+        help='Working directory on remote nodes (default: DeepLearningModels)'
     )
     
     parser.add_argument(
