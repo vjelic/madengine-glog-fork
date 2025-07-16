@@ -73,14 +73,7 @@ class SSHMultiNodeRunner:
             )
     
     def _build_madengine_command(self, node_rank: int) -> str:
-        """Build the madengine command for a specific node.
-        
-        Args:
-            node_rank: The rank of this node (0-based)
-            
-        Returns:
-            Complete madengine command string
-        """
+        """Build the madengine command for a specific node, using venv's madengine binary."""
         multi_node_args = {
             'RUNNER': 'torchrun',
             'MASTER_ADDR': self.config.cluster.master_addr,
@@ -90,26 +83,19 @@ class SSHMultiNodeRunner:
             'NCCL_SOCKET_IFNAME': self.config.training.nccl_interface,
             'GLOO_SOCKET_IFNAME': self.config.training.gloo_interface
         }
-        
-        # Build the additional context string
         additional_context = f"'{json.dumps({'multi_node_args': multi_node_args})}'"
-        
-        # Build the complete command
+        # Use venv/bin/madengine explicitly
+        madengine_bin = os.path.join('venv', 'bin', 'madengine')
         cmd_parts = [
-            self.config.madengine.path,
+            madengine_bin,
             'run',
             '--tags', self.config.training.model,
             '--additional-context', additional_context
         ]
-        
-        # Add shared data path if specified
         if self.config.training.shared_data_path:
             cmd_parts.extend(['--force-mirror-local', self.config.training.shared_data_path])
-        
-        # Add any additional arguments
         if self.config.training.additional_args:
             cmd_parts.append(self.config.training.additional_args)
-        
         return ' '.join(cmd_parts)
     
     def _check_node_connectivity(self) -> List[str]:
@@ -274,28 +260,19 @@ To prepare your remote nodes for multi-node training:
         print(instructions)
     
     def _execute_on_node(self, hostname: str, node_rank: int) -> Tuple[str, bool, str]:
-        """Execute madengine command on a single node.
-        
-        Args:
-            hostname: The hostname/IP of the node
-            node_rank: The rank of this node
-            
-        Returns:
-            Tuple of (hostname, success, output/error)
-        """
+        """Execute madengine command on a single node, ensuring venv usage."""
         ssh_manager = self.ssh_managers[hostname]
-        
         try:
-            # Build madengine command
+            # Build madengine command (uses venv/bin/madengine)
             command = self._build_madengine_command(node_rank)
-            # Compose setup and run commands
+            # Compose setup and run commands, always use venv's python/pip
             setup_commands = [
                 f"cd {self.config.madengine.working_directory}",
-                "pip install git+https://github.com/ROCm/madengine.git@main"
+                "venv/bin/python -m pip install --upgrade pip",
+                "venv/bin/python -m pip install git+https://github.com/ROCm/madengine.git@main"
             ]
             full_command = f"{' && '.join(setup_commands)} && {command}"
             self.logger.info(f"🚀 Executing on {hostname} (rank {node_rank}): {full_command}")
-            # Execute the command with streaming output
             with ssh_manager.get_client() as client:
                 stdin, stdout, stderr = client.exec_command(
                     full_command,
