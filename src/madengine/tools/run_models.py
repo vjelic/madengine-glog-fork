@@ -634,9 +634,9 @@ class RunModels:
 
         if gpu_vendor.find("AMD") != -1:
             docker_options = "--network host -u root --group-add video \
-            --cap-add=SYS_PTRACE --cap-add SYS_ADMIN --device /dev/fuse --security-opt seccomp=unconfined --security-opt apparmor=unconfined --ipc=host "
+            --cap-add=SYS_PTRACE --cap-add SYS_ADMIN --device /dev/fuse --security-opt seccomp=unconfined --security-opt apparmor=unconfined "
         elif gpu_vendor.find("NVIDIA") != -1:
-            docker_options = "--cap-add=SYS_PTRACE --cap-add SYS_ADMIN --cap-add SYS_NICE --device /dev/fuse --security-opt seccomp=unconfined --security-opt apparmor=unconfined  --network host -u root --ipc=host "
+            docker_options = "--cap-add=SYS_PTRACE --cap-add SYS_ADMIN --cap-add SYS_NICE --device /dev/fuse --security-opt seccomp=unconfined --security-opt apparmor=unconfined  --network host -u root "
         else:
             raise RuntimeError("Unable to determine gpu vendor.")
 
@@ -908,6 +908,13 @@ class RunModels:
         # Taking gpu arch from context assumes the host image and container have the same gpu arch.
         # Environment variable updates for MAD Public CI
         run_details.gpu_architecture = self.context.ctx["docker_env_vars"]["MAD_SYSTEM_GPU_ARCHITECTURE"]
+
+        # Check the setting of shared memory size
+        if "SHM_SIZE" in self.context.ctx:
+            shm_size = self.context.ctx["SHM_SIZE"]
+            if shm_size:
+                run_details.additional_docker_run_options += f" --shm-size={shm_size}"
+                print(f"Using SHM_SIZE from context: {shm_size}")
 
         # Check if model is deprecated
         if model_info.get("is_deprecated", False):
