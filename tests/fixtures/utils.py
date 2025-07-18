@@ -55,8 +55,8 @@ def is_nvidia() -> bool:
         return False
 
 
-def get_gpu_nodeid_map() -> dict:
-    """Get the GPU node id map.
+def _get_gpu_nodeid_map() -> dict:
+    """Get the GPU node id map using rocm-smi depreciated
 
     Returns:
         dict: GPU node id map.
@@ -90,6 +90,42 @@ def get_gpu_nodeid_map() -> dict:
                     gpu_id = int(line.split()[0])
                     node_id = line.split()[1]
                     gpu_map[node_id] = gpu_id
+    return gpu_map
+
+
+def get_gpu_nodeid_map() -> dict:
+    """Get the GPU node id map using amd-smi
+
+    Returns:
+        dict: GPU node id map.
+    """
+    gpu_map = {}
+    console = Console(live_output=True)
+
+    if is_nvidia():
+        command = "nvidia-smi --list-gpus"
+        output = console.sh(command)
+        lines = output.split("\n")
+        for line in lines:
+            gpu_id = int(line.split(":")[0].split()[1])
+            unique_id = line.split(":")[2].split(")")[0].strip()
+            gpu_map[unique_id] = gpu_id
+        print(f"NVIDIA GPU data: {gpu_map}")
+    else:
+        rocm_version = console.sh("hipconfig --version")
+        rocm_version = float(".".join(rocm_version.split(".")[:2]))
+        command = "amd-smi list --json"
+        output = console.sh(command)
+        if output:
+            data = json.loads(output)
+        else:
+            raise ValueError("Failed to retrieve AMD GPU data")
+
+        for item in data:
+            node_id = item["node_id"]
+            gpu_map[node_id] = item["gpu"]
+        print(f"AMD GPU data: {gpu_map}")
+
     return gpu_map
 
 
