@@ -323,7 +323,7 @@ class Context:
             # map unique ids to renderDs
             uniqueid_renderD_map = {unique_id:renderD for unique_id, renderD in zip(kfd_unique_ids, kfd_renderDs)}
 
-            output = console.sh("amd-smi list --json")
+            output = self.console.sh("amd-smi list --json")
             if output:
                 data = json.loads(output)
             else:
