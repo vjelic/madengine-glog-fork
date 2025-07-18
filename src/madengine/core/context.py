@@ -236,7 +236,7 @@ class Context:
         """
         number_gpus = 0
         if self.ctx["docker_env_vars"]["MAD_GPU_VENDOR"] == "AMD":
-            number_gpus = int(self.console.sh("amd-smi list --csv | tail -n +2 | wc -l"))
+            number_gpus = int(self.console.sh("amd-smi list --csv | tail -n +3 | wc -l"))
         elif self.ctx["docker_env_vars"]["MAD_GPU_VENDOR"] == "NVIDIA":
             number_gpus = int(self.console.sh("nvidia-smi -L | wc -l"))
         else:
@@ -340,6 +340,7 @@ class Context:
                 for key in uniqueid_renderD_map.keys():
                     if unique_id in key:
                         gpu_renderDs.append(uniqueid_renderD_map[key])
+                        break
 
         return gpu_renderDs
 
