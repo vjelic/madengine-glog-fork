@@ -469,10 +469,19 @@ def build(
     # Process batch manifest if provided
     batch_data = None
     effective_tags = tags
+    batch_build_metadata = None
     if batch_manifest:
         try:
             batch_data = process_batch_manifest(batch_manifest)
             effective_tags = batch_data["build_tags"]
+            # Build a mapping of model_name -> registry_image/registry for build_new models
+            batch_build_metadata = {}
+            for model in batch_data["manifest_data"]:
+                if model.get("build_new", False):
+                    batch_build_metadata[model["model_name"]] = {
+                        "registry_image": model.get("registry_image"),
+                        "registry": model.get("registry")
+                    }
             console.print(Panel(
                 f"� [bold cyan]Batch Build Mode[/bold cyan]\n"
                 f"Input manifest: [yellow]{batch_manifest}[/yellow]\n"
@@ -516,8 +525,9 @@ def build(
             disable_skip_gpu_arch=disable_skip_gpu_arch,
             verbose=verbose,
             _separate_phases=True,
+            batch_build_metadata=batch_build_metadata if batch_build_metadata else None,
         )
-        
+
         # Initialize orchestrator in build-only mode
         with Progress(
             SpinnerColumn(),
@@ -527,12 +537,17 @@ def build(
             task = progress.add_task("Initializing build orchestrator...", total=None)
             orchestrator = DistributedOrchestrator(args, build_only_mode=True)
             progress.update(task, description="Building models...")
-            
-            build_summary = orchestrator.build_phase(
+
+            # Pass batch_build_metadata to build_phase if present
+            build_phase_kwargs = dict(
                 registry=registry,
                 clean_cache=clean_docker_cache,
                 manifest_output=manifest_output
             )
+            if batch_build_metadata:
+                build_phase_kwargs["batch_build_metadata"] = batch_build_metadata
+
+            build_summary = orchestrator.build_phase(**build_phase_kwargs)
             progress.update(task, description="Build completed!")
         
         # Handle batch manifest post-processing
