@@ -6,7 +6,6 @@ Copyright (c) Advanced Micro Devices, Inc. All rights reserved.
 """
 
 # build-in imports
-import os
 import json
 import argparse
 import typing
@@ -98,12 +97,9 @@ def handle_multiple_results(
     Raises:
         AssertionError: If the number of columns in the performance csv DataFrame is not equal to the length of the row.
     """
-    # Check that the multiple results CSV has three columns and has the following format:
-    # model, performance, metric
     multiple_results_df = df_strip_columns(pd.read_csv(multiple_results))
     multiple_results_header = multiple_results_df.columns.tolist()
-    # if (len(multiple_results_header) != 3):
-    #     raise RuntimeError("Multiple Results CSV file must have three columns: model, performance, metric")
+
     headings = ['model', 'performance', 'metric']
     for heading in headings:
         if not(heading in multiple_results_header):
@@ -116,21 +112,18 @@ def handle_multiple_results(
     # add results to perf.csv
     for r in multiple_results_df.to_dict(orient="records"):
         row = common_info_json.copy()
+        row.update(r)
         row["model"] = model_name + "_" + str(r["model"])
-        row["performance"] = r["performance"]
-        row["metric"] = r["metric"]
 
         if r["performance"] is not None and pd.notna(r["performance"]):
             row["status"] = "SUCCESS"
         else:
             row["status"] = "FAILURE"
 
-        assert perf_csv_df.columns.size == len(row), f"Column count mismatch: CSV has {perf_csv_df.columns.size} columns but row has {len(row)} keys. CSV columns: {list(perf_csv_df.columns)}, Row keys: {list(row.keys())}"
         final_multiple_results_df = pd.concat(
             [final_multiple_results_df, pd.DataFrame(row, index=[0])], ignore_index=True
         )
 
-    final_multiple_results_df = final_multiple_results_df[perf_csv_df.columns]
     perf_entry_df_to_csv(final_multiple_results_df)
     perf_csv_df = pd.concat([perf_csv_df, final_multiple_results_df])
     return perf_csv_df
