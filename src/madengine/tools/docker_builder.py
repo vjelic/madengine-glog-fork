@@ -377,7 +377,8 @@ class DockerBuilder:
                         credentials: typing.Dict = None, 
                         clean_cache: bool = False,
                         registry: str = None,
-                        phase_suffix: str = "") -> typing.Dict:
+                        phase_suffix: str = "",
+                        batch_build_metadata: typing.Optional[dict] = None) -> typing.Dict:
         """Build images for all models.
         
         Args:
@@ -400,71 +401,80 @@ class DockerBuilder:
         
         for model_info in models:
             try:
+                # If batch_build_metadata is provided, override registry and registry_image for this model
+                model_registry = registry
+                model_registry_image = None
+                if batch_build_metadata and model_info["name"] in batch_build_metadata:
+                    meta = batch_build_metadata[model_info["name"]]
+                    if meta.get("registry"):
+                        model_registry = meta["registry"]
+                    if meta.get("registry_image"):
+                        model_registry_image = meta["registry_image"]
+
                 # Find dockerfiles for this model
                 all_dockerfiles = self.console.sh(
                     f"ls {model_info['dockerfile']}.*"
                 ).split("\n")
-                
+
                 dockerfiles = {}
                 for cur_docker_file in all_dockerfiles:
                     # Get context of dockerfile
                     dockerfiles[cur_docker_file] = self.console.sh(
                         f"head -n5 {cur_docker_file} | grep '# CONTEXT ' | sed 's/# CONTEXT //g'"
                     )
-                
+
                 # Filter dockerfiles based on context
                 dockerfiles = self.context.filter(dockerfiles)
-                
+
                 if not dockerfiles:
                     print(f"No matching dockerfiles found for model {model_info['name']}")
                     continue
                 
                 # Build each dockerfile
+
                 for dockerfile in dockerfiles.keys():
                     try:
                         build_info = self.build_image(
                             model_info, dockerfile, credentials, clean_cache, phase_suffix
                         )
-                        
+
                         # Determine registry image name and add to manifest before push operations
-                        if registry:
-                            # Determine what the registry image name would be
+                        registry_image = None
+                        if model_registry_image:
+                            registry_image = model_registry_image
+                        elif model_registry:
                             registry_image = self._determine_registry_image_name(
-                                build_info["docker_image"], registry, credentials
+                                build_info["docker_image"], model_registry, credentials
                             )
+                        if registry_image:
                             build_info["registry_image"] = registry_image
-                            
-                            # Add the registry image name to the built_images entry BEFORE push operations
                             if build_info["docker_image"] in self.built_images:
                                 self.built_images[build_info["docker_image"]]["registry_image"] = registry_image
-                            
-                            # Now attempt to push to registry
+
+                        # Now attempt to push to registry if registry is set
+                        if model_registry and registry_image:
                             try:
                                 actual_registry_image = self.push_image(
-                                    build_info["docker_image"], registry, credentials
+                                    build_info["docker_image"], model_registry, credentials
                                 )
-                                # Verify the actual pushed image matches our intended name
                                 if actual_registry_image != registry_image:
                                     print(f"Warning: Pushed image name {actual_registry_image} differs from intended {registry_image}")
                             except Exception as push_error:
                                 print(f"Failed to push {build_info['docker_image']} to registry: {push_error}")
-                                # Keep the registry_image in manifest to show intended registry image
-                                # but mark the build info to indicate push failure
                                 build_info["push_failed"] = True
                                 build_info["push_error"] = str(push_error)
-                                # Also set these fields in the built_images entry for manifest export
                                 if build_info["docker_image"] in self.built_images:
                                     self.built_images[build_info["docker_image"]]["push_failed"] = True
                                     self.built_images[build_info["docker_image"]]["push_error"] = str(push_error)
-                        
+
                         build_summary["successful_builds"].append({
                             "model": model_info["name"],
                             "dockerfile": dockerfile,
                             "build_info": build_info
                         })
-                        
+
                         build_summary["total_build_time"] += build_info["build_duration"]
-                        
+
                     except Exception as e:
                         print(f"Failed to build {dockerfile} for model {model_info['name']}: {e}")
                         build_summary["failed_builds"].append({

@@ -133,9 +133,14 @@ class DistributedOrchestrator:
         # Determine phase suffix for log files
         phase_suffix = ".build" if hasattr(self.args, '_separate_phases') and self.args._separate_phases else ""
         
-        # Build all images
+        # If batch_build_metadata is provided, use it to set per-model registry/registry_image
         build_summary = builder.build_all_models(
-            models, self.credentials, clean_cache, registry, phase_suffix
+            models,
+            self.credentials,
+            clean_cache,
+            registry,
+            phase_suffix,
+            batch_build_metadata=batch_build_metadata
         )
         
         # Export build manifest with registry information
