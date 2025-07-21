@@ -87,7 +87,7 @@ class DistributedOrchestrator:
             print(f"Docker Hub credentials: {self.credentials['dockerhub']}")
     
     def build_phase(self, registry: str = None, clean_cache: bool = False, 
-                   manifest_output: str = "build_manifest.json") -> typing.Dict:
+                   manifest_output: str = "build_manifest.json", batch_build_metadata: typing.Optional[dict] = None) -> typing.Dict:
         """Execute the build phase - build all Docker images.
         
         This method supports both build-only mode (for dedicated build nodes) 
@@ -98,6 +98,7 @@ class DistributedOrchestrator:
             registry: Optional registry to push images to
             clean_cache: Whether to use --no-cache for builds
             manifest_output: Output file for build manifest
+            batch_build_metadata: Optional batch build metadata for batch builds
             
         Returns:
             dict: Build summary
