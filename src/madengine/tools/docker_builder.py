@@ -446,7 +446,7 @@ class DockerBuilder:
                             model_info, dockerfile, credentials, clean_cache, phase_suffix
                         )
 
-                        # Determine registry image name and add to manifest before push operations
+                        # Determine registry image name for push/tag
                         registry_image = None
                         if model_registry_image:
                             registry_image = model_registry_image
@@ -454,6 +454,11 @@ class DockerBuilder:
                             registry_image = self._determine_registry_image_name(
                                 build_info["docker_image"], model_registry, credentials
                             )
+                        # Always use registry_image from batch_build_metadata if present
+                        if batch_build_metadata and model_info["name"] in batch_build_metadata:
+                            meta = batch_build_metadata[model_info["name"]]
+                            if meta.get("registry_image"):
+                                registry_image = meta["registry_image"]
                         if registry_image:
                             build_info["registry_image"] = registry_image
                             if build_info["docker_image"] in self.built_images:
@@ -462,6 +467,7 @@ class DockerBuilder:
                         # Now attempt to push to registry if registry is set
                         if model_registry and registry_image:
                             try:
+                                # Use registry_image from batch_build_metadata for push/tag if present
                                 actual_registry_image = self.push_image(
                                     build_info["docker_image"], model_registry, credentials
                                 )
