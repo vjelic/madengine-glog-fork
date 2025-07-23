@@ -283,14 +283,15 @@ def _process_batch_manifest_entries(batch_data: Dict, manifest_output: str, regi
     if os.path.exists(manifest_output):
         with open(manifest_output, 'r') as f:
             build_manifest = json.load(f)
+        # Remove top-level registry if present
+        build_manifest.pop("registry", None)
     else:
         # Create a minimal manifest structure
         build_manifest = {
             "built_images": {},
             "built_models": {},
             "context": {},
-            "credentials_required": [],
-            "registry": registry or ""
+            "credentials_required": []
         }
     
     # Process each model in the batch manifest
@@ -341,7 +342,8 @@ def _process_batch_manifest_entries(batch_data: Dict, manifest_output: str, regi
                             "build_duration": 0,
                             "build_command": f"# Skipped build for {model_name} (build_new=false)",
                             "log_file": f"{model_name}_{model_name}.ubuntu.amd.build.skipped.log",
-                            "registry_image": model_registry_image or f"{model_registry or registry or 'dockerhub'}/{synthetic_image_name}" if model_registry_image or model_registry or registry else ""
+                            "registry_image": model_registry_image or f"{model_registry or registry or 'dockerhub'}/{synthetic_image_name}" if model_registry_image or model_registry or registry else "",
+                            "registry": model_registry or registry or "dockerhub"
                         }
                         
                         # Add to built_models
@@ -370,7 +372,8 @@ def _process_batch_manifest_entries(batch_data: Dict, manifest_output: str, regi
                     "build_duration": 0,
                     "build_command": f"# Skipped build for {model_name} (build_new=false)",
                     "log_file": f"{model_name}_{model_name}.ubuntu.amd.build.skipped.log",
-                    "registry_image": model_registry_image or ""
+                    "registry_image": model_registry_image or "",
+                    "registry": model_registry or registry or "dockerhub"
                 }
                 build_manifest["built_models"][synthetic_image_name] = {
                     "name": model_name,

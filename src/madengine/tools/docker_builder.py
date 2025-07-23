@@ -322,14 +322,26 @@ class DockerBuilder:
         
         Args:
             output_file: Path to output manifest file
-            registry: Registry used for building (added to manifest metadata)
+            registry: Registry used for building (added to each image entry)
         """
         # Extract credentials from models
         credentials_required = list(set([
             model.get("cred", "") for model in self.built_models.values() 
             if model.get("cred", "") != ""
         ]))
-        
+
+        # Set registry for each built image
+        for image_name, build_info in self.built_images.items():
+            # If registry is not set in build_info, set it from argument
+            if registry:
+                build_info["registry"] = registry
+            # If registry_image is present, try to parse registry from it if not set
+            elif "registry_image" in build_info and "registry" not in build_info:
+                reg_img = build_info["registry_image"]
+                if reg_img and "/" in reg_img:
+                    reg_part = reg_img.split('/')[0]
+                    build_info["registry"] = reg_part
+
         manifest = {
             "built_images": self.built_images,
             "built_models": self.built_models,
@@ -342,15 +354,11 @@ class DockerBuilder:
             },
             "credentials_required": credentials_required
         }
-        
+
         # Add multi-node args to context if present
         if "build_multi_node_args" in self.context.ctx:
             manifest["context"]["multi_node_args"] = self.context.ctx["build_multi_node_args"]
-        
-        # Add registry information to manifest metadata if provided
-        if registry:
-            manifest["registry"] = registry
-            
+
         # Add push failure summary if any pushes failed
         push_failures = []
         for image_name, build_info in self.built_images.items():
@@ -360,13 +368,13 @@ class DockerBuilder:
                     "intended_registry_image": build_info.get("registry_image"),
                     "error": build_info.get("push_error")
                 })
-        
+
         if push_failures:
             manifest["push_failures"] = push_failures
-        
+
         with open(output_file, 'w') as f:
             json.dump(manifest, f, indent=2)
-        
+
         print(f"Build manifest exported to: {output_file}")
         if push_failures:
             print(f"Warning: {len(push_failures)} image(s) failed to push to registry")
