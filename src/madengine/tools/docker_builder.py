@@ -320,16 +320,17 @@ class DockerBuilder:
         except Exception as e:
             print(f"Failed to push image {docker_image} to registry {registry}: {e}")
             raise
-    
-    def export_build_manifest(self, output_file: str = "build_manifest.json", registry: str = None) -> None:
+
+    def export_build_manifest(self, output_file: str = "build_manifest.json", registry: str = None, batch_build_metadata: typing.Optional[dict] = None) -> None:
         """Export enhanced build information to a manifest file.
         
         This creates a comprehensive build manifest that includes all necessary
         information for deployment, reducing the need for separate execution configs.
-        
+
         Args:
             output_file: Path to output manifest file
             registry: Registry used for building (added to each image entry)
+            batch_build_metadata: Optional metadata for batch builds
         """
         # Extract credentials from models
         credentials_required = list(set([
@@ -342,6 +343,9 @@ class DockerBuilder:
             # If registry is not set in build_info, set it from argument
             if registry:
                 build_info["registry"] = registry
+
+            if batch_build_metadata and image_name in batch_build_metadata:
+                build_info["registry"] = batch_build_metadata[image_name].get("registry")
 
         manifest = {
             "built_images": self.built_images,

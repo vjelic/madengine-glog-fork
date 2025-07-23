@@ -144,7 +144,7 @@ class DistributedOrchestrator:
         )
         
         # Export build manifest with registry information
-        builder.export_build_manifest(manifest_output, registry)
+        builder.export_build_manifest(manifest_output, registry, batch_build_metadata)
         
         print("=" * 60)
         print("BUILD PHASE COMPLETED")
