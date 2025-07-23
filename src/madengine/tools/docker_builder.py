@@ -270,7 +270,7 @@ class DockerBuilder:
             print(f"Failed to login to registry {registry}: {e}")
             raise
 
-    def push_image(self, docker_image: str, registry: str = None, credentials: typing.Dict = None) -> str:
+    def push_image(self, docker_image: str, registry: str = None, credentials: typing.Dict = None, explicit_registry_image: str = None) -> str:
         """Push the built image to a registry.
         
         Args:
@@ -290,26 +290,33 @@ class DockerBuilder:
             self.login_to_registry(registry, credentials)
         
         # Determine registry image name (this should match what was already determined)
-        registry_image = self._determine_registry_image_name(docker_image, registry, credentials)
+        if explicit_registry_image:
+            registry_image = explicit_registry_image
+        else:
+            registry_image = self._determine_registry_image_name(docker_image, registry, credentials)
+        print(f"[DEBUG] push_image: docker_image='{docker_image}', registry='{registry}', registry_image='{registry_image}'")
         
         try:
             # Tag the image if different from local name
             if registry_image != docker_image:
+                print(f"[DEBUG] Tagging image: docker tag {docker_image} {registry_image}")
                 tag_command = f"docker tag {docker_image} {registry_image}"
-                print(f"🏷️  Tagging image: {tag_command}")
                 self.console.sh(tag_command)
-            
+            else:
+                print(f"[DEBUG] No tag needed, docker_image and registry_image are the same: {docker_image}")
+
             # Push the image
+            print(f"[DEBUG] Pushing image: docker push {registry_image}")
             push_command = f"docker push {registry_image}"
             print(f"\n🚀 Starting docker push to registry...")
             print(f"📤 Registry: {registry}")
             print(f"🏷️  Image: {registry_image}")
             self.console.sh(push_command)
-            
+
             print(f"✅ Successfully pushed image to registry: {registry_image}")
             print(f"{'='*80}")
             return registry_image
-            
+
         except Exception as e:
             print(f"Failed to push image {docker_image} to registry {registry}: {e}")
             raise
