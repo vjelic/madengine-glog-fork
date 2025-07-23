@@ -473,10 +473,11 @@ class DockerBuilder:
 
                         # Now attempt to push to registry if registry is set
                         if model_registry and registry_image:
+                            explicit_registry_image = registry_image
                             try:
                                 # Use registry_image from batch_build_metadata for push/tag if present
                                 actual_registry_image = self.push_image(
-                                    build_info["docker_image"], model_registry, credentials
+                                    build_info["docker_image"], model_registry, credentials, explicit_registry_image
                                 )
                                 if actual_registry_image != registry_image:
                                     print(f"Warning: Pushed image name {actual_registry_image} differs from intended {registry_image}")
