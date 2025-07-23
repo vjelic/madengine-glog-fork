@@ -342,12 +342,6 @@ class DockerBuilder:
             # If registry is not set in build_info, set it from argument
             if registry:
                 build_info["registry"] = registry
-            # If registry_image is present, try to parse registry from it if not set
-            elif "registry_image" in build_info and "registry" not in build_info:
-                reg_img = build_info["registry_image"]
-                if reg_img and "/" in reg_img:
-                    reg_part = reg_img.split('/')[0]
-                    build_info["registry"] = reg_part
 
         manifest = {
             "built_images": self.built_images,
