@@ -473,9 +473,17 @@ def build(
     batch_data = None
     effective_tags = tags
     batch_build_metadata = None
+
+    # There are 2 scenarios for batch builds and single builds
+    # - Batch builds: Use the batch manifest to determine which models to build
+    # - Single builds: Use the tags directly
     if batch_manifest:
+        # Process the batch manifest
+        if verbose: console.print(f"[DEBUG] Processing batch manifest: {batch_manifest}")
         try:
             batch_data = process_batch_manifest(batch_manifest)
+            if verbose: console.print(f"[DEBUG] batch_data: {batch_data}")
+
             effective_tags = batch_data["build_tags"]
             # Build a mapping of model_name -> registry_image/registry for build_new models
             batch_build_metadata = {}
@@ -485,6 +493,8 @@ def build(
                         "registry_image": model.get("registry_image"),
                         "registry": model.get("registry")
                     }
+            if verbose: console.print(f"[DEBUG] batch_build_metadata: {batch_build_metadata}")
+
             console.print(Panel(
                 f"� [bold cyan]Batch Build Mode[/bold cyan]\n"
                 f"Input manifest: [yellow]{batch_manifest}[/yellow]\n"
@@ -541,12 +551,13 @@ def build(
             orchestrator = DistributedOrchestrator(args, build_only_mode=True)
             progress.update(task, description="Building models...")
 
-            # Pass batch_build_metadata to build_phase if present
+            # Prepare build phase arguments
             build_phase_kwargs = dict(
                 registry=registry,
                 clean_cache=clean_docker_cache,
                 manifest_output=manifest_output
             )
+            # Pass batch_build_metadata to build_phase if present
             if batch_build_metadata:
                 build_phase_kwargs["batch_build_metadata"] = batch_build_metadata
 

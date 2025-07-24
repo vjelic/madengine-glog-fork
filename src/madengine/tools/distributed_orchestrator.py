@@ -5,6 +5,8 @@ Distributed Runner Orchestrator for MADEngine
 This module provides orchestration capabilities for distributed execution
 scenarios like Ansible or Kubernetes, where Docker image building and
 container execution are separated across different nodes.
+
+Copyright (c) Advanced Micro Devices, Inc. All rights reserved.
 """
 
 import os
@@ -87,7 +89,8 @@ class DistributedOrchestrator:
             print(f"Docker Hub credentials: {self.credentials['dockerhub']}")
     
     def build_phase(self, registry: str = None, clean_cache: bool = False, 
-                   manifest_output: str = "build_manifest.json", batch_build_metadata: typing.Optional[dict] = None) -> typing.Dict:
+                   manifest_output: str = "build_manifest.json", 
+                   batch_build_metadata: typing.Optional[dict] = None) -> typing.Dict:
         """Execute the build phase - build all Docker images.
         
         This method supports both build-only mode (for dedicated build nodes) 
@@ -109,15 +112,20 @@ class DistributedOrchestrator:
             print("(Build-only mode - no GPU detection)")
         print("=" * 60)
         
-        print(f"Building models with args {self.args}")
+        # Print the arguments as a dictionary for better readability
+        print(f"Building models with args: {vars(self.args) if hasattr(self.args, '__dict__') else self.args}")
         
         # Discover models
+        print("=" * 60)
+        print("DISCOVERING MODELS")
         discover_models = DiscoverModels(args=self.args)
         models = discover_models.run()
         
         print(f"Discovered {len(models)} models to build")
         
         # Copy scripts for building
+        print("=" * 60)
+        print("COPYING SCRIPTS")
         self._copy_scripts()
         
         # Validate build context for build-only mode

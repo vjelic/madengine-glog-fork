@@ -338,6 +338,8 @@ class DockerBuilder:
             if model.get("cred", "") != ""
         ]))
 
+        print(f"[DEBUG] batch_build_metadata: {batch_build_metadata}")
+
         # Set registry for each built image
         for image_name, build_info in self.built_images.items():
             # If registry is not set in build_info, set it from argument
@@ -345,6 +347,7 @@ class DockerBuilder:
                 build_info["registry"] = registry
 
             if batch_build_metadata and image_name in batch_build_metadata:
+                print(f"[DEBUG] Overriding registry for {image_name} from batch_build_metadata")
                 build_info["registry"] = batch_build_metadata[image_name].get("registry")
 
         manifest = {
