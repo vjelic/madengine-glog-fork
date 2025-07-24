@@ -5,6 +5,8 @@ Distributed Runner Orchestrator for MADEngine
 This module provides orchestration capabilities for distributed execution
 scenarios like Ansible or Kubernetes, where Docker image building and
 container execution are separated across different nodes.
+
+Copyright (c) Advanced Micro Devices, Inc. All rights reserved.
 """
 
 import os
@@ -87,7 +89,8 @@ class DistributedOrchestrator:
             print(f"Docker Hub credentials: {self.credentials['dockerhub']}")
     
     def build_phase(self, registry: str = None, clean_cache: bool = False, 
-                   manifest_output: str = "build_manifest.json", batch_build_metadata: typing.Optional[dict] = None) -> typing.Dict:
+                   manifest_output: str = "build_manifest.json", 
+                   batch_build_metadata: typing.Optional[dict] = None) -> typing.Dict:
         """Execute the build phase - build all Docker images.
         
         This method supports both build-only mode (for dedicated build nodes) 
@@ -109,15 +112,20 @@ class DistributedOrchestrator:
             print("(Build-only mode - no GPU detection)")
         print("=" * 60)
         
-        print(f"Building models with args {self.args}")
+        # Print the arguments as a dictionary for better readability
+        print(f"Building models with args: {vars(self.args) if hasattr(self.args, '__dict__') else self.args}")
         
         # Discover models
+        print("=" * 60)
+        print("DISCOVERING MODELS")
         discover_models = DiscoverModels(args=self.args)
         models = discover_models.run()
         
         print(f"Discovered {len(models)} models to build")
         
         # Copy scripts for building
+        print("=" * 60)
+        print("COPYING SCRIPTS")
         self._copy_scripts()
         
         # Validate build context for build-only mode
@@ -144,7 +152,7 @@ class DistributedOrchestrator:
         )
         
         # Export build manifest with registry information
-        builder.export_build_manifest(manifest_output, registry)
+        builder.export_build_manifest(manifest_output, registry, batch_build_metadata)
         
         print("=" * 60)
         print("BUILD PHASE COMPLETED")
@@ -209,18 +217,11 @@ class DistributedOrchestrator:
         
         print(f"Loaded manifest with {len(manifest['built_images'])} images")
         
-        # Auto-detect registry from manifest if not provided via CLI
-        if not registry and "registry" in manifest:
-            manifest_registry = manifest["registry"]
-            if manifest_registry and manifest_registry.strip():  # Check for non-empty string
-                registry = manifest_registry
-                print(f"Auto-detected registry from manifest: {registry}")
-            else:
-                print("Manifest registry is empty, will use local images only")
-        elif registry:
+        # Registry is now per-image; CLI registry is fallback
+        if registry:
             print(f"Using registry from CLI: {registry}")
         else:
-            print("No registry specified, will use local images only")
+            print("No registry specified, will use per-image registry or local images only")
         
         # Copy scripts for running
         self._copy_scripts()
@@ -262,31 +263,17 @@ class DistributedOrchestrator:
                     model_info = manifest["built_models"][image_name]
                     try:
                         print(f"\nRunning model {model_info['name']} with image {image_name}")
-                        
-                        # Handle registry image pulling and tagging according to manifest
-                        if "registry_image" in build_info:
-                            # Registry image exists - pull it and tag as docker_image, then run with docker_image
-                            registry_image = build_info["registry_image"]
-                            docker_image = build_info["docker_image"]
-                            
-                            # Extract registry from the registry_image format
-                            effective_registry = registry
-                            if not effective_registry and registry_image:
-                                registry_parts = registry_image.split('/')
-                                if len(registry_parts) > 1 and '.' in registry_parts[0]:
-                                    effective_registry = registry_parts[0]
-                                elif registry_image.startswith('docker.io/') or '/' in registry_image:
-                                    effective_registry = "docker.io"
-                            
+                        # Use per-image registry if present, else CLI registry
+                        effective_registry = build_info.get("registry", registry)
+                        registry_image = build_info.get("registry_image")
+                        docker_image = build_info.get("docker_image")
+                        if registry_image:
                             if effective_registry:
                                 print(f"Pulling image from registry: {registry_image}")
                                 try:
-                                    # Ensure all parameters are strings and credentials is properly formatted
                                     registry_image_str = str(registry_image) if registry_image else ""
                                     docker_image_str = str(docker_image) if docker_image else ""
                                     effective_registry_str = str(effective_registry) if effective_registry else ""
-                                    
-                                    # Pull registry image and tag it as docker_image
                                     runner.pull_image(registry_image_str, docker_image_str, effective_registry_str, self.credentials)
                                     actual_image = docker_image_str
                                     print(f"Successfully pulled and tagged as: {docker_image_str}")
@@ -294,7 +281,6 @@ class DistributedOrchestrator:
                                     print(f"Failed to pull from registry, falling back to local image: {e}")
                                     actual_image = docker_image
                             else:
-                                # Registry image exists but no valid registry found, try to pull as-is and tag
                                 print(f"Attempting to pull registry image as-is: {registry_image}")
                                 try:
                                     registry_image_str = str(registry_image) if registry_image else ""

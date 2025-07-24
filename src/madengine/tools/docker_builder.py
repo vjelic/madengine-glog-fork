@@ -270,7 +270,7 @@ class DockerBuilder:
             print(f"Failed to login to registry {registry}: {e}")
             raise
 
-    def push_image(self, docker_image: str, registry: str = None, credentials: typing.Dict = None) -> str:
+    def push_image(self, docker_image: str, registry: str = None, credentials: typing.Dict = None, explicit_registry_image: str = None) -> str:
         """Push the built image to a registry.
         
         Args:
@@ -290,46 +290,70 @@ class DockerBuilder:
             self.login_to_registry(registry, credentials)
         
         # Determine registry image name (this should match what was already determined)
-        registry_image = self._determine_registry_image_name(docker_image, registry, credentials)
+        if explicit_registry_image:
+            registry_image = explicit_registry_image
+        else:
+            registry_image = self._determine_registry_image_name(docker_image, registry, credentials)
+        print(f"[DEBUG] push_image: docker_image='{docker_image}', registry='{registry}', registry_image='{registry_image}'")
         
         try:
             # Tag the image if different from local name
             if registry_image != docker_image:
+                print(f"[DEBUG] Tagging image: docker tag {docker_image} {registry_image}")
                 tag_command = f"docker tag {docker_image} {registry_image}"
-                print(f"🏷️  Tagging image: {tag_command}")
                 self.console.sh(tag_command)
-            
+            else:
+                print(f"[DEBUG] No tag needed, docker_image and registry_image are the same: {docker_image}")
+
             # Push the image
+            print(f"[DEBUG] Pushing image: docker push {registry_image}")
             push_command = f"docker push {registry_image}"
             print(f"\n🚀 Starting docker push to registry...")
             print(f"📤 Registry: {registry}")
             print(f"🏷️  Image: {registry_image}")
             self.console.sh(push_command)
-            
+
             print(f"✅ Successfully pushed image to registry: {registry_image}")
             print(f"{'='*80}")
             return registry_image
-            
+
         except Exception as e:
             print(f"Failed to push image {docker_image} to registry {registry}: {e}")
             raise
-    
-    def export_build_manifest(self, output_file: str = "build_manifest.json", registry: str = None) -> None:
+
+    def export_build_manifest(self, output_file: str = "build_manifest.json", registry: str = None, batch_build_metadata: typing.Optional[dict] = None) -> None:
         """Export enhanced build information to a manifest file.
         
         This creates a comprehensive build manifest that includes all necessary
         information for deployment, reducing the need for separate execution configs.
-        
+
         Args:
             output_file: Path to output manifest file
-            registry: Registry used for building (added to manifest metadata)
+            registry: Registry used for building (added to each image entry)
+            batch_build_metadata: Optional metadata for batch builds
         """
         # Extract credentials from models
         credentials_required = list(set([
             model.get("cred", "") for model in self.built_models.values() 
             if model.get("cred", "") != ""
         ]))
-        
+
+        print(f"[DEBUG] batch_build_metadata: {batch_build_metadata}")
+        print(f"[DEBUG] built_images: {self.built_images}")
+
+        # Set registry for each built image
+        for image_name, build_info in self.built_images.items():
+            # If registry is not set in build_info, set it from argument
+            if registry:
+                build_info["registry"] = registry
+
+            docker_file = build_info.get("dockerfile", "")
+            truncated_docker_file = docker_file.split("/")[-1].split(".Dockerfile")[0]
+            model_name = image_name.split("ci-")[1].split(truncated_docker_file)[0].rstrip("_")
+            if batch_build_metadata and model_name in batch_build_metadata:
+                print(f"[DEBUG] Overriding registry for {model_name} from batch_build_metadata")
+                build_info["registry"] = batch_build_metadata[model_name].get("registry")
+
         manifest = {
             "built_images": self.built_images,
             "built_models": self.built_models,
@@ -342,15 +366,11 @@ class DockerBuilder:
             },
             "credentials_required": credentials_required
         }
-        
+
         # Add multi-node args to context if present
         if "build_multi_node_args" in self.context.ctx:
             manifest["context"]["multi_node_args"] = self.context.ctx["build_multi_node_args"]
-        
-        # Add registry information to manifest metadata if provided
-        if registry:
-            manifest["registry"] = registry
-            
+
         # Add push failure summary if any pushes failed
         push_failures = []
         for image_name, build_info in self.built_images.items():
@@ -360,13 +380,13 @@ class DockerBuilder:
                     "intended_registry_image": build_info.get("registry_image"),
                     "error": build_info.get("push_error")
                 })
-        
+
         if push_failures:
             manifest["push_failures"] = push_failures
-        
+
         with open(output_file, 'w') as f:
             json.dump(manifest, f, indent=2)
-        
+
         print(f"Build manifest exported to: {output_file}")
         if push_failures:
             print(f"Warning: {len(push_failures)} image(s) failed to push to registry")
@@ -438,7 +458,7 @@ class DockerBuilder:
                             model_info, dockerfile, credentials, clean_cache, phase_suffix
                         )
 
-                        # Determine registry image name and add to manifest before push operations
+                        # Determine registry image name for push/tag
                         registry_image = None
                         if model_registry_image:
                             registry_image = model_registry_image
@@ -446,6 +466,11 @@ class DockerBuilder:
                             registry_image = self._determine_registry_image_name(
                                 build_info["docker_image"], model_registry, credentials
                             )
+                        # Always use registry_image from batch_build_metadata if present
+                        if batch_build_metadata and model_info["name"] in batch_build_metadata:
+                            meta = batch_build_metadata[model_info["name"]]
+                            if meta.get("registry_image"):
+                                registry_image = meta["registry_image"]
                         if registry_image:
                             build_info["registry_image"] = registry_image
                             if build_info["docker_image"] in self.built_images:
@@ -453,9 +478,11 @@ class DockerBuilder:
 
                         # Now attempt to push to registry if registry is set
                         if model_registry and registry_image:
+                            explicit_registry_image = registry_image
                             try:
+                                # Use registry_image from batch_build_metadata for push/tag if present
                                 actual_registry_image = self.push_image(
-                                    build_info["docker_image"], model_registry, credentials
+                                    build_info["docker_image"], model_registry, credentials, explicit_registry_image
                                 )
                                 if actual_registry_image != registry_image:
                                     print(f"Warning: Pushed image name {actual_registry_image} differs from intended {registry_image}")

@@ -283,14 +283,15 @@ def _process_batch_manifest_entries(batch_data: Dict, manifest_output: str, regi
     if os.path.exists(manifest_output):
         with open(manifest_output, 'r') as f:
             build_manifest = json.load(f)
+        # Remove top-level registry if present
+        build_manifest.pop("registry", None)
     else:
         # Create a minimal manifest structure
         build_manifest = {
             "built_images": {},
             "built_models": {},
             "context": {},
-            "credentials_required": [],
-            "registry": registry or ""
+            "credentials_required": []
         }
     
     # Process each model in the batch manifest
@@ -341,7 +342,8 @@ def _process_batch_manifest_entries(batch_data: Dict, manifest_output: str, regi
                             "build_duration": 0,
                             "build_command": f"# Skipped build for {model_name} (build_new=false)",
                             "log_file": f"{model_name}_{model_name}.ubuntu.amd.build.skipped.log",
-                            "registry_image": model_registry_image or f"{model_registry or registry or 'dockerhub'}/{synthetic_image_name}" if model_registry_image or model_registry or registry else ""
+                            "registry_image": model_registry_image or f"{model_registry or registry or 'dockerhub'}/{synthetic_image_name}" if model_registry_image or model_registry or registry else "",
+                            "registry": model_registry or registry or "dockerhub"
                         }
                         
                         # Add to built_models
@@ -370,7 +372,8 @@ def _process_batch_manifest_entries(batch_data: Dict, manifest_output: str, regi
                     "build_duration": 0,
                     "build_command": f"# Skipped build for {model_name} (build_new=false)",
                     "log_file": f"{model_name}_{model_name}.ubuntu.amd.build.skipped.log",
-                    "registry_image": model_registry_image or ""
+                    "registry_image": model_registry_image or "",
+                    "registry": model_registry or registry or "dockerhub"
                 }
                 build_manifest["built_models"][synthetic_image_name] = {
                     "name": model_name,
@@ -470,9 +473,17 @@ def build(
     batch_data = None
     effective_tags = tags
     batch_build_metadata = None
+
+    # There are 2 scenarios for batch builds and single builds
+    # - Batch builds: Use the batch manifest to determine which models to build
+    # - Single builds: Use the tags directly
     if batch_manifest:
+        # Process the batch manifest
+        if verbose: console.print(f"[DEBUG] Processing batch manifest: {batch_manifest}")
         try:
             batch_data = process_batch_manifest(batch_manifest)
+            if verbose: console.print(f"[DEBUG] batch_data: {batch_data}")
+
             effective_tags = batch_data["build_tags"]
             # Build a mapping of model_name -> registry_image/registry for build_new models
             batch_build_metadata = {}
@@ -482,6 +493,8 @@ def build(
                         "registry_image": model.get("registry_image"),
                         "registry": model.get("registry")
                     }
+            if verbose: console.print(f"[DEBUG] batch_build_metadata: {batch_build_metadata}")
+
             console.print(Panel(
                 f"� [bold cyan]Batch Build Mode[/bold cyan]\n"
                 f"Input manifest: [yellow]{batch_manifest}[/yellow]\n"
@@ -538,12 +551,13 @@ def build(
             orchestrator = DistributedOrchestrator(args, build_only_mode=True)
             progress.update(task, description="Building models...")
 
-            # Pass batch_build_metadata to build_phase if present
+            # Prepare build phase arguments
             build_phase_kwargs = dict(
                 registry=registry,
                 clean_cache=clean_docker_cache,
                 manifest_output=manifest_output
             )
+            # Pass batch_build_metadata to build_phase if present
             if batch_build_metadata:
                 build_phase_kwargs["batch_build_metadata"] = batch_build_metadata
 
