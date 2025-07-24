@@ -10,6 +10,7 @@ import json
 import logging
 import os
 import sys
+import glob
 from pathlib import Path
 from typing import Dict, List, Optional, Union
 
@@ -168,7 +169,6 @@ def process_batch_manifest(batch_manifest_file: str) -> Dict[str, List[str]]:
     }
 
 
-
 def validate_additional_context(
     additional_context: str,
     additional_context_file: Optional[str] = None,
@@ -269,13 +269,20 @@ def save_summary_with_feedback(summary: Dict, output_path: Optional[str], summar
             raise typer.Exit(ExitCode.FAILURE)
 
 
-def _process_batch_manifest_entries(batch_data: Dict, manifest_output: str, registry: Optional[str]) -> None:
+def _process_batch_manifest_entries(
+    batch_data: Dict, 
+    manifest_output: str, 
+    registry: Optional[str], 
+    guest_os: Optional[str], 
+    gpu_vendor: Optional[str]) -> None:
     """Process batch manifest and add entries for all models to build_manifest.json.
     
     Args:
         batch_data: Processed batch manifest data
         manifest_output: Path to the build manifest file
         registry: Registry used for the build
+        guest_os: Guest OS for the build
+        gpu_vendor: GPU vendor for the build
     """
     from madengine.tools.discover_models import DiscoverModels
     
@@ -330,18 +337,35 @@ def _process_batch_manifest_entries(batch_data: Dict, manifest_output: str, regi
                 
                 for model_info in models:
                     if model_info["name"] == model_name:
+                        # Get dockerfile
+                        dockerfile = model_info.get("dockerfile")
+                        # Get guest OS
+                        guest_os = model_info.get("guest_os")
+                        # Get GPU vendor
+                        gpu_vendor = model_info.get("gpu_vendor")
+                        
+                        dockerfile_specified = f"{dockerfile}.{gpu_vendor.lower()}.{guest_os.lower()}"
+                        dockerfile_matched_list = glob.glob(f"{dockerfile_specified}.*")
+
+                        # Check the matched list
+                        if not dockerfile_matched_list:
+                            console.print(f"Warning: No Dockerfile found for {dockerfile_specified}")
+                            raise FileNotFoundError(f"No Dockerfile found for {dockerfile_specified}")
+                        else:
+                            dockerfile_matched = dockerfile_matched_list[0].replace(".Dockerfile", "")
+
                         # Create a synthetic image name for this model
-                        synthetic_image_name = f"ci-{model_name}_{model_name}.ubuntu.amd"
+                        synthetic_image_name = f"ci-{model_name}_{dockerfile_matched}"
                         
                         # Add to built_images (even though it wasn't actually built)
                         build_manifest["built_images"][synthetic_image_name] = {
                             "docker_image": synthetic_image_name,
-                            "dockerfile": model_info.get("dockerfile", f"docker/{model_name}"),
-                            "base_docker": "rocm/pytorch",  # Default base
+                            "dockerfile": model_info.get("dockerfile"),
+                            "base_docker": "",  # No base since not built
                             "docker_sha": "",  # No SHA since not built
                             "build_duration": 0,
                             "build_command": f"# Skipped build for {model_name} (build_new=false)",
-                            "log_file": f"{model_name}_{model_name}.ubuntu.amd.build.skipped.log",
+                            "log_file": f"{model_name}_{dockerfile_matched}.build.skipped.log",
                             "registry_image": model_registry_image or f"{model_registry or registry or 'dockerhub'}/{synthetic_image_name}" if model_registry_image or model_registry or registry else "",
                             "registry": model_registry or registry or "dockerhub"
                         }
@@ -363,15 +387,15 @@ def _process_batch_manifest_entries(batch_data: Dict, manifest_output: str, regi
             except Exception as e:
                 console.print(f"Warning: Could not process model {model_name}: {e}")
                 # Create a minimal entry anyway
-                synthetic_image_name = f"ci-{model_name}_{model_name}.ubuntu.amd"
+                synthetic_image_name = f"ci-{model_name}_{dockerfile_matched}"
                 build_manifest["built_images"][synthetic_image_name] = {
                     "docker_image": synthetic_image_name,
                     "dockerfile": f"docker/{model_name}",
-                    "base_docker": "rocm/pytorch",
+                    "base_docker": "",
                     "docker_sha": "",
                     "build_duration": 0,
                     "build_command": f"# Skipped build for {model_name} (build_new=false)",
-                    "log_file": f"{model_name}_{model_name}.ubuntu.amd.build.skipped.log",
+                    "log_file": f"{model_name}_{dockerfile_matched}.build.skipped.log",
                     "registry_image": model_registry_image or "",
                     "registry": model_registry or registry or "dockerhub"
                 }
@@ -385,7 +409,7 @@ def _process_batch_manifest_entries(batch_data: Dict, manifest_output: str, regi
                     "tags": [],
                     "args": ""
                 }
-    
+
     # Save the updated manifest
     with open(manifest_output, 'w') as f:
         json.dump(build_manifest, f, indent=2)
@@ -567,9 +591,11 @@ def build(
         # Handle batch manifest post-processing
         if batch_data:
             with console.status("Processing batch manifest..."):
-                _process_batch_manifest_entries(batch_data, manifest_output, registry)
-        
-        
+                additional_context=getattr(args, 'additional_context', None)
+                guest_os = additional_context.get("guest_os") if additional_context else None
+                gpu_vendor = additional_context.get("gpu_vendor") if additional_context else None
+                _process_batch_manifest_entries(batch_data, manifest_output, registry, guest_os, gpu_vendor)
+
         # Display results
         display_results_table(build_summary, "Build Results")
         
