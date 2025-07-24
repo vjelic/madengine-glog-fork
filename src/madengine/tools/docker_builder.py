@@ -347,9 +347,9 @@ class DockerBuilder:
             if registry:
                 build_info["registry"] = registry
 
-            docker_file = build_info.get("docker_file", "")
+            docker_file = build_info.get("dockerfile", "")
             truncated_docker_file = docker_file.split("/")[-1].split(".Dockerfile")[0]
-            model_name = image_name.split("ci-")[1].split(truncated_docker_file)[0]
+            model_name = image_name.split("ci-")[1].split(truncated_docker_file)[0].rstrip("_")
             if batch_build_metadata and model_name in batch_build_metadata:
                 print(f"[DEBUG] Overriding registry for {model_name} from batch_build_metadata")
                 build_info["registry"] = batch_build_metadata[model_name].get("registry")
