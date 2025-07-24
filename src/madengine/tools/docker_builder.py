@@ -339,6 +339,7 @@ class DockerBuilder:
         ]))
 
         print(f"[DEBUG] batch_build_metadata: {batch_build_metadata}")
+        print(f"[DEBUG] built_images: {self.built_images}")
 
         # Set registry for each built image
         for image_name, build_info in self.built_images.items():
