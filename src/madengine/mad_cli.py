@@ -339,11 +339,6 @@ def _process_batch_manifest_entries(
                     if model_info["name"] == model_name:
                         # Get dockerfile
                         dockerfile = model_info.get("dockerfile")
-                        # Get guest OS
-                        guest_os = model_info.get("guest_os")
-                        # Get GPU vendor
-                        gpu_vendor = model_info.get("gpu_vendor")
-                        
                         dockerfile_specified = f"{dockerfile}.{gpu_vendor.lower()}.{guest_os.lower()}"
                         dockerfile_matched_list = glob.glob(f"{dockerfile_specified}.*")
 
