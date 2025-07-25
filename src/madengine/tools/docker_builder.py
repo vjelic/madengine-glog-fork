@@ -11,6 +11,7 @@ import os
 import time
 import json
 import typing
+from rich import print as rich_print
 from contextlib import redirect_stdout, redirect_stderr
 from madengine.core.console import Console
 from madengine.core.context import Context
@@ -294,19 +295,17 @@ class DockerBuilder:
             registry_image = explicit_registry_image
         else:
             registry_image = self._determine_registry_image_name(docker_image, registry, credentials)
-        print(f"[DEBUG] push_image: docker_image='{docker_image}', registry='{registry}', registry_image='{registry_image}'")
         
         try:
             # Tag the image if different from local name
             if registry_image != docker_image:
-                print(f"[DEBUG] Tagging image: docker tag {docker_image} {registry_image}")
+                print(f"Tagging image: docker tag {docker_image} {registry_image}")
                 tag_command = f"docker tag {docker_image} {registry_image}"
                 self.console.sh(tag_command)
             else:
-                print(f"[DEBUG] No tag needed, docker_image and registry_image are the same: {docker_image}")
+                print(f"No tag needed, docker_image and registry_image are the same: {docker_image}")
 
             # Push the image
-            print(f"[DEBUG] Pushing image: docker push {registry_image}")
             push_command = f"docker push {registry_image}"
             print(f"\n🚀 Starting docker push to registry...")
             print(f"📤 Registry: {registry}")
@@ -338,8 +337,10 @@ class DockerBuilder:
             if model.get("cred", "") != ""
         ]))
 
-        print(f"[DEBUG] batch_build_metadata: {batch_build_metadata}")
-        print(f"[DEBUG] built_images: {self.built_images}")
+        rich_print("[bold green]INFO: batch_build_metadata")
+        rich_print(batch_build_metadata)
+        rich_print("[bold green]INFO: built_images")
+        rich_print(self.built_images)
 
         # Set registry for each built image
         for image_name, build_info in self.built_images.items():
@@ -347,11 +348,12 @@ class DockerBuilder:
             if registry:
                 build_info["registry"] = registry
 
+            # If registry is set in batch_build_metadata, override it
             docker_file = build_info.get("dockerfile", "")
             truncated_docker_file = docker_file.split("/")[-1].split(".Dockerfile")[0]
             model_name = image_name.split("ci-")[1].split(truncated_docker_file)[0].rstrip("_")
             if batch_build_metadata and model_name in batch_build_metadata:
-                print(f"[DEBUG] Overriding registry for {model_name} from batch_build_metadata")
+                rich_print(f"[bold green]INFO: Overriding registry for {model_name} from batch_build_metadata")
                 build_info["registry"] = batch_build_metadata[model_name].get("registry")
 
         manifest = {
