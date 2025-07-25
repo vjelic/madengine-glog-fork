@@ -337,6 +337,7 @@ class DockerBuilder:
             if model.get("cred", "") != ""
         ]))
 
+        rich_print()
         rich_print("[bold green]INFO: batch_build_metadata")
         rich_print(batch_build_metadata)
         rich_print("[bold green]INFO: built_images")
@@ -353,7 +354,7 @@ class DockerBuilder:
             truncated_docker_file = docker_file.split("/")[-1].split(".Dockerfile")[0]
             model_name = image_name.split("ci-")[1].split(truncated_docker_file)[0].rstrip("_")
             if batch_build_metadata and model_name in batch_build_metadata:
-                rich_print(f"[bold green]INFO: Overriding registry for {model_name} from batch_build_metadata")
+                rich_print(f"Overriding registry for {model_name} from batch_build_metadata")
                 build_info["registry"] = batch_build_metadata[model_name].get("registry")
 
         manifest = {
