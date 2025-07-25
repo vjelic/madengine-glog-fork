@@ -592,6 +592,8 @@ def build(
         if batch_data:
             with console.status("Processing batch manifest..."):
                 additional_context=getattr(args, 'additional_context', None)
+                if isinstance(additional_context, str):
+                    additional_context = json.loads(additional_context)
                 guest_os = additional_context.get("guest_os") if additional_context else None
                 gpu_vendor = additional_context.get("gpu_vendor") if additional_context else None
                 _process_batch_manifest_entries(batch_data, manifest_output, registry, guest_os, gpu_vendor)
