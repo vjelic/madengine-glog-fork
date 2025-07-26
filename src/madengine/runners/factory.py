@@ -18,8 +18,9 @@ class RunnerFactory:
     _runners: Dict[str, Type[BaseDistributedRunner]] = {}
 
     @classmethod
-    def register_runner(cls, runner_type: str,
-                        runner_class: Type[BaseDistributedRunner]):
+    def register_runner(
+        cls, runner_type: str, runner_class: Type[BaseDistributedRunner]
+    ):
         """Register a runner class.
 
         Args:
@@ -43,10 +44,11 @@ class RunnerFactory:
             ValueError: If runner type is not registered
         """
         if runner_type not in cls._runners:
-            available_types = ', '.join(cls._runners.keys())
+            available_types = ", ".join(cls._runners.keys())
             raise ValueError(
                 f"Unknown runner type: {runner_type}. "
-                f"Available types: {available_types}")
+                f"Available types: {available_types}"
+            )
 
         runner_class = cls._runners[runner_type]
         return runner_class(**kwargs)
@@ -65,18 +67,21 @@ def register_default_runners():
     """Register default runners."""
     try:
         from madengine.runners.ssh_runner import SSHDistributedRunner
+
         RunnerFactory.register_runner("ssh", SSHDistributedRunner)
     except ImportError as e:
         logging.warning(f"SSH runner not available: {e}")
 
     try:
         from madengine.runners.ansible_runner import AnsibleDistributedRunner
+
         RunnerFactory.register_runner("ansible", AnsibleDistributedRunner)
     except ImportError as e:
         logging.warning(f"Ansible runner not available: {e}")
 
     try:
         from madengine.runners.k8s_runner import KubernetesDistributedRunner
+
         RunnerFactory.register_runner("k8s", KubernetesDistributedRunner)
         RunnerFactory.register_runner("kubernetes", KubernetesDistributedRunner)
     except ImportError as e:

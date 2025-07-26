@@ -35,12 +35,15 @@ from madengine.runners.base import (
 @dataclass
 class AnsibleExecutionError(Exception):
     """Ansible execution specific errors."""
+
     playbook_path: str
     error_type: str
     message: str
-    
+
     def __str__(self):
-        return f"Ansible {self.error_type} error in {self.playbook_path}: {self.message}"
+        return (
+            f"Ansible {self.error_type} error in {self.playbook_path}: {self.message}"
+        )
 
 
 class AnsibleDistributedRunner(BaseDistributedRunner):
@@ -56,7 +59,7 @@ class AnsibleDistributedRunner(BaseDistributedRunner):
         """
         super().__init__(inventory_path, **kwargs)
         self.playbook_path = playbook_path or "madengine_distributed.yml"
-        self.playbook_dir = kwargs.get('playbook_dir', '/tmp/madengine_ansible')
+        self.playbook_dir = kwargs.get("playbook_dir", "/tmp/madengine_ansible")
         self.cleanup_handlers: List[callable] = []
         self.created_files: List[str] = []
         self.executor: Optional[ThreadPoolExecutor] = None
@@ -67,18 +70,18 @@ class AnsibleDistributedRunner(BaseDistributedRunner):
             if not os.path.exists(self.inventory_path):
                 self.logger.error(f"Inventory file not found: {self.inventory_path}")
                 return False
-            
+
             # Try to parse inventory
-            with open(self.inventory_path, 'r') as f:
+            with open(self.inventory_path, "r") as f:
                 content = f.read()
-            
+
             # Basic validation - should contain host information
             if not content.strip():
                 self.logger.error("Inventory file is empty")
                 return False
-            
+
             return True
-            
+
         except Exception as e:
             self.logger.error(f"Invalid inventory file: {e}")
             return False
@@ -87,18 +90,18 @@ class AnsibleDistributedRunner(BaseDistributedRunner):
         """Ensure playbook directory exists and is writable."""
         try:
             os.makedirs(self.playbook_dir, exist_ok=True)
-            
+
             # Test write permissions
-            test_file = os.path.join(self.playbook_dir, '.test_write')
+            test_file = os.path.join(self.playbook_dir, ".test_write")
             try:
-                with open(test_file, 'w') as f:
-                    f.write('test')
+                with open(test_file, "w") as f:
+                    f.write("test")
                 os.remove(test_file)
                 return True
             except Exception as e:
                 self.logger.error(f"Playbook directory not writable: {e}")
                 return False
-                
+
         except Exception as e:
             self.logger.error(f"Failed to create playbook directory: {e}")
             return False
@@ -117,8 +120,8 @@ class AnsibleDistributedRunner(BaseDistributedRunner):
                 "hosts": {},
                 "vars": {
                     "ansible_user": "root",
-                    "ansible_ssh_common_args": "-o StrictHostKeyChecking=no"
-                }
+                    "ansible_ssh_common_args": "-o StrictHostKeyChecking=no",
+                },
             }
         }
 
@@ -128,7 +131,7 @@ class AnsibleDistributedRunner(BaseDistributedRunner):
                 "ansible_port": node.port,
                 "ansible_user": node.username,
                 "gpu_count": node.gpu_count,
-                "gpu_vendor": node.gpu_vendor
+                "gpu_vendor": node.gpu_vendor,
             }
 
             # Add SSH key if provided
@@ -142,7 +145,7 @@ class AnsibleDistributedRunner(BaseDistributedRunner):
 
         # Write inventory file
         inventory_file = os.path.join(self.playbook_dir, "inventory.yml")
-        with open(inventory_file, 'w') as f:
+        with open(inventory_file, "w") as f:
             yaml.dump(inventory_data, f, default_flow_style=False)
 
         return inventory_file
@@ -158,26 +161,28 @@ class AnsibleDistributedRunner(BaseDistributedRunner):
         """
         try:
             self.logger.info("Setting up Ansible infrastructure")
-            
+
             # Validate prerequisites
             if not self._validate_inventory():
                 return False
-            
+
             if not self._ensure_playbook_directory():
                 return False
-            
+
             # Validate that the pre-generated playbook exists
             if not os.path.exists(self.playbook_path):
-                self.logger.error(f"Playbook file not found: {self.playbook_path}. "
-                                f"Generate it first using 'madengine-cli generate ansible'")
+                self.logger.error(
+                    f"Playbook file not found: {self.playbook_path}. "
+                    f"Generate it first using 'madengine-cli generate ansible'"
+                )
                 return False
-            
+
             # Create executor
             self.executor = ThreadPoolExecutor(max_workers=4)
-            
+
             self.logger.info("Ansible infrastructure setup completed")
             return True
-            
+
         except Exception as e:
             self.logger.error(f"Ansible infrastructure setup failed: {e}")
             return False
@@ -186,28 +191,30 @@ class AnsibleDistributedRunner(BaseDistributedRunner):
         """Execute the pre-generated Ansible playbook."""
         try:
             self.logger.info(f"Executing Ansible playbook: {self.playbook_path}")
-            
+
             # Use ansible-runner for execution
             result = ansible_runner.run(
                 private_data_dir=self.playbook_dir,
                 playbook=os.path.basename(self.playbook_path),
                 inventory=self.inventory_path,
                 suppress_env_files=True,
-                quiet=False
+                quiet=False,
             )
-            
-            if result.status == 'successful':
+
+            if result.status == "successful":
                 self.logger.info("Ansible playbook completed successfully")
                 return True
             else:
-                self.logger.error(f"Ansible playbook failed with status: {result.status}")
-                
+                self.logger.error(
+                    f"Ansible playbook failed with status: {result.status}"
+                )
+
                 # Log detailed error information
-                if hasattr(result, 'stderr') and result.stderr:
+                if hasattr(result, "stderr") and result.stderr:
                     self.logger.error(f"Stderr: {result.stderr}")
-                
+
                 return False
-                
+
         except Exception as e:
             self.logger.error(f"Playbook execution failed: {e}")
             return False
@@ -223,60 +230,57 @@ class AnsibleDistributedRunner(BaseDistributedRunner):
         """
         try:
             self.logger.info("Starting Ansible distributed workload execution")
-            
+
             # Validate that the pre-generated playbook exists
             if not os.path.exists(self.playbook_path):
                 return DistributedResult(
-                    success=False, 
-                    node_results=[], 
+                    success=False,
+                    node_results=[],
                     error_message=f"Playbook file not found: {self.playbook_path}. "
-                                 f"Generate it first using 'madengine-cli generate ansible'"
+                    f"Generate it first using 'madengine-cli generate ansible'",
                 )
-            
+
             # Execute the pre-generated playbook directly
             if not self._execute_playbook():
                 return DistributedResult(
-                    success=False, 
-                    node_results=[], 
-                    error_message="Playbook execution failed"
+                    success=False,
+                    node_results=[],
+                    error_message="Playbook execution failed",
                 )
-            
+
             # Parse results
             results = self._parse_execution_results()
-            
+
             distributed_result = DistributedResult(
-                success=any(r.success for r in results),
-                node_results=results
+                success=any(r.success for r in results), node_results=results
             )
-            
+
             self.logger.info("Ansible distributed workload execution completed")
             return distributed_result
-            
+
         except Exception as e:
             self.logger.error(f"Distributed execution failed: {e}")
             return DistributedResult(
-                success=False, 
-                node_results=[], 
-                error_message=str(e)
+                success=False, node_results=[], error_message=str(e)
             )
 
     def _parse_execution_results(self) -> List[ExecutionResult]:
         """Parse execution results from Ansible output."""
         results = []
-        
+
         try:
             # Parse results from ansible-runner output
-            artifacts_dir = os.path.join(self.playbook_dir, 'artifacts')
+            artifacts_dir = os.path.join(self.playbook_dir, "artifacts")
             if not os.path.exists(artifacts_dir):
                 self.logger.warning("No artifacts directory found")
                 return results
-            
+
             # Look for job events or stdout
-            stdout_file = os.path.join(artifacts_dir, 'stdout')
+            stdout_file = os.path.join(artifacts_dir, "stdout")
             if os.path.exists(stdout_file):
-                with open(stdout_file, 'r') as f:
+                with open(stdout_file, "r") as f:
                     output = f.read()
-                
+
                 # Create a basic result based on overall success
                 result = ExecutionResult(
                     node_id="ansible-execution",
@@ -284,7 +288,7 @@ class AnsibleDistributedRunner(BaseDistributedRunner):
                     success=True,  # If we got here, basic execution succeeded
                     output=output,
                     error_message=None,
-                    execution_time=0
+                    execution_time=0,
                 )
                 results.append(result)
             else:
@@ -293,20 +297,22 @@ class AnsibleDistributedRunner(BaseDistributedRunner):
                     node_id="ansible-execution",
                     model_tag="playbook",
                     success=False,
-                    error_message="No output artifacts found"
+                    error_message="No output artifacts found",
                 )
                 results.append(result)
-            
+
             return results
-            
+
         except Exception as e:
             self.logger.error(f"Failed to parse execution results: {e}")
-            return [ExecutionResult(
-                node_id="ansible-execution",
-                model_tag="playbook",
-                success=False,
-                error_message=f"Result parsing failed: {e}"
-            )]
+            return [
+                ExecutionResult(
+                    node_id="ansible-execution",
+                    model_tag="playbook",
+                    success=False,
+                    error_message=f"Result parsing failed: {e}",
+                )
+            ]
 
     def cleanup_infrastructure(self, workload: WorkloadSpec) -> bool:
         """Cleanup infrastructure after execution.
@@ -319,14 +325,14 @@ class AnsibleDistributedRunner(BaseDistributedRunner):
         """
         try:
             self.logger.info("Cleaning up Ansible infrastructure")
-            
+
             # Run custom cleanup handlers
             for cleanup_handler in self.cleanup_handlers:
                 try:
                     cleanup_handler()
                 except Exception as e:
                     self.logger.warning(f"Cleanup handler failed: {e}")
-            
+
             # Clean up created files
             for file_path in self.created_files:
                 try:
@@ -334,25 +340,26 @@ class AnsibleDistributedRunner(BaseDistributedRunner):
                         os.remove(file_path)
                 except Exception as e:
                     self.logger.warning(f"Failed to remove {file_path}: {e}")
-            
+
             self.created_files.clear()
-            
+
             # Shutdown executor
             if self.executor:
                 self.executor.shutdown(wait=True)
                 self.executor = None
-            
+
             # Optionally clean up playbook directory
             if os.path.exists(self.playbook_dir):
                 try:
                     import shutil
+
                     shutil.rmtree(self.playbook_dir)
                 except Exception as e:
                     self.logger.warning(f"Failed to remove playbook directory: {e}")
-            
+
             self.logger.info("Ansible infrastructure cleanup completed")
             return True
-            
+
         except Exception as e:
             self.logger.error(f"Cleanup failed: {e}")
             return False
