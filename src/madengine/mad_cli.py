@@ -42,6 +42,7 @@ from madengine.runners.orchestrator_generation import (
     generate_k8s_setup,
 )
 from madengine.runners.factory import RunnerFactory
+from madengine.core.errors import ErrorHandler, set_error_handler
 
 # Initialize the main Typer app
 app = typer.Typer(
@@ -94,7 +95,7 @@ VALID_GUEST_OS = ["UBUNTU", "CENTOS", "ROCKY"]
 
 
 def setup_logging(verbose: bool = False) -> None:
-    """Setup Rich logging configuration."""
+    """Setup Rich logging configuration and unified error handler."""
     log_level = logging.DEBUG if verbose else logging.INFO
 
     # Setup rich logging handler
@@ -112,6 +113,10 @@ def setup_logging(verbose: bool = False) -> None:
         datefmt="[%X]",
         handlers=[rich_handler],
     )
+
+    # Setup unified error handler
+    error_handler = ErrorHandler(console=console, verbose=verbose)
+    set_error_handler(error_handler)
 
 
 def create_args_namespace(**kwargs) -> object:
@@ -730,9 +735,9 @@ def build(
     except typer.Exit:
         raise
     except Exception as e:
-        console.print(f"💥 [bold red]Build process failed: {e}[/bold red]")
-        if verbose:
-            console.print_exception()
+        from madengine.core.errors import handle_error
+
+        handle_error(e, context={"operation": "build", "phase": "build"})
         raise typer.Exit(ExitCode.FAILURE)
 
 

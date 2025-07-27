@@ -31,24 +31,45 @@ from madengine.runners.base import (
     ExecutionResult,
     DistributedResult,
 )
+from madengine.core.errors import (
+    ConnectionError as MADConnectionError,
+    AuthenticationError,
+    TimeoutError as MADTimeoutError,
+    RunnerError,
+    create_error_context
+)
 
+
+# Legacy error classes - use unified error system instead
+# Kept for backward compatibility but deprecated
 
 @dataclass
-class SSHConnectionError(Exception):
-    """SSH connection specific errors."""
+class SSHConnectionError(MADConnectionError):
+    """Deprecated: Use MADConnectionError instead."""
 
     hostname: str
     error_type: str
     message: str
 
-    def __str__(self):
-        return f"SSH {self.error_type} error on {self.hostname}: {self.message}"
+    def __init__(self, hostname: str, error_type: str, message: str):
+        self.hostname = hostname
+        self.error_type = error_type
+        self.message = message
+        context = create_error_context(
+            operation="ssh_connection",
+            component="SSHRunner",
+            node_id=hostname,
+            additional_info={"error_type": error_type}
+        )
+        super().__init__(f"SSH {error_type} error on {hostname}: {message}", context=context)
 
 
-class TimeoutError(Exception):
-    """Timeout specific errors."""
-
-    pass
+class TimeoutError(MADTimeoutError):
+    """Deprecated: Use MADTimeoutError instead."""
+    
+    def __init__(self, message: str, **kwargs):
+        context = create_error_context(operation="ssh_execution", component="SSHRunner")
+        super().__init__(message, context=context, **kwargs)
 
 
 @contextlib.contextmanager

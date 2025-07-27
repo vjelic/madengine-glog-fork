@@ -31,19 +31,37 @@ from madengine.runners.base import (
     ExecutionResult,
     DistributedResult,
 )
+from madengine.core.errors import (
+    RunnerError,
+    ConfigurationError,
+    ConnectionError as MADConnectionError,
+    create_error_context
+)
 
 
 @dataclass
-class KubernetesExecutionError(Exception):
+class KubernetesExecutionError(RunnerError):
     """Kubernetes execution specific errors."""
 
     resource_type: str
     resource_name: str
-    error_type: str
-    message: str
-
-    def __str__(self):
-        return f"Kubernetes {self.error_type} error in {self.resource_type}/{self.resource_name}: {self.message}"
+    
+    def __init__(self, message: str, resource_type: str, resource_name: str, **kwargs):
+        self.resource_type = resource_type
+        self.resource_name = resource_name
+        context = create_error_context(
+            operation="kubernetes_execution",
+            component="KubernetesRunner",
+            additional_info={
+                "resource_type": resource_type,
+                "resource_name": resource_name
+            }
+        )
+        super().__init__(
+            f"Kubernetes error in {resource_type}/{resource_name}: {message}", 
+            context=context, 
+            **kwargs
+        )
 
 
 class KubernetesDistributedRunner(BaseDistributedRunner):

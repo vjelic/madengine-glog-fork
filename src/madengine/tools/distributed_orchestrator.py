@@ -15,6 +15,10 @@ import typing
 from madengine.core.console import Console
 from madengine.core.context import Context
 from madengine.core.dataprovider import Data
+from madengine.core.errors import (
+    handle_error, create_error_context, ConfigurationError, 
+    BuildError, DiscoveryError, RuntimeError as MADRuntimeError
+)
 from madengine.tools.discover_models import DiscoverModels
 from madengine.tools.docker_builder import DockerBuilder
 from madengine.tools.container_runner import ContainerRunner
@@ -60,7 +64,18 @@ class DistributedOrchestrator:
                     self.credentials = json.load(f)
                 print(f"Credentials: {list(self.credentials.keys())}")
         except Exception as e:
-            print(f"Warning: Could not load credentials: {e}")
+            context = create_error_context(
+                operation="load_credentials", 
+                component="DistributedOrchestrator",
+                file_path=credential_file
+            )
+            handle_error(
+                ConfigurationError(
+                    f"Could not load credentials: {e}",
+                    context=context,
+                    suggestions=["Check if credential.json exists and has valid JSON format"]
+                )
+            )
 
         # Check for Docker Hub environment variables and override credentials
         docker_hub_user = None

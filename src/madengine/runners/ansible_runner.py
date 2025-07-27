@@ -30,20 +30,27 @@ from madengine.runners.base import (
     ExecutionResult,
     DistributedResult,
 )
+from madengine.core.errors import (
+    RunnerError,
+    ConfigurationError,
+    create_error_context
+)
 
 
 @dataclass
-class AnsibleExecutionError(Exception):
+class AnsibleExecutionError(RunnerError):
     """Ansible execution specific errors."""
 
     playbook_path: str
-    error_type: str
-    message: str
-
-    def __str__(self):
-        return (
-            f"Ansible {self.error_type} error in {self.playbook_path}: {self.message}"
+    
+    def __init__(self, message: str, playbook_path: str, **kwargs):
+        self.playbook_path = playbook_path
+        context = create_error_context(
+            operation="ansible_execution",
+            component="AnsibleRunner",
+            file_path=playbook_path
         )
+        super().__init__(message, context=context, **kwargs)
 
 
 class AnsibleDistributedRunner(BaseDistributedRunner):
