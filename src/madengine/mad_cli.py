@@ -377,9 +377,7 @@ def _process_batch_manifest_entries(
                                 f"No Dockerfile found for {dockerfile_specified}"
                             )
                         else:
-                            dockerfile_matched = dockerfile_matched_list[0].replace(
-                                ".Dockerfile", ""
-                            )
+                            dockerfile_matched = dockerfile_matched_list[0].split("/")[-1].replace(".Dockerfile", "")
 
                         # Create a synthetic image name for this model
                         synthetic_image_name = f"ci-{model_name}_{dockerfile_matched}"
