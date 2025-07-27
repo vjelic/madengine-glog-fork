@@ -400,24 +400,21 @@ def _process_batch_manifest_entries(
                             "registry": model_registry or registry or "dockerhub",
                         }
 
-                        # Add to built_models
-                        build_manifest["built_models"][synthetic_image_name] = {
-                            "name": model_info["name"],
-                            "dockerfile": model_info.get(
-                                "dockerfile", f"docker/{model_name}"
-                            ),
-                            "scripts": model_info.get(
-                                "scripts", f"scripts/{model_name}/run.sh"
-                            ),
-                            "n_gpus": model_info.get("n_gpus", "1"),
-                            "owner": model_info.get("owner", ""),
-                            "training_precision": model_info.get(
-                                "training_precision", ""
-                            ),
-                            "tags": model_info.get("tags", []),
-                            "args": model_info.get("args", ""),
-                            "cred": model_info.get("cred", ""),
-                        }
+                        # Add to built_models - include all discovered model fields
+                        model_entry = model_info.copy()  # Start with all fields from discovered model
+
+                        # Ensure minimum required fields have fallback values
+                        model_entry.setdefault("name", model_name)
+                        model_entry.setdefault("dockerfile", f"docker/{model_name}")
+                        model_entry.setdefault("scripts", f"scripts/{model_name}/run.sh")
+                        model_entry.setdefault("n_gpus", "1")
+                        model_entry.setdefault("owner", "")
+                        model_entry.setdefault("training_precision", "")
+                        model_entry.setdefault("tags", [])
+                        model_entry.setdefault("args", "")
+                        model_entry.setdefault("cred", "")
+
+                        build_manifest["built_models"][synthetic_image_name] = model_entry
                         break
 
             except Exception as e:
