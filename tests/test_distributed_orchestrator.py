@@ -130,7 +130,7 @@ class TestDistributedOrchestrator:
         mock_docker_builder.assert_called_once()
         mock_builder_instance.build_all_models.assert_called_once()
         mock_builder_instance.export_build_manifest.assert_called_once_with(
-            "test_manifest.json", "localhost:5000"
+            "test_manifest.json", "localhost:5000", unittest.mock.ANY
         )
 
         assert result["successful_builds"] == ["model1", "model2"]

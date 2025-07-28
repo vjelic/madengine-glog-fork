@@ -212,7 +212,7 @@ class TestGPUAwarePackaging:
 
         # All modules should still import correctly
         import madengine
-        from madengine import mad, distributed_cli
+        from madengine import mad, mad_cli
         from madengine.core import context, console
 
         assert all([madengine, mad, mad_cli, context, console])
