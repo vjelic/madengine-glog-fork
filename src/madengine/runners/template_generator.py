@@ -204,6 +204,186 @@ class TemplateGenerator:
 
         return generated_files
 
+    def generate_slurm_job_array(
+        self,
+        manifest_file: str,
+        environment: str = "default",
+        output_file: str = "madengine_job_array.sh",
+    ) -> str:
+        """Generate SLURM job array script from template.
+
+        Args:
+            manifest_file: Path to build manifest JSON file
+            environment: Environment name for values
+            output_file: Output job script file path
+
+        Returns:
+            str: Generated job script content
+        """
+        # Load manifest data
+        with open(manifest_file, "r") as f:
+            manifest_data = json.load(f)
+
+        # Load and merge values
+        base_values = self.load_values(environment)
+        values = self.merge_values(base_values, manifest_data)
+
+        # Extract model tags from manifest for job array
+        model_tags = []
+        if "models" in manifest_data:
+            model_tags = list(manifest_data["models"].keys())
+        elif "built_models" in manifest_data:
+            model_tags = list(manifest_data["built_models"].keys())
+        elif "model_tags" in manifest_data:
+            model_tags = manifest_data["model_tags"]
+
+        values["model_tags"] = model_tags
+
+        # Load template
+        template = self.env.get_template("slurm/job_array.sh.j2")
+
+        # Generate content
+        content = template.render(**values)
+
+        # Write to file
+        with open(output_file, "w") as f:
+            f.write(content)
+
+        # Make script executable
+        os.chmod(output_file, 0o755)
+
+        return content
+
+    def generate_slurm_single_job(
+        self,
+        manifest_file: str,
+        model_tag: str,
+        environment: str = "default",
+        output_file: str = None,
+    ) -> str:
+        """Generate SLURM single job script from template.
+
+        Args:
+            manifest_file: Path to build manifest JSON file
+            model_tag: Specific model tag for this job
+            environment: Environment name for values
+            output_file: Output job script file path
+
+        Returns:
+            str: Generated job script content
+        """
+        if output_file is None:
+            safe_tag = model_tag.replace(":", "-").replace("_", "-")
+            output_file = f"madengine_{safe_tag}.sh"
+
+        # Load manifest data
+        with open(manifest_file, "r") as f:
+            manifest_data = json.load(f)
+
+        # Load and merge values
+        base_values = self.load_values(environment)
+        values = self.merge_values(base_values, manifest_data)
+
+        # Add specific model tag
+        values["model_tag"] = model_tag
+
+        # Load template
+        template = self.env.get_template("slurm/single_job.sh.j2")
+
+        # Generate content
+        content = template.render(**values)
+
+        # Write to file
+        with open(output_file, "w") as f:
+            f.write(content)
+
+        # Make script executable
+        os.chmod(output_file, 0o755)
+
+        return content
+
+    def generate_slurm_setup_script(
+        self,
+        manifest_file: str,
+        environment: str = "default",
+        output_file: str = "setup_environment.sh",
+    ) -> str:
+        """Generate SLURM environment setup script from template.
+
+        Args:
+            manifest_file: Path to build manifest JSON file
+            environment: Environment name for values
+            output_file: Output setup script file path
+
+        Returns:
+            str: Generated setup script content
+        """
+        # Load manifest data
+        with open(manifest_file, "r") as f:
+            manifest_data = json.load(f)
+
+        # Load and merge values
+        base_values = self.load_values(environment)
+        values = self.merge_values(base_values, manifest_data)
+
+        # Add config files that should be copied
+        config_files = []
+        for file_name in ["credential.json", "data.json", "models.json"]:
+            if os.path.exists(file_name):
+                config_files.append(file_name)
+        values["config_files"] = config_files
+
+        # Load template
+        template = self.env.get_template("slurm/setup_environment.sh.j2")
+
+        # Generate content
+        content = template.render(**values)
+
+        # Write to file
+        with open(output_file, "w") as f:
+            f.write(content)
+
+        # Make script executable
+        os.chmod(output_file, 0o755)
+
+        return content
+
+    def generate_slurm_inventory(
+        self,
+        manifest_file: str,
+        environment: str = "default",
+        output_file: str = "inventory.yml",
+    ) -> str:
+        """Generate SLURM inventory file from template.
+
+        Args:
+            manifest_file: Path to build manifest JSON file
+            environment: Environment name for values
+            output_file: Output inventory file path
+
+        Returns:
+            str: Generated inventory content
+        """
+        # Load manifest data
+        with open(manifest_file, "r") as f:
+            manifest_data = json.load(f)
+
+        # Load and merge values
+        base_values = self.load_values(environment)
+        values = self.merge_values(base_values, manifest_data)
+
+        # Load template
+        template = self.env.get_template("slurm/inventory.yml.j2")
+
+        # Generate content
+        content = template.render(**values)
+
+        # Write to file
+        with open(output_file, "w") as f:
+            f.write(content)
+
+        return content
+
     def list_templates(self) -> Dict[str, List[str]]:
         """List available templates.
 
@@ -212,7 +392,7 @@ class TemplateGenerator:
         """
         templates = {}
 
-        for template_type in ["ansible", "k8s"]:
+        for template_type in ["ansible", "k8s", "slurm"]:
             template_path = self.template_dir / template_type
             if template_path.exists():
                 templates[template_type] = [

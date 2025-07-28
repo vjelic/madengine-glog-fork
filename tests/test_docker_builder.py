@@ -429,9 +429,9 @@ class TestDockerBuilder:
         context = Context()
         builder = DockerBuilder(context)
 
-        # Set up some built images
+        # Set up some built images (key should match real DockerBuilder output)
         builder.built_images = {
-            "model1": {"docker_image": "ci-model1", "dockerfile": "./docker/Dockerfile"}
+            "ci-model1": {"docker_image": "ci-model1", "dockerfile": "./docker/Dockerfile"}
         }
 
         with patch("builtins.open", mock_open()) as mock_file:
@@ -813,7 +813,7 @@ class TestDockerBuilder:
         assert local_image in manifest["built_images"]
         assert "registry_image" in manifest["built_images"][local_image]
         assert manifest["built_images"][local_image]["registry_image"] == registry_image
-        assert manifest["registry"] == registry
+        assert manifest["built_images"][local_image]["registry"] == registry
 
         # Verify the tagged image format is correct
         expected_tagged_image = f"localhost:5000/test-repository:{local_image}"
