@@ -112,6 +112,211 @@ class OrchestatorGenerator:
             "cleanup_script": cleanup_script,
         }
 
+    def generate_complete_slurm_setup(
+        self,
+        manifest_file: str,
+        environment: str = "default",
+        output_dir: str = "slurm-setup",
+    ) -> Dict[str, str]:
+        """Generate complete SLURM setup including job scripts and configuration.
+
+        Args:
+            manifest_file: Path to build manifest JSON file
+            environment: Environment name for values
+            output_dir: Output directory for generated files
+
+        Returns:
+            dict: Dictionary mapping file types to generated file paths
+        """
+        os.makedirs(output_dir, exist_ok=True)
+
+        generated_files = {}
+
+        # Generate job array script
+        job_array_script = os.path.join(output_dir, "madengine_job_array.sh")
+        self.template_generator.generate_slurm_job_array(
+            manifest_file, environment, job_array_script
+        )
+        generated_files["job_array"] = job_array_script
+
+        # Generate environment setup script
+        setup_script = os.path.join(output_dir, "setup_environment.sh")
+        self.template_generator.generate_slurm_setup_script(
+            manifest_file, environment, setup_script
+        )
+        generated_files["setup_script"] = setup_script
+
+        # Generate SLURM inventory
+        inventory_file = os.path.join(output_dir, "inventory.yml")
+        self.template_generator.generate_slurm_inventory(
+            manifest_file, environment, inventory_file
+        )
+        generated_files["inventory"] = inventory_file
+
+        # Generate individual job scripts for each model
+        with open(manifest_file, "r") as f:
+            manifest_data = json.load(f)
+
+        # Extract model tags
+        model_tags = []
+        if "models" in manifest_data:
+            model_tags = list(manifest_data["models"].keys())
+        elif "built_models" in manifest_data:
+            model_tags = list(manifest_data["built_models"].keys())
+        elif "model_tags" in manifest_data:
+            model_tags = manifest_data["model_tags"]
+
+        # Create job_scripts subdirectory
+        job_scripts_dir = os.path.join(output_dir, "job_scripts")
+        os.makedirs(job_scripts_dir, exist_ok=True)
+
+        # Generate individual job script for each model
+        individual_jobs = []
+        for model_tag in model_tags:
+            safe_tag = model_tag.replace(":", "-").replace("_", "-")
+            job_script_file = os.path.join(job_scripts_dir, f"madengine_{safe_tag}.sh")
+            self.template_generator.generate_slurm_single_job(
+                manifest_file, model_tag, environment, job_script_file
+            )
+            individual_jobs.append(job_script_file)
+
+        generated_files["individual_jobs"] = individual_jobs
+
+        # Generate job submission helper script
+        submit_script = os.path.join(output_dir, "submit_jobs.py")
+        self._generate_slurm_submit_script(
+            manifest_file, environment, submit_script, output_dir
+        )
+        generated_files["submit_script"] = submit_script
+
+        return generated_files
+
+    def _generate_slurm_submit_script(
+        self, manifest_file: str, environment: str, output_file: str, setup_dir: str
+    ):
+        """Generate Python script for SLURM job submission."""
+        submit_script_content = f'''#!/usr/bin/env python3
+"""
+SLURM Job Submission Script for MADEngine
+Generated from manifest: {os.path.basename(manifest_file)}
+Environment: {environment}
+"""
+
+import subprocess
+import time
+import json
+import os
+from pathlib import Path
+
+class SlurmJobSubmitter:
+    def __init__(self, setup_dir="{setup_dir}"):
+        self.setup_dir = Path(setup_dir)
+        self.job_array_script = self.setup_dir / "madengine_job_array.sh"
+        self.setup_script = self.setup_dir / "setup_environment.sh"
+        self.inventory_file = self.setup_dir / "inventory.yml"
+        self.submitted_jobs = []
+        
+    def submit_setup_job(self):
+        """Submit environment setup job first."""
+        if not self.setup_script.exists():
+            print(f"Setup script not found: {{self.setup_script}}")
+            return None
+            
+        cmd = ["sbatch", str(self.setup_script)]
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        
+        if result.returncode == 0:
+            job_id = result.stdout.strip().split()[-1]
+            print(f"Submitted setup job: {{job_id}}")
+            return job_id
+        else:
+            print(f"Failed to submit setup job: {{result.stderr}}")
+            return None
+    
+    def submit_job_array(self, dependency_job_id=None):
+        """Submit the main job array."""
+        if not self.job_array_script.exists():
+            print(f"Job array script not found: {{self.job_array_script}}")
+            return None
+            
+        cmd = ["sbatch"]
+        
+        # Add dependency if setup job was submitted
+        if dependency_job_id:
+            cmd.extend(["--dependency", f"afterok:{{dependency_job_id}}"])
+            
+        cmd.append(str(self.job_array_script))
+        
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        
+        if result.returncode == 0:
+            job_id = result.stdout.strip().split()[-1]
+            print(f"Submitted job array: {{job_id}}")
+            self.submitted_jobs.append(job_id)
+            return job_id
+        else:
+            print(f"Failed to submit job array: {{result.stderr}}")
+            return None
+    
+    def monitor_jobs(self, job_ids, check_interval=30):
+        """Monitor job completion."""
+        print(f"Monitoring jobs: {{job_ids}}")
+        
+        while job_ids:
+            time.sleep(check_interval)
+            
+            # Check job status
+            cmd = ["squeue", "--job", ",".join(job_ids), "--noheader", "--format=%i %T"]
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            
+            if result.returncode == 0:
+                running_jobs = []
+                for line in result.stdout.strip().split("\\n"):
+                    if line.strip():
+                        job_id, status = line.strip().split()
+                        if status in ["PENDING", "RUNNING"]:
+                            running_jobs.append(job_id)
+                        else:
+                            print(f"Job {{job_id}} completed with status: {{status}}")
+                
+                job_ids = running_jobs
+            else:
+                print("No running jobs found")
+                break
+                
+        print("All jobs completed")
+    
+    def run_full_workflow(self):
+        """Run the complete SLURM workflow."""
+        print("Starting MADEngine SLURM execution workflow")
+        
+        # Submit setup job first
+        setup_job_id = self.submit_setup_job()
+        
+        if setup_job_id:
+            print(f"Waiting for setup job {{setup_job_id}} to complete...")
+            time.sleep(10)  # Brief wait before submitting main jobs
+        
+        # Submit main job array
+        main_job_id = self.submit_job_array(setup_job_id)
+        
+        if main_job_id:
+            # Monitor the job array
+            self.monitor_jobs([main_job_id])
+        else:
+            print("Failed to submit main job array")
+
+if __name__ == "__main__":
+    submitter = SlurmJobSubmitter()
+    submitter.run_full_workflow()
+'''
+        
+        with open(output_file, "w") as f:
+            f.write(submit_script_content)
+        
+        # Make script executable
+        os.chmod(output_file, 0o755)
+
     def generate_execution_pipeline(
         self,
         manifest_file: str,
@@ -566,3 +771,11 @@ def generate_k8s_setup(
     """Generate complete Kubernetes setup."""
     generator = OrchestatorGenerator()
     return generator.generate_complete_k8s_setup(manifest_file, environment, output_dir)
+
+
+def generate_slurm_setup(
+    manifest_file: str, environment: str = "default", output_dir: str = "slurm-setup"
+) -> Dict[str, str]:
+    """Generate complete SLURM setup."""
+    generator = OrchestatorGenerator()
+    return generator.generate_complete_slurm_setup(manifest_file, environment, output_dir)

@@ -87,6 +87,13 @@ def register_default_runners():
     except ImportError as e:
         logging.warning(f"Kubernetes runner not available: {e}")
 
+    try:
+        from madengine.runners.slurm_runner import SlurmDistributedRunner
+
+        RunnerFactory.register_runner("slurm", SlurmDistributedRunner)
+    except ImportError as e:
+        logging.warning(f"SLURM runner not available: {e}")
+
 
 # Auto-register default runners
 register_default_runners()
