@@ -16,7 +16,7 @@ from rich.text import Text
 
 
 def format_dataframe_for_log(
-    df: pd.DataFrame, title: str = "DataFrame", max_rows: int = 20, max_cols: int = 10
+    df: pd.DataFrame, title: str = "DataFrame", max_rows: int = None, max_cols: int = 10
 ) -> str:
     """
     Format a pandas DataFrame for beautiful log output.
@@ -24,7 +24,7 @@ def format_dataframe_for_log(
     Args:
         df: The pandas DataFrame to format
         title: Title for the dataframe display
-        max_rows: Maximum number of rows to display
+        max_rows: Maximum number of rows to display (if None, use all rows)
         max_cols: Maximum number of columns to display
 
     Returns:
@@ -62,6 +62,10 @@ def format_dataframe_for_log(
             total_columns_note = (
                 f"(showing first {max_cols} of {len(df.columns)} columns)"
             )
+
+    # Use all rows if max_rows is None
+    if max_rows is None:
+        max_rows = len(display_df)
 
     # Truncate rows if necessary
     truncated_rows = False
