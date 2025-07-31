@@ -12,6 +12,7 @@ Copyright (c) Advanced Micro Devices, Inc. All rights reserved.
 import os
 import json
 import typing
+from rich.console import Console as RichConsole
 from madengine.core.console import Console
 from madengine.core.context import Context
 from madengine.core.dataprovider import Data
@@ -36,6 +37,7 @@ class DistributedOrchestrator:
         """
         self.args = args
         self.console = Console(live_output=getattr(args, "live_output", True))
+        self.rich_console = RichConsole()
 
         # Initialize context with appropriate mode
         self.context = Context(
@@ -125,11 +127,11 @@ class DistributedOrchestrator:
         Returns:
             dict: Build summary
         """
-        print("=" * 60)
-        print("STARTING BUILD PHASE")
+        self.rich_console.print(f"[dim]{'=' * 60}[/dim]")
+        self.rich_console.print("[bold blue]🔨 STARTING BUILD PHASE[/bold blue]")
         if self.context._build_only_mode:
-            print("(Build-only mode - no GPU detection)")
-        print("=" * 60)
+            self.rich_console.print("[yellow](Build-only mode - no GPU detection)[/yellow]")
+        self.rich_console.print(f"[dim]{'=' * 60}[/dim]")
 
         # Print the arguments as a dictionary for better readability
         print(
@@ -137,16 +139,16 @@ class DistributedOrchestrator:
         )
 
         # Discover models
-        print("=" * 60)
-        print("DISCOVERING MODELS")
+        self.rich_console.print(f"[dim]{'=' * 60}[/dim]")
+        self.rich_console.print("[bold cyan]🔍 DISCOVERING MODELS[/bold cyan]")
         discover_models = DiscoverModels(args=self.args)
         models = discover_models.run()
 
         print(f"Discovered {len(models)} models to build")
 
         # Copy scripts for building
-        print("=" * 60)
-        print("COPYING SCRIPTS")
+        self.rich_console.print(f"[dim]{'=' * 60}[/dim]")
+        self.rich_console.print("[bold cyan]📋 COPYING SCRIPTS[/bold cyan]")
         self._copy_scripts()
 
         # Validate build context for build-only mode
@@ -155,8 +157,8 @@ class DistributedOrchestrator:
                 "MAD_SYSTEM_GPU_ARCHITECTURE"
                 not in self.context.ctx["docker_build_arg"]
             ):
-                print(
-                    "Warning: MAD_SYSTEM_GPU_ARCHITECTURE not provided in build context."
+                self.rich_console.print(
+                    "[yellow]⚠️  Warning: MAD_SYSTEM_GPU_ARCHITECTURE not provided in build context.[/yellow]"
                 )
                 print(
                     "For build-only nodes, please provide GPU architecture via --additional-context:"
@@ -192,13 +194,13 @@ class DistributedOrchestrator:
         # Export build manifest with registry information
         builder.export_build_manifest(manifest_output, registry, batch_build_metadata)
 
-        print("=" * 60)
-        print("BUILD PHASE COMPLETED")
-        print(f"  Successful builds: {len(build_summary['successful_builds'])}")
-        print(f"  Failed builds: {len(build_summary['failed_builds'])}")
-        print(f"  Total build time: {build_summary['total_build_time']:.2f} seconds")
+        self.rich_console.print(f"[dim]{'=' * 60}[/dim]")
+        self.rich_console.print("[bold green]✅ BUILD PHASE COMPLETED[/bold green]")
+        self.rich_console.print(f"  [green]Successful builds: {len(build_summary['successful_builds'])}[/green]")
+        self.rich_console.print(f"  [red]Failed builds: {len(build_summary['failed_builds'])}[/red]")
+        self.rich_console.print(f"  [blue]Total build time: {build_summary['total_build_time']:.2f} seconds[/blue]")
         print(f"  Manifest saved to: {manifest_output}")
-        print("=" * 60)
+        self.rich_console.print(f"[dim]{'=' * 60}[/dim]")
 
         # Cleanup scripts
         self.cleanup()
@@ -226,9 +228,9 @@ class DistributedOrchestrator:
         Returns:
             dict: Execution summary
         """
-        print("=" * 60)
-        print("STARTING RUN PHASE")
-        print("=" * 60)
+        self.rich_console.print(f"[dim]{'=' * 60}[/dim]")
+        self.rich_console.print("[bold blue]🏃 STARTING RUN PHASE[/bold blue]")
+        self.rich_console.print(f"[dim]{'=' * 60}[/dim]")
 
         # Ensure runtime context is initialized (GPU detection, env vars, etc.)
         self.context.ensure_runtime_context()
@@ -248,7 +250,7 @@ class DistributedOrchestrator:
         elif host_os.find("HOST_AZURE") != -1:
             print(self.console.sh("tdnf info rocm-libs", canFail=True))
         else:
-            print("ERROR: Unable to detect host OS.")
+            self.rich_console.print("[red]❌ ERROR: Unable to detect host OS.[/red]")
 
         # Load build manifest
         if not os.path.exists(manifest_file):
@@ -263,8 +265,8 @@ class DistributedOrchestrator:
         if registry:
             print(f"Using registry from CLI: {registry}")
         else:
-            print(
-                "No registry specified, will use per-image registry or local images only"
+            self.rich_console.print(
+                "[yellow]No registry specified, will use per-image registry or local images only[/yellow]"
             )
 
         # Copy scripts for running
@@ -292,11 +294,11 @@ class DistributedOrchestrator:
 
         # Use built models from manifest if available, otherwise discover models
         if "built_models" in manifest and manifest["built_models"]:
-            print("Using model information from build manifest")
+            self.rich_console.print("[cyan]Using model information from build manifest[/cyan]")
             models = list(manifest["built_models"].values())
         else:
-            print(
-                "No model information in manifest, discovering models from current configuration"
+            self.rich_console.print(
+                "[yellow]No model information in manifest, discovering models from current configuration[/yellow]"
             )
             # Discover models (to get execution parameters)
             discover_models = DiscoverModels(args=self.args)
@@ -400,13 +402,13 @@ class DistributedOrchestrator:
                         # Add to appropriate list based on actual status
                         if run_results.get("status") == "SUCCESS":
                             execution_summary["successful_runs"].append(run_results)
-                            print(
-                                f"Successfully completed: {model_info['name']} -> {run_results['status']}"
+                            self.rich_console.print(
+                                f"[green]✅ Successfully completed: {model_info['name']} -> {run_results['status']}[/green]"
                             )
                         else:
                             execution_summary["failed_runs"].append(run_results)
-                            print(
-                                f"Failed to complete: {model_info['name']} -> {run_results['status']}"
+                            self.rich_console.print(
+                                f"[red]❌ Failed to complete: {model_info['name']} -> {run_results['status']}[/red]"
                             )
 
                         execution_summary["total_execution_time"] += run_results.get(
@@ -414,8 +416,8 @@ class DistributedOrchestrator:
                         )
 
                     except Exception as e:
-                        print(
-                            f"Failed to run {model_info['name']} with image {image_name}: {e}"
+                        self.rich_console.print(
+                            f"[red]❌ Failed to run {model_info['name']} with image {image_name}: {e}[/red]"
                         )
                         execution_summary["failed_runs"].append(
                             {
@@ -425,10 +427,10 @@ class DistributedOrchestrator:
                             }
                         )
                 else:
-                    print(f"Warning: No model info found for built image: {image_name}")
+                    self.rich_console.print(f"[yellow]⚠️  Warning: No model info found for built image: {image_name}[/yellow]")
         else:
             # Fallback to name-based matching for backward compatibility
-            print("Using name-based matching (fallback mode)")
+            self.rich_console.print("[yellow]Using name-based matching (fallback mode)[/yellow]")
             for model_info in models:
                 model_name = model_info["name"]
 
@@ -439,7 +441,7 @@ class DistributedOrchestrator:
                         matching_images.append((image_name, build_info))
 
                 if not matching_images:
-                    print(f"No built images found for model: {model_name}")
+                    self.rich_console.print(f"[red]❌ No built images found for model: {model_name}[/red]")
                     execution_summary["failed_runs"].append(
                         {"model": model_name, "error": "No built images found"}
                     )
@@ -547,13 +549,13 @@ class DistributedOrchestrator:
                         # Add to appropriate list based on actual status
                         if run_results.get("status") == "SUCCESS":
                             execution_summary["successful_runs"].append(run_results)
-                            print(
-                                f"Successfully completed: {model_name} -> {run_results['status']}"
+                            self.rich_console.print(
+                                f"[green]✅ Successfully completed: {model_name} -> {run_results['status']}[/green]"
                             )
                         else:
                             execution_summary["failed_runs"].append(run_results)
-                            print(
-                                f"Failed to complete: {model_name} -> {run_results['status']}"
+                            self.rich_console.print(
+                                f"[red]❌ Failed to complete: {model_name} -> {run_results['status']}[/red]"
                             )
 
                         execution_summary["total_execution_time"] += run_results.get(
@@ -561,21 +563,21 @@ class DistributedOrchestrator:
                         )
 
                     except Exception as e:
-                        print(
-                            f"Failed to run {model_name} with image {image_name}: {e}"
+                        self.rich_console.print(
+                            f"[red]❌ Failed to run {model_name} with image {image_name}: {e}[/red]"
                         )
                         execution_summary["failed_runs"].append(
                             {"model": model_name, "image": image_name, "error": str(e)}
                         )
 
-        print("=" * 60)
-        print("RUN PHASE COMPLETED")
-        print(f"  Successful runs: {len(execution_summary['successful_runs'])}")
-        print(f"  Failed runs: {len(execution_summary['failed_runs'])}")
-        print(
-            f"  Total execution time: {execution_summary['total_execution_time']:.2f} seconds"
+        self.rich_console.print(f"[dim]{'=' * 60}[/dim]")
+        self.rich_console.print("[bold green]✅ RUN PHASE COMPLETED[/bold green]")
+        self.rich_console.print(f"  [green]Successful runs: {len(execution_summary['successful_runs'])}[/green]")
+        self.rich_console.print(f"  [red]Failed runs: {len(execution_summary['failed_runs'])}[/red]")
+        self.rich_console.print(
+            f"  [blue]Total execution time: {execution_summary['total_execution_time']:.2f} seconds[/blue]"
         )
-        print("=" * 60)
+        self.rich_console.print(f"[dim]{'=' * 60}[/dim]")
 
         # Convert output CSV to HTML like run_models.py does
         try:
@@ -586,7 +588,7 @@ class DistributedOrchestrator:
                 print("Converting output csv to html...")
                 convert_csv_to_html(file_path=perf_csv_path)
         except Exception as e:
-            print(f"Warning: Could not convert CSV to HTML: {e}")
+            self.rich_console.print(f"[yellow]⚠️  Warning: Could not convert CSV to HTML: {e}[/yellow]")
 
         # Cleanup scripts
         self.cleanup()
@@ -611,9 +613,9 @@ class DistributedOrchestrator:
         Returns:
             dict: Complete workflow summary
         """
-        print("=" * 80)
-        print("STARTING COMPLETE DISTRIBUTED WORKFLOW")
-        print("=" * 80)
+        self.rich_console.print(f"[dim]{'=' * 80}[/dim]")
+        self.rich_console.print("[bold magenta]🚀 STARTING COMPLETE DISTRIBUTED WORKFLOW[/bold magenta]")
+        self.rich_console.print(f"[dim]{'=' * 80}[/dim]")
 
         # Build phase
         build_summary = self.build_phase(registry, clean_cache)
@@ -631,10 +633,14 @@ class DistributedOrchestrator:
             ),
         }
 
-        print("=" * 80)
-        print("COMPLETE WORKFLOW FINISHED")
-        print(f"  Overall success: {workflow_summary['overall_success']}")
-        print("=" * 80)
+        self.rich_console.print(f"[dim]{'=' * 80}[/dim]")
+        if workflow_summary['overall_success']:
+            self.rich_console.print("[bold green]🎉 COMPLETE WORKFLOW FINISHED SUCCESSFULLY[/bold green]")
+            self.rich_console.print(f"  [green]Overall success: {workflow_summary['overall_success']}[/green]")
+        else:
+            self.rich_console.print("[bold red]❌ COMPLETE WORKFLOW FINISHED WITH ERRORS[/bold red]")
+            self.rich_console.print(f"  [red]Overall success: {workflow_summary['overall_success']}[/red]")
+        self.rich_console.print(f"[dim]{'=' * 80}[/dim]")
 
         return workflow_summary
 
