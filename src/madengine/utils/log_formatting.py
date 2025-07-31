@@ -24,7 +24,7 @@ def format_dataframe_for_log(
     Args:
         df: The pandas DataFrame to format
         title: Title for the dataframe display
-        max_rows: Maximum number of rows to display
+        max_rows: Maximum number of rows to display (if None, use all rows)
         max_cols: Maximum number of columns to display
 
     Returns:
@@ -63,10 +63,14 @@ def format_dataframe_for_log(
                 f"(showing first {max_cols} of {len(df.columns)} columns)"
             )
 
-    # Truncate rows if necessary
+    # Use all rows if max_rows is None
+    if max_rows is None:
+        max_rows = len(display_df)
+
+    # Truncate rows if necessary (show latest rows)
     truncated_rows = False
     if len(display_df) > max_rows:
-        display_df = display_df.head(max_rows)
+        display_df = display_df.tail(max_rows)
         truncated_rows = True
 
     # Create header
@@ -150,12 +154,20 @@ def format_dataframe_rich(
     for col in display_df.columns:
         table.add_column(str(col), style="cyan")
 
-    # Add rows (truncate if necessary)
-    display_rows = min(len(display_df), max_rows)
+    # Add rows (truncate if necessary, show latest rows)
+    if len(display_df) > max_rows:
+        truncated_df = display_df.tail(max_rows)
+        truncated_indices = truncated_df.index
+        display_rows = max_rows
+    else:
+        truncated_df = display_df
+        truncated_indices = truncated_df.index
+        display_rows = len(truncated_df)
+
     for i in range(display_rows):
-        row_data = [str(display_df.index[i])]
-        for col in display_df.columns:
-            value = display_df.iloc[i][col]
+        row_data = [str(truncated_indices[i])]
+        for col in truncated_df.columns:
+            value = truncated_df.iloc[i][col]
             if pd.isna(value):
                 row_data.append("[dim]NaN[/dim]")
             elif isinstance(value, float):
@@ -166,9 +178,9 @@ def format_dataframe_rich(
 
     # Show truncation info
     if len(display_df) > max_rows:
-        table.add_row(*["..." for _ in range(len(display_df.columns) + 1)])
+        table.add_row(*["..." for _ in range(len(truncated_df.columns) + 1)])
         console.print(
-            f"[yellow]⚠️  Showing first {max_rows} of {len(display_df)} rows[/yellow]"
+            f"[yellow]⚠️  Showing latest {max_rows} of {len(display_df)} rows[/yellow]"
         )
 
     console.print(table)

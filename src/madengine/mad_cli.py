@@ -736,9 +736,14 @@ def build(
     except typer.Exit:
         raise
     except Exception as e:
-        from madengine.core.errors import handle_error
+        from madengine.core.errors import handle_error, create_error_context
 
-        handle_error(e, context={"operation": "build", "phase": "build"})
+        context = create_error_context(
+            operation="build", 
+            phase="build",
+            component="build_command"
+        )
+        handle_error(e, context=context)
         raise typer.Exit(ExitCode.FAILURE)
 
 

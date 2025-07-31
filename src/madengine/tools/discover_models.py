@@ -10,6 +10,7 @@ import json
 import importlib.util
 import typing
 from dataclasses import dataclass, field, asdict
+from rich.console import Console as RichConsole
 
 
 @dataclass
@@ -53,6 +54,7 @@ class DiscoverModels:
             args (argparse.Namespace): Arguments passed to the script.
         """
         self.args = args
+        self.rich_console = RichConsole()
         # list of models from models.json and scripts/model_dir/models.json
         self.models: typing.List[dict] = []
         # list of custom models from scripts/model_dir/get_models_json.py
@@ -77,13 +79,13 @@ class DiscoverModels:
             import subprocess
 
             cwd_path = os.getcwd()
-            print(f"MODEL_DIR environment variable detected: {model_dir_env}")
+            self.rich_console.print(f"[bold cyan]📁 MODEL_DIR environment variable detected:[/bold cyan] [yellow]{model_dir_env}[/yellow]")
             print(f"Copying contents to current working directory: {cwd_path}")
 
             try:
                 # Check if source directory exists
                 if not os.path.exists(model_dir_env):
-                    print(f"Warning: MODEL_DIR path does not exist: {model_dir_env}")
+                    self.rich_console.print(f"[yellow]⚠️  Warning: MODEL_DIR path does not exist: {model_dir_env}[/yellow]")
                     return
 
                 # Use cp command similar to the original implementation
@@ -92,7 +94,7 @@ class DiscoverModels:
                 result = subprocess.run(
                     cmd, shell=True, capture_output=True, text=True, check=True
                 )
-                print(f"Successfully copied MODEL_DIR contents")
+                self.rich_console.print(f"[green]✅ Successfully copied MODEL_DIR contents[/green]")
                 # Only show verbose output if there are not too many files
                 if result.stdout and len(result.stdout.splitlines()) < 20:
                     print(result.stdout)
@@ -100,12 +102,12 @@ class DiscoverModels:
                     print(f"Copied {len(result.stdout.splitlines())} files/directories")
                 print(f"Model dir: {model_dir_env} → current dir: {cwd_path}")
             except subprocess.CalledProcessError as e:
-                print(f"Warning: Failed to copy MODEL_DIR contents: {e}")
+                self.rich_console.print(f"[yellow]⚠️  Warning: Failed to copy MODEL_DIR contents: {e}[/yellow]")
                 if e.stderr:
                     print(f"Error details: {e.stderr}")
                 # Continue execution even if copy fails
             except Exception as e:
-                print(f"Warning: Unexpected error copying MODEL_DIR: {e}")
+                self.rich_console.print(f"[yellow]⚠️  Warning: Unexpected error copying MODEL_DIR: {e}[/yellow]")
                 # Continue execution even if copy fails
 
     def discover_models(self) -> None:
@@ -125,6 +127,7 @@ class DiscoverModels:
                 self.models = model_dict_list
                 self.model_list = [model_dict["name"] for model_dict in model_dict_list]
         else:
+            self.rich_console.print("[red]❌ models.json file not found.[/red]")
             raise FileNotFoundError("models.json file not found.")
 
         # walk through the subdirs in model_dir/scripts directory to find the models.json file
@@ -134,6 +137,7 @@ class DiscoverModels:
                 files = os.listdir(root)
 
                 if "models.json" in files and "get_models_json.py" in files:
+                    self.rich_console.print(f"[red]❌ Both models.json and get_models_json.py found in {root}.[/red]")
                     raise ValueError(
                         f"Both models.json and get_models_json.py found in {root}."
                     )
@@ -179,8 +183,8 @@ class DiscoverModels:
                             self.custom_models.append(custom_model)
                             self.model_list.append(custom_model.name)
                     except AssertionError:
-                        print(
-                            "See madengine/tests/fixtures/dummy/scripts/dummy3/get_models_json.py for an example."
+                        self.rich_console.print(
+                            "[yellow]💡 See madengine/tests/fixtures/dummy/scripts/dummy3/get_models_json.py for an example.[/yellow]"
                         )
                         raise
 
@@ -240,6 +244,7 @@ class DiscoverModels:
                         tag_models.append(model_dict)
 
                 if not tag_models:
+                    self.rich_console.print(f"[red]❌ No models found corresponding to the given tag: {tag}[/red]")
                     raise ValueError(
                         f"No models found corresponding to the given tag: {tag}"
                     )
@@ -249,12 +254,13 @@ class DiscoverModels:
     def print_models(self) -> None:
         if self.selected_models:
             # print selected models using parsed tags and adding backslash-separated extra args
+            self.rich_console.print(f"[bold green]📋 Selected Models ({len(self.selected_models)} models):[/bold green]")
             print(json.dumps(self.selected_models, indent=4))
         else:
             # print list of all model names
-            print(f"Number of models in total: {len(self.model_list)}")
+            self.rich_console.print(f"[bold cyan]📊 Available Models ({len(self.model_list)} total):[/bold cyan]")
             for model_name in self.model_list:
-                print(f"{model_name}")
+                print(f"  {model_name}")
 
     def run(self, live_output: bool = True):
 

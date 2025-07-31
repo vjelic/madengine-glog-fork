@@ -11,8 +11,8 @@ import os
 import time
 import json
 import typing
-from rich import print as rich_print
 from contextlib import redirect_stdout, redirect_stderr
+from rich.console import Console as RichConsole
 from madengine.core.console import Console
 from madengine.core.context import Context
 from madengine.utils.ops import PythonicTee
@@ -34,6 +34,7 @@ class DockerBuilder:
         self.context = context
         self.console = console or Console(live_output=live_output)
         self.live_output = live_output
+        self.rich_console = RichConsole()
         self.built_images = {}  # Track built images
         self.built_models = {}  # Track built models
 
@@ -122,11 +123,11 @@ class DockerBuilder:
         # Replace / with _ in log file path (already done above, but keeping for safety)
         log_file_path = log_file_path.replace("/", "_")
 
-        print(f"\n🔨 Starting Docker build for model: {model_info['name']}")
+        self.rich_console.print(f"\n[bold green]🔨 Starting Docker build for model:[/bold green] [bold cyan]{model_info['name']}[/bold cyan]")
         print(f"📁 Dockerfile: {dockerfile}")
         print(f"🏷️  Target image: {docker_image}")
         print(f"📝 Build log: {log_file_path}")
-        print(f"{'='*80}")
+        self.rich_console.print(f"[dim]{'='*80}[/dim]")
 
         # Get docker context
         docker_context = self.get_context_path(model_info)
@@ -167,8 +168,8 @@ class DockerBuilder:
 
                 print(f"⏱️  Build Duration: {build_duration:.2f} seconds")
                 print(f"🏷️  MAD_CONTAINER_IMAGE is {docker_image}")
-                print(f"✅ Docker build completed successfully")
-                print(f"{'='*80}")
+                self.rich_console.print(f"[bold green]✅ Docker build completed successfully[/bold green]")
+                self.rich_console.print(f"[dim]{'='*80}[/dim]")
 
                 # Get base docker info
                 base_docker = ""
@@ -192,7 +193,7 @@ class DockerBuilder:
                     )
                     print(f"BASE DOCKER SHA is {docker_sha}")
                 except Exception as e:
-                    print(f"Warning: Could not get docker SHA: {e}")
+                    self.rich_console.print(f"[yellow]Warning: Could not get docker SHA: {e}[/yellow]")
 
         build_info = {
             "docker_image": docker_image,
@@ -210,7 +211,7 @@ class DockerBuilder:
         # Store model info linked to the built image
         self.built_models[docker_image] = model_info
 
-        print(f"Successfully built image: {docker_image}")
+        self.rich_console.print(f"[bold green]Successfully built image:[/bold green] [cyan]{docker_image}[/cyan]")
 
         return build_info
 
@@ -254,7 +255,7 @@ class DockerBuilder:
                 error_msg += f'    "password": "your-{registry_key}-password"\n'
                 error_msg += "  }\n"
                 error_msg += "}"
-            print(error_msg)
+            self.rich_console.print(f"[red]{error_msg}[/red]")
             raise RuntimeError(error_msg)
 
         creds = credentials[registry_key]
@@ -262,7 +263,7 @@ class DockerBuilder:
         if "username" not in creds or "password" not in creds:
             error_msg = f"Invalid credentials format for registry: {registry_key}"
             error_msg += f"\nCredentials must contain 'username' and 'password' fields"
-            print(error_msg)
+            self.rich_console.print(f"[red]{error_msg}[/red]")
             raise RuntimeError(error_msg)
 
         # Ensure credential values are strings
@@ -279,9 +280,9 @@ class DockerBuilder:
 
         try:
             self.console.sh(login_command, secret=True)
-            print(f"Successfully logged in to registry: {registry or 'DockerHub'}")
+            self.rich_console.print(f"[green]✅ Successfully logged in to registry: {registry or 'DockerHub'}[/green]")
         except Exception as e:
-            print(f"Failed to login to registry {registry}: {e}")
+            self.rich_console.print(f"[red]❌ Failed to login to registry {registry}: {e}[/red]")
             raise
 
     def push_image(
@@ -330,17 +331,17 @@ class DockerBuilder:
 
             # Push the image
             push_command = f"docker push {registry_image}"
-            print(f"\n🚀 Starting docker push to registry...")
+            self.rich_console.print(f"\n[bold blue]🚀 Starting docker push to registry...[/bold blue]")
             print(f"📤 Registry: {registry}")
             print(f"🏷️  Image: {registry_image}")
             self.console.sh(push_command)
 
-            print(f"✅ Successfully pushed image to registry: {registry_image}")
-            print(f"{'='*80}")
+            self.rich_console.print(f"[bold green]✅ Successfully pushed image to registry:[/bold green] [cyan]{registry_image}[/cyan]")
+            self.rich_console.print(f"[dim]{'='*80}[/dim]")
             return registry_image
 
         except Exception as e:
-            print(f"Failed to push image {docker_image} to registry {registry}: {e}")
+            self.rich_console.print(f"[red]❌ Failed to push image {docker_image} to registry {registry}: {e}[/red]")
             raise
 
     def export_build_manifest(
@@ -370,12 +371,6 @@ class DockerBuilder:
             )
         )
 
-        rich_print()
-        rich_print("[bold green]INFO: batch_build_metadata")
-        rich_print(batch_build_metadata)
-        rich_print("[bold green]INFO: built_images")
-        rich_print(self.built_images)
-
         # Set registry for each built image
         for image_name, build_info in self.built_images.items():
             # If registry is not set in build_info, set it from argument
@@ -389,8 +384,8 @@ class DockerBuilder:
                 image_name.split("ci-")[1].split(truncated_docker_file)[0].rstrip("_")
             )
             if batch_build_metadata and model_name in batch_build_metadata:
-                rich_print(
-                    f"Overriding registry for {model_name} from batch_build_metadata"
+                self.rich_console.print(
+                    f"[yellow]Overriding registry for {model_name} from batch_build_metadata[/yellow]"
                 )
                 build_info["registry"] = batch_build_metadata[model_name].get(
                     "registry"
@@ -433,12 +428,12 @@ class DockerBuilder:
         with open(output_file, "w") as f:
             json.dump(manifest, f, indent=2)
 
-        print(f"Build manifest exported to: {output_file}")
+        self.rich_console.print(f"[green]Build manifest exported to:[/green] {output_file}")
         if push_failures:
-            print(f"Warning: {len(push_failures)} image(s) failed to push to registry")
+            self.rich_console.print(f"[yellow]Warning: {len(push_failures)} image(s) failed to push to registry[/yellow]")
             for failure in push_failures:
-                print(
-                    f"  - {failure['image']} -> {failure['intended_registry_image']}: {failure['error']}"
+                self.rich_console.print(
+                    f"[red]  - {failure['image']} -> {failure['intended_registry_image']}: {failure['error']}[/red]"
                 )
 
     def build_all_models(
@@ -462,12 +457,14 @@ class DockerBuilder:
         Returns:
             dict: Summary of all built images
         """
-        print(f"Building Docker images for {len(models)} models...")
+        self.rich_console.print(f"[bold blue]Building Docker images for {len(models)} models...[/bold blue]")
 
         build_summary = {
             "successful_builds": [],
             "failed_builds": [],
             "total_build_time": 0,
+            "successful_pushes": [],
+            "failed_pushes": [],
         }
 
         for model_info in models:
@@ -498,8 +495,8 @@ class DockerBuilder:
                 dockerfiles = self.context.filter(dockerfiles)
 
                 if not dockerfiles:
-                    print(
-                        f"No matching dockerfiles found for model {model_info['name']}"
+                    self.rich_console.print(
+                        f"[yellow]No matching dockerfiles found for model {model_info['name']}[/yellow]"
                     )
                     continue
 
@@ -550,12 +547,22 @@ class DockerBuilder:
                                     explicit_registry_image,
                                 )
                                 if actual_registry_image != registry_image:
-                                    print(
-                                        f"Warning: Pushed image name {actual_registry_image} differs from intended {registry_image}"
+                                    self.rich_console.print(
+                                        f"[yellow]Warning: Pushed image name {actual_registry_image} differs from intended {registry_image}[/yellow]"
                                     )
+                                
+                                # Track successful push
+                                build_summary["successful_pushes"].append({
+                                    "model": model_info["name"],
+                                    "dockerfile": dockerfile,
+                                    "local_image": build_info["docker_image"],
+                                    "registry_image": actual_registry_image,
+                                    "registry": model_registry
+                                })
+                                
                             except Exception as push_error:
-                                print(
-                                    f"Failed to push {build_info['docker_image']} to registry: {push_error}"
+                                self.rich_console.print(
+                                    f"[red]Failed to push {build_info['docker_image']} to registry: {push_error}[/red]"
                                 )
                                 build_info["push_failed"] = True
                                 build_info["push_error"] = str(push_error)
@@ -566,6 +573,16 @@ class DockerBuilder:
                                     self.built_images[build_info["docker_image"]][
                                         "push_error"
                                     ] = str(push_error)
+                                
+                                # Track failed push
+                                build_summary["failed_pushes"].append({
+                                    "model": model_info["name"],
+                                    "dockerfile": dockerfile,
+                                    "local_image": build_info["docker_image"],
+                                    "intended_registry_image": registry_image,
+                                    "registry": model_registry,
+                                    "error": str(push_error)
+                                })
 
                         build_summary["successful_builds"].append(
                             {
@@ -580,8 +597,8 @@ class DockerBuilder:
                         ]
 
                     except Exception as e:
-                        print(
-                            f"Failed to build {dockerfile} for model {model_info['name']}: {e}"
+                        self.rich_console.print(
+                            f"[red]Failed to build {dockerfile} for model {model_info['name']}: {e}[/red]"
                         )
                         build_summary["failed_builds"].append(
                             {
@@ -592,15 +609,35 @@ class DockerBuilder:
                         )
 
             except Exception as e:
-                print(f"Error processing model {model_info['name']}: {e}")
+                self.rich_console.print(f"[red]Error processing model {model_info['name']}: {e}[/red]")
                 build_summary["failed_builds"].append(
                     {"model": model_info["name"], "error": str(e)}
                 )
 
-        print(f"\nBuild Summary:")
-        print(f"  Successful builds: {len(build_summary['successful_builds'])}")
-        print(f"  Failed builds: {len(build_summary['failed_builds'])}")
-        print(f"  Total build time: {build_summary['total_build_time']:.2f} seconds")
+        self.rich_console.print(f"\n[bold]Build Summary:[/bold]")
+        self.rich_console.print(f"  [green]Successful builds: {len(build_summary['successful_builds'])}[/green]")
+        self.rich_console.print(f"  [red]Failed builds: {len(build_summary['failed_builds'])}[/red]")
+        self.rich_console.print(f"  [blue]Total build time: {build_summary['total_build_time']:.2f} seconds[/blue]")
+        
+        # Display push statistics if any pushes were attempted
+        total_pushes = len(build_summary['successful_pushes']) + len(build_summary['failed_pushes'])
+        if total_pushes > 0:
+            self.rich_console.print(f"\n[bold]Registry Push Summary:[/bold]")
+            self.rich_console.print(f"  [green]Successful pushes: {len(build_summary['successful_pushes'])}[/green]")
+            self.rich_console.print(f"  [red]Failed pushes: {len(build_summary['failed_pushes'])}[/red]")
+            
+            # Show successful pushes
+            if build_summary['successful_pushes']:
+                self.rich_console.print(f"\n[bold green]Successfully pushed images:[/bold green]")
+                for push in build_summary['successful_pushes']:
+                    self.rich_console.print(f"  [green]✅ {push['model']} -> {push['registry_image']}[/green]")
+            
+            # Show failed pushes with errors
+            if build_summary['failed_pushes']:
+                self.rich_console.print(f"\n[bold red]Failed to push images:[/bold red]")
+                for push in build_summary['failed_pushes']:
+                    self.rich_console.print(f"  [red]❌ {push['model']} -> {push['intended_registry_image']}[/red]")
+                    self.rich_console.print(f"     [dim red]Error: {push['error']}[/dim red]")
 
         return build_summary
 

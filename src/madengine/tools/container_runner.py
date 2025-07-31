@@ -13,6 +13,7 @@ import json
 import typing
 import warnings
 import re
+from rich.console import Console as RichConsole
 from contextlib import redirect_stdout, redirect_stderr
 from madengine.core.console import Console
 from madengine.core.context import Context
@@ -45,6 +46,7 @@ class ContainerRunner:
         self.data = data
         self.console = console or Console(live_output=live_output)
         self.live_output = live_output
+        self.rich_console = RichConsole()
         self.credentials = None
         self.perf_csv_path = "perf.csv"  # Default output path
 
@@ -150,7 +152,7 @@ class ContainerRunner:
             credentials: Optional credentials dictionary containing username/password
         """
         if not credentials:
-            print("No credentials provided for registry login")
+            self.rich_console.print("[yellow]No credentials provided for registry login[/yellow]")
             return
 
         # Check if registry credentials are available
@@ -207,9 +209,9 @@ class ContainerRunner:
 
         try:
             self.console.sh(login_command, secret=True)
-            print(f"Successfully logged in to registry: {registry or 'DockerHub'}")
+            self.rich_console.print(f"[green]✅ Successfully logged in to registry: {registry or 'DockerHub'}[/green]")
         except Exception as e:
-            print(f"Failed to login to registry {registry}: {e}")
+            self.rich_console.print(f"[red]❌ Failed to login to registry {registry}: {e}[/red]")
             # Don't raise exception here, as public images might still be pullable
 
     def pull_image(
@@ -234,7 +236,7 @@ class ContainerRunner:
         if registry and credentials:
             self.login_to_registry(registry, credentials)
 
-        print(f"\n📥 Starting docker pull from registry...")
+        self.rich_console.print(f"\n[bold blue]📥 Starting docker pull from registry...[/bold blue]")
         print(f"📍 Registry: {registry or 'Default'}")
         print(f"🏷️  Image: {registry_image}")
         try:
@@ -243,16 +245,16 @@ class ContainerRunner:
             if local_name:
                 self.console.sh(f"docker tag {registry_image} {local_name}")
                 print(f"🏷️  Tagged as: {local_name}")
-                print(f"✅ Successfully pulled and tagged image")
-                print(f"{'='*80}")
+                self.rich_console.print(f"[bold green]✅ Successfully pulled and tagged image[/bold green]")
+                self.rich_console.print(f"[dim]{'='*80}[/dim]")
                 return local_name
 
-            print(f"✅ Successfully pulled image: {registry_image}")
-            print(f"{'='*80}")
+            self.rich_console.print(f"[bold green]✅ Successfully pulled image:[/bold green] [cyan]{registry_image}[/cyan]")
+            self.rich_console.print(f"[dim]{'='*80}[/dim]")
             return registry_image
 
         except Exception as e:
-            print(f"Failed to pull image {registry_image}: {e}")
+            self.rich_console.print(f"[red]❌ Failed to pull image {registry_image}: {e}[/red]")
             raise
 
     def get_gpu_arg(self, requested_gpus: str) -> str:
@@ -503,7 +505,7 @@ class ContainerRunner:
         Returns:
             dict: Execution results including performance metrics
         """
-        print(f"Running model {model_info['name']} in container {docker_image}")
+        self.rich_console.print(f"[bold green]🏃 Running model:[/bold green] [bold cyan]{model_info['name']}[/bold cyan] [dim]in container[/dim] [yellow]{docker_image}[/yellow]")
 
         # Create log file for this run
         # Extract dockerfile part from docker image name (remove "ci-" prefix and model name prefix)
@@ -639,12 +641,12 @@ class ContainerRunner:
         # set timeout
         print(f"⏰ Setting timeout to {str(timeout)} seconds.")
 
-        print(f"\n🏃 Starting Docker container execution...")
+        self.rich_console.print(f"\n[bold blue]🏃 Starting Docker container execution...[/bold blue]")
         print(f"🏷️  Image: {docker_image}")
         print(f"📦 Container: {container_name}")
         print(f"📝 Log file: {log_file_path}")
         print(f"🎮 GPU Vendor: {gpu_vendor}")
-        print(f"{'='*80}")
+        self.rich_console.print(f"[dim]{'='*80}[/dim]")
 
         # Run the container with logging
         try:
@@ -668,12 +670,10 @@ class ContainerRunner:
                         # Show GPU info
                         if gpu_vendor.find("AMD") != -1:
                             print(f"🎮 Checking AMD GPU status...")
-                            smi = model_docker.sh("/opt/rocm/bin/rocm-smi || true")
-                            print(smi)
+                            model_docker.sh("/opt/rocm/bin/rocm-smi || true")
                         elif gpu_vendor.find("NVIDIA") != -1:
                             print(f"🎮 Checking NVIDIA GPU status...")
-                            smi = model_docker.sh("/usr/bin/nvidia-smi || true")
-                            print(smi)
+                            model_docker.sh("/usr/bin/nvidia-smi || true")
 
                         # Prepare model directory
                         model_dir = "run_directory"
@@ -785,7 +785,7 @@ class ContainerRunner:
 
                         # Run the model
                         test_start_time = time.time()
-                        print("Running model...")
+                        self.rich_console.print("[bold blue]Running model...[/bold blue]")
 
                         model_args = self.context.ctx.get(
                             "model_args", model_info["args"]
@@ -828,8 +828,8 @@ class ContainerRunner:
                                                     )
                                                     break
                                 except Exception as e:
-                                    print(
-                                        f"Warning: Could not validate multiple results file: {e}"
+                                    self.rich_console.print(
+                                        f"[yellow]Warning: Could not validate multiple results file: {e}[/yellow]"
                                     )
                                     run_results["performance"] = None
                             else:
@@ -909,20 +909,20 @@ class ContainerRunner:
 
                             if has_errors:
                                 run_results["status"] = "FAILURE"
-                                print(
-                                    f"Status: FAILURE (error patterns detected in logs)"
+                                self.rich_console.print(
+                                    f"[red]Status: FAILURE (error patterns detected in logs)[/red]"
                                 )
                             elif has_performance:
                                 run_results["status"] = "SUCCESS"
-                                print(
-                                    f"Status: SUCCESS (performance metrics found, no errors)"
+                                self.rich_console.print(
+                                    f"[green]Status: SUCCESS (performance metrics found, no errors)[/green]"
                                 )
                             else:
                                 run_results["status"] = "FAILURE"
-                                print(f"Status: FAILURE (no performance metrics)")
+                                self.rich_console.print(f"[red]Status: FAILURE (no performance metrics)[/red]")
 
                         except Exception as e:
-                            print(f"Warning: Error in status determination: {e}")
+                            self.rich_console.print(f"[yellow]Warning: Error in status determination: {e}[/yellow]")
                             # Fallback to simple performance check
                             run_results["status"] = (
                                 "SUCCESS"
@@ -988,7 +988,7 @@ class ContainerRunner:
                                 )
 
                         except Exception as e:
-                            print(f"Warning: Could not update perf.csv: {e}")
+                            self.rich_console.print(f"[yellow]Warning: Could not update perf.csv: {e}[/yellow]")
 
                         # Cleanup if not keeping alive
                         if not keep_alive:
@@ -1003,12 +1003,12 @@ class ContainerRunner:
                         del model_docker
 
         except Exception as e:
-            print("===== EXCEPTION =====")
-            print("Exception: ", e)
+            self.rich_console.print("[bold red]===== EXCEPTION =====[/bold red]")
+            self.rich_console.print(f"[red]Exception: {e}[/red]")
             import traceback
 
             traceback.print_exc()
-            print("=============== =====")
+            self.rich_console.print("[bold red]=============== =====[/bold red]")
             run_results["status"] = "FAILURE"
 
             # Also update perf.csv for failures
@@ -1033,7 +1033,7 @@ class ContainerRunner:
                 )
 
             except Exception as csv_e:
-                print(f"Warning: Could not update perf.csv with exception: {csv_e}")
+                self.rich_console.print(f"[yellow]Warning: Could not update perf.csv with exception: {csv_e}[/yellow]")
 
         return run_results
 
