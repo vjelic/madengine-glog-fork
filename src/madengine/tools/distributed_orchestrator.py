@@ -127,7 +127,7 @@ class DistributedOrchestrator:
         Returns:
             dict: Build summary
         """
-        self.rich_console.print(f"[dim]{'=' * 60}[/dim]")
+        self.rich_console.print(f"\n[dim]{'=' * 60}[/dim]")
         self.rich_console.print("[bold blue]🔨 STARTING BUILD PHASE[/bold blue]")
         if self.context._build_only_mode:
             self.rich_console.print("[yellow](Build-only mode - no GPU detection)[/yellow]")
@@ -147,7 +147,7 @@ class DistributedOrchestrator:
         print(f"Discovered {len(models)} models to build")
 
         # Copy scripts for building
-        self.rich_console.print(f"[dim]{'=' * 60}[/dim]")
+        self.rich_console.print(f"\n[dim]{'=' * 60}[/dim]")
         self.rich_console.print("[bold cyan]📋 COPYING SCRIPTS[/bold cyan]")
         self._copy_scripts()
 
