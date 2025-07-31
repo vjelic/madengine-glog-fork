@@ -131,7 +131,7 @@ class DistributedOrchestrator:
         self.rich_console.print("[bold blue]🔨 STARTING BUILD PHASE[/bold blue]")
         if self.context._build_only_mode:
             self.rich_console.print("[yellow](Build-only mode - no GPU detection)[/yellow]")
-        self.rich_console.print(f"[dim]{'=' * 60}[/dim]")
+        self.rich_console.print(f"\n[dim]{'=' * 60}[/dim]")
 
         # Print the arguments as a dictionary for better readability
         print(
@@ -139,7 +139,7 @@ class DistributedOrchestrator:
         )
 
         # Discover models
-        self.rich_console.print(f"[dim]{'=' * 60}[/dim]")
+        self.rich_console.print(f"\n[dim]{'=' * 60}[/dim]")
         self.rich_console.print("[bold cyan]🔍 DISCOVERING MODELS[/bold cyan]")
         discover_models = DiscoverModels(args=self.args)
         models = discover_models.run()
@@ -194,13 +194,13 @@ class DistributedOrchestrator:
         # Export build manifest with registry information
         builder.export_build_manifest(manifest_output, registry, batch_build_metadata)
 
-        self.rich_console.print(f"[dim]{'=' * 60}[/dim]")
+        self.rich_console.print(f"\n[dim]{'=' * 60}[/dim]")
         self.rich_console.print("[bold green]✅ BUILD PHASE COMPLETED[/bold green]")
         self.rich_console.print(f"  [green]Successful builds: {len(build_summary['successful_builds'])}[/green]")
         self.rich_console.print(f"  [red]Failed builds: {len(build_summary['failed_builds'])}[/red]")
         self.rich_console.print(f"  [blue]Total build time: {build_summary['total_build_time']:.2f} seconds[/blue]")
         print(f"  Manifest saved to: {manifest_output}")
-        self.rich_console.print(f"[dim]{'=' * 60}[/dim]")
+        self.rich_console.print(f"\n[dim]{'=' * 60}[/dim]")
 
         # Cleanup scripts
         self.cleanup()
@@ -228,9 +228,9 @@ class DistributedOrchestrator:
         Returns:
             dict: Execution summary
         """
-        self.rich_console.print(f"[dim]{'=' * 60}[/dim]")
+        self.rich_console.print(f"\n[dim]{'=' * 60}[/dim]")
         self.rich_console.print("[bold blue]🏃 STARTING RUN PHASE[/bold blue]")
-        self.rich_console.print(f"[dim]{'=' * 60}[/dim]")
+        self.rich_console.print(f"\n[dim]{'=' * 60}[/dim]")
 
         # Ensure runtime context is initialized (GPU detection, env vars, etc.)
         self.context.ensure_runtime_context()
@@ -570,14 +570,14 @@ class DistributedOrchestrator:
                             {"model": model_name, "image": image_name, "error": str(e)}
                         )
 
-        self.rich_console.print(f"[dim]{'=' * 60}[/dim]")
+        self.rich_console.print(f"\n[dim]{'=' * 60}[/dim]")
         self.rich_console.print("[bold green]✅ RUN PHASE COMPLETED[/bold green]")
         self.rich_console.print(f"  [green]Successful runs: {len(execution_summary['successful_runs'])}[/green]")
         self.rich_console.print(f"  [red]Failed runs: {len(execution_summary['failed_runs'])}[/red]")
         self.rich_console.print(
             f"  [blue]Total execution time: {execution_summary['total_execution_time']:.2f} seconds[/blue]"
         )
-        self.rich_console.print(f"[dim]{'=' * 60}[/dim]")
+        self.rich_console.print(f"\n[dim]{'=' * 60}[/dim]")
 
         # Convert output CSV to HTML like run_models.py does
         try:
@@ -613,9 +613,9 @@ class DistributedOrchestrator:
         Returns:
             dict: Complete workflow summary
         """
-        self.rich_console.print(f"[dim]{'=' * 80}[/dim]")
+        self.rich_console.print(f"\n[dim]{'=' * 80}[/dim]")
         self.rich_console.print("[bold magenta]🚀 STARTING COMPLETE DISTRIBUTED WORKFLOW[/bold magenta]")
-        self.rich_console.print(f"[dim]{'=' * 80}[/dim]")
+        self.rich_console.print(f"\n[dim]{'=' * 80}[/dim]")
 
         # Build phase
         build_summary = self.build_phase(registry, clean_cache)
@@ -633,14 +633,14 @@ class DistributedOrchestrator:
             ),
         }
 
-        self.rich_console.print(f"[dim]{'=' * 80}[/dim]")
+        self.rich_console.print(f"\n[dim]{'=' * 80}[/dim]")
         if workflow_summary['overall_success']:
             self.rich_console.print("[bold green]🎉 COMPLETE WORKFLOW FINISHED SUCCESSFULLY[/bold green]")
             self.rich_console.print(f"  [green]Overall success: {workflow_summary['overall_success']}[/green]")
         else:
             self.rich_console.print("[bold red]❌ COMPLETE WORKFLOW FINISHED WITH ERRORS[/bold red]")
             self.rich_console.print(f"  [red]Overall success: {workflow_summary['overall_success']}[/red]")
-        self.rich_console.print(f"[dim]{'=' * 80}[/dim]")
+        self.rich_console.print(f"\n[dim]{'=' * 80}[/dim]")
 
         return workflow_summary
 
