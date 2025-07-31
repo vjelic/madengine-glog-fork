@@ -371,12 +371,6 @@ class DockerBuilder:
             )
         )
 
-        self.rich_console.print()
-        self.rich_console.print("[bold green]INFO: batch_build_metadata[/bold green]")
-        self.rich_console.print(batch_build_metadata)
-        self.rich_console.print("[bold green]INFO: built_images[/bold green]")
-        self.rich_console.print(self.built_images)
-
         # Set registry for each built image
         for image_name, build_info in self.built_images.items():
             # If registry is not set in build_info, set it from argument
