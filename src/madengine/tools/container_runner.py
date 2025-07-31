@@ -670,12 +670,10 @@ class ContainerRunner:
                         # Show GPU info
                         if gpu_vendor.find("AMD") != -1:
                             print(f"🎮 Checking AMD GPU status...")
-                            smi = model_docker.sh("/opt/rocm/bin/rocm-smi || true")
-                            print(smi)
+                            model_docker.sh("/opt/rocm/bin/rocm-smi || true")
                         elif gpu_vendor.find("NVIDIA") != -1:
                             print(f"🎮 Checking NVIDIA GPU status...")
-                            smi = model_docker.sh("/usr/bin/nvidia-smi || true")
-                            print(smi)
+                            model_docker.sh("/usr/bin/nvidia-smi || true")
 
                         # Prepare model directory
                         model_dir = "run_directory"
