@@ -37,6 +37,7 @@ console = Console()
 
 # Import madengine components
 from madengine.tools.distributed_orchestrator import DistributedOrchestrator
+from madengine.tools.discover_models import DiscoverModels
 from madengine.runners.orchestrator_generation import (
     generate_ansible_setup,
     generate_k8s_setup,
@@ -314,7 +315,6 @@ def _process_batch_manifest_entries(
         guest_os: Guest OS for the build
         gpu_vendor: GPU vendor for the build
     """
-    from madengine.tools.discover_models import DiscoverModels
 
     # Load the existing build manifest
     if os.path.exists(manifest_output):
@@ -1044,6 +1044,51 @@ def run(
         raise
     except Exception as e:
         console.print(f"💥 [bold red]Run process failed: {e}[/bold red]")
+        if verbose:
+            console.print_exception()
+        raise typer.Exit(ExitCode.FAILURE)
+
+
+@app.command()
+def discover(
+    tags: Annotated[
+        List[str],
+        typer.Option("--tags", "-t", help="Model tags to discover (can specify multiple)"),
+    ] = [],
+    verbose: Annotated[
+        bool, typer.Option("--verbose", "-v", help="Enable verbose logging")
+    ] = False,
+) -> None:
+    """
+    🔍 Discover all models in the project.
+
+    This command discovers all available models in the project based on the
+    specified tags. If no tags are provided, all models will be discovered.
+    """
+    setup_logging(verbose)
+
+    console.print(
+        Panel(
+            f"🔍 [bold cyan]Discovering Models[/bold cyan]\n"
+            f"Tags: [yellow]{tags if tags else 'All models'}[/yellow]",
+            title="Model Discovery",
+            border_style="blue",
+        )
+    )
+
+    try:
+        # Create args namespace similar to mad.py
+        args = create_args_namespace(tags=tags)
+        
+        # Use DiscoverModels class
+        # Note: DiscoverModels prints output directly and returns None
+        discover_models_instance = DiscoverModels(args=args)
+        result = discover_models_instance.run()
+        
+        console.print("✅ [bold green]Model discovery completed successfully[/bold green]")
+
+    except Exception as e:
+        console.print(f"💥 [bold red]Model discovery failed: {e}[/bold red]")
         if verbose:
             console.print_exception()
         raise typer.Exit(ExitCode.FAILURE)
