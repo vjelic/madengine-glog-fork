@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-""" Module for creating DB tables interfaces
+"""Module for creating DB tables interfaces
 
 This module provides the base class for our own common functionalities among tables
 

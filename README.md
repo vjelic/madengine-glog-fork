@@ -1,10 +1,12 @@
-# madengine
+# MADEngine
 
-A comprehensive AI model automation and benchmarking toolkit designed to work seamlessly with the [MAD (Model Automation and Dashboarding)](https://github.com/ROCm/MAD) package ecosystem.
+An enterprise-grade AI model automation and benchmarking CLI tool designed to run Large Language Models (LLMs) and Deep Learning models locally or in distributed environments. Part of the [MAD (Model Automation and Dashboarding)](https://github.com/ROCm/MAD) ecosystem.
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://python.org)
 [![Docker](https://img.shields.io/badge/docker-required-blue.svg)](https://docker.com)
+[![CI](https://img.shields.io/badge/CI-GitHub%20Actions-green.svg)](https://github.com/ROCm/madengine/actions)
+[![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 ## Table of Contents
 
@@ -20,6 +22,7 @@ A comprehensive AI model automation and benchmarking toolkit designed to work se
   - [Runner Types](#runner-types)
   - [Inventory Configuration](#inventory-configuration)
   - [Examples](#examples)
+- [SLURM Runner Quick Reference](#slurm-runner-quick-reference)
 - [Configuration](#configuration)
 - [Advanced Usage](#advanced-usage)
 - [Deployment Scenarios](#deployment-scenarios)
@@ -31,20 +34,21 @@ A comprehensive AI model automation and benchmarking toolkit designed to work se
 
 ## Overview
 
-madengine is an enterprise-grade AI model automation and dashboarding command-line tool designed to run Large Language Models (LLMs) and Deep Learning models locally or in distributed environments. It provides a modern, production-ready solution for AI model benchmarking with comprehensive CI/CD integration capabilities.
+MADEngine is an enterprise-grade AI model automation and benchmarking CLI tool designed to run Large Language Models (LLMs) and Deep Learning models locally or in distributed environments. Built with modern Python practices and a dual CLI interface, it provides both traditional single-node execution and advanced distributed orchestration capabilities.
 
 ### Key Capabilities
 
-- **Reliable Model Execution**: Run AI models reliably across supported platforms with quality assurance
-- **Distributed Architecture**: Split build and execution phases for optimal resource utilization
-- **Comprehensive Automation**: Minimalistic, out-of-the-box solution for hardware and software stack validation
-- **Real-time Metrics**: Audience-relevant AI model performance tracking with intuitive presentation
-- **Enterprise Integration**: Best practices for internal projects and external open-source model handling
-- **MAD Ecosystem Integration**: Seamless integration with the MAD package for model discovery and management
+- **Dual CLI Interface**: Traditional `madengine` command for local execution, modern `madengine-cli` for distributed workflows
+- **Distributed Architecture**: Separate build and execution phases optimized for different infrastructure types
+- **Rich Terminal Output**: Built with Typer and Rich for excellent user experience with progress bars and formatted output
+- **Flexible Model Discovery**: Multiple discovery methods supporting static configurations and dynamic generation
+- **Comprehensive Error Handling**: Unified error system with structured error types and Rich console formatting
+- **Enterprise Integration**: Production-ready with extensive testing, logging, and monitoring capabilities
+- **MAD Ecosystem Integration**: Seamless integration with the MAD package ecosystem for model discovery and management
 
 ### MAD Package Integration
 
-madengine is designed to work within the **MAD (Model Automation and Dashboarding) package**, which serves as a comprehensive model hub containing:
+MADEngine is designed to work within the **MAD (Model Automation and Dashboarding) package**, which serves as a comprehensive model hub containing:
 
 - Docker configurations and container definitions
 - Model scripts and automation workflows  
@@ -52,22 +56,24 @@ madengine is designed to work within the **MAD (Model Automation and Dashboardin
 - Data providers and credential management
 - Build tools and environment configurations
 
+**Important**: MADEngine must be executed from within a MAD package directory structure for proper model discovery and execution.
+
 ## Features
 
-🚀 **Modern CLI Interface**: Built with Typer and Rich for excellent user experience  
-📊 **Rich Terminal Output**: Progress bars, tables, panels with syntax highlighting  
+🚀 **Dual CLI Interface**: Traditional `madengine` and modern `madengine-cli` for different use cases  
+📊 **Rich Terminal Output**: Built with Typer and Rich - progress bars, tables, panels with syntax highlighting  
 🎯 **Intelligent Workflows**: Automatic detection of build-only vs. full workflow operations  
-🔄 **Distributed Execution**: Separate build and run phases for scalable deployments  
-🐳 **Docker Integration**: Containerized model execution with GPU support  
-📋 **Model Discovery**: Automatic discovery from MAD package structure  
-🏷️ **Flexible Tagging**: Hierarchical model selection with parameterization  
-⚡ **Performance Optimized**: Built for speed and resource efficiency  
-🔐 **Credential Management**: Centralized authentication for repositories and registries  
-📈 **Monitoring & Reporting**: Comprehensive metrics collection and analysis  
-🌐 **Multi-Platform**: Support for AMD ROCm, NVIDIA CUDA, and Intel architectures  
-🔧 **Extensible**: Plugin architecture for custom tools and integrations  
-📦 **Batch Processing**: Support for batch manifest files with selective building  
-🏃 **Streamlined Runners**: Simplified distributed execution interface with comprehensive reporting
+🔄 **Distributed Execution**: Four runner types - SSH, Ansible, Kubernetes, and SLURM for different infrastructures  
+🐳 **Docker Integration**: Full containerized execution with GPU support (ROCm, CUDA, Intel)  
+📋 **Flexible Model Discovery**: Static JSON, directory-specific, and dynamic Python-based discovery  
+🏷️ **Hierarchical Tagging**: Advanced model selection with parameterization support  
+⚡ **Performance Optimized**: Concurrent execution, efficient resource utilization  
+🔐 **Credential Management**: Centralized authentication with environment variable overrides  
+📈 **Comprehensive Reporting**: Detailed metrics, performance analysis, and execution summaries  
+🌐 **Multi-Architecture**: AMD ROCm, NVIDIA CUDA, and Intel GPU architectures  
+🔧 **Modern Python**: Built with `pyproject.toml`, Hatchling, type hints, and comprehensive testing  
+📦 **Batch Processing**: Advanced batch manifest support with selective building capabilities  
+🏃 **Production Ready**: Extensive error handling, logging, and distributed execution patterns
 
 ## Architecture
 
@@ -164,6 +170,9 @@ pip install madengine[ansible]
 # Kubernetes Runner
 pip install madengine[kubernetes]
 
+# SLURM Runner
+pip install madengine[slurm]
+
 # All runners
 pip install madengine[runners]
 
@@ -184,6 +193,9 @@ pip install ansible-runner>=2.0.0 PyYAML>=5.4.0
 
 # Kubernetes Runner
 pip install kubernetes>=20.0.0 PyYAML>=5.4.0
+
+# SLURM Runner  
+pip install paramiko>=2.7.0 scp>=0.14.0
 ```
 
 ### Docker Environment Setup
@@ -222,8 +234,29 @@ mypy src/madengine  # Type checking
 This project uses modern Python packaging standards:
 - **`pyproject.toml`**: Single source of truth for dependencies and configuration
 - **Hatchling build backend**: Modern, efficient build system
+- **Automatic versioning**: Uses `versioningit` with git tags for semantic versioning
+- **Optional dependencies**: Modular installation for different runner types
 - **No requirements.txt**: All dependencies managed in pyproject.toml
 - **pip ≥ 21.3**: Full pyproject.toml support required
+
+### Error Handling & Reliability
+
+MADEngine includes a comprehensive error handling system:
+- **Unified Error Types**: Structured error categories (Validation, Connection, Authentication, etc.)
+- **Rich Error Display**: Beautiful, informative error messages with suggestions
+- **Recovery Mechanisms**: Automatic retries and graceful degradation
+- **Comprehensive Logging**: Detailed logging with configurable verbosity
+- **Production Monitoring**: Integration-ready error reporting
+
+### Testing & Quality Assurance
+
+MADEngine maintains high code quality standards:
+- **Comprehensive Test Suite**: 95%+ test coverage for CLI components
+- **GPU-Aware Testing**: Tests automatically detect and adapt to available hardware
+- **Mock-Based Isolation**: Extensive use of mocks for reliable, fast testing
+- **Integration Testing**: End-to-end workflow validation
+- **Code Quality Tools**: Black, isort, flake8, mypy for consistent code style
+- **Pre-commit Hooks**: Automated quality checks before commits
 
 ## Quick Start
 
@@ -413,11 +446,18 @@ madengine-cli build --batch-manifest batch.json \
 
 ## Command Line Interface
 
-madengine provides two CLI interfaces: the traditional `madengine` command and the modern `madengine-cli` for distributed workflows.
+MADEngine provides two CLI interfaces designed for different use cases:
+
+### Dual CLI Architecture
+
+| Interface | Use Case | Features |
+|-----------|----------|----------|
+| `madengine` | Traditional local execution | Argparse-based, simple interface, backward compatible |
+| `madengine-cli` | Modern distributed workflows | Typer+Rich interface, distributed runners, advanced error handling |
 
 ### Traditional CLI (`madengine`)
 
-Basic model execution and discovery:
+Ideal for local development, testing, and simple model execution:
 
 ```bash
 # Run models locally
@@ -436,7 +476,7 @@ madengine database create-table
 
 ### Modern Distributed CLI (`madengine-cli`)
 
-Advanced distributed workflows with rich terminal output:
+Production-ready interface with advanced distributed workflows and rich terminal output:
 
 #### Build Command
 ```bash
@@ -507,6 +547,13 @@ madengine-cli runner k8s \
     --manifests-dir k8s-setup \
     --report-output k8s_execution_report.json \
     --verbose
+
+# SLURM Runner - HPC cluster execution using SLURM workload manager
+madengine-cli runner slurm \
+    --inventory slurm_inventory.yml \
+    --job-scripts-dir slurm-setup \
+    --timeout 7200 \
+    --verbose
 ```
 
 #### Generate Commands
@@ -520,6 +567,12 @@ madengine-cli generate ansible \
 madengine-cli generate k8s \
     --manifest-file build_manifest.json \
     --namespace madengine-prod
+
+# Generate SLURM job scripts and configuration
+madengine-cli generate slurm \
+    --manifest-file build_manifest.json \
+    --environment prod \
+    --output-dir slurm-setup
 ```
 
 ### Command Options
@@ -589,12 +642,12 @@ The MADEngine distributed runner system provides a unified interface for orchest
 │                (BaseDistributedRunner)                          │
 └─────────────────────────────────────────────────────────────────┘
                                 │
-                ┌───────────────┼───────────────┐
-                ▼               ▼               ▼
-┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
-│   SSH Runner    │  │ Ansible Runner  │  │ Kubernetes      │
-│                 │  │                 │  │ Runner          │
-└─────────────────┘  └─────────────────┘  └─────────────────┘
+                ┌───────────────┼───────────────┼───────────────┐
+                ▼               ▼               ▼               ▼
+┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
+│   SSH Runner    │  │ Ansible Runner  │  │ Kubernetes      │  │ SLURM Runner    │
+│                 │  │                 │  │ Runner          │  │                 │
+└─────────────────┘  └─────────────────┘  └─────────────────┘  └─────────────────┘
                                 │
                                 ▼
 ┌─────────────────────────────────────────────────────────────────┐
@@ -629,6 +682,12 @@ The MADEngine distributed runner system provides a unified interface for orchest
 - Continuous integration for ML model validation
 - Automated testing and quality gates
 - Reproducible benchmarking workflows
+
+#### 6. HPC Cluster Environments (SLURM)
+- High-performance computing clusters with SLURM job scheduling
+- Academic and research institution supercomputers
+- Large-scale model training and benchmarking workloads
+- Resource-constrained environments with job queuing
 
 ### Runner Types
 
@@ -759,6 +818,53 @@ madengine-cli runner k8s \
     --verbose
 ```
 
+#### 4. SLURM Runner
+
+Executes models on HPC clusters using SLURM (Simple Linux Utility for Resource Management) workload manager with two-step generation and execution workflow.
+
+**Use Cases:**
+- High-performance computing clusters
+- Academic and research institutions
+- Supercomputer environments
+- Resource-constrained environments with job queuing
+- Large-scale distributed model training
+
+**Features:**
+- **Two-Step Workflow**: Generate job scripts first, then execute
+- **Job Array Support**: Efficient parallel execution across multiple models
+- **SSH Connection**: Secure connection to SLURM login nodes
+- **Environment Setup**: Automated MAD repository setup on shared filesystem
+- **SLURM Integration**: Native job submission, monitoring, and result collection
+- **Resource Management**: GPU, CPU, and memory allocation per job
+- **Module System**: Integration with HPC module environments
+- **Partition Support**: Multi-partition execution with queue management
+
+**Installation:**
+```bash
+# SLURM Runner dependencies (same as SSH)
+pip install madengine[slurm]
+# Or manually: pip install paramiko>=2.7.0 scp>=0.14.0
+```
+
+**Two-Step Workflow:**
+
+Step 1: Generate SLURM configuration
+```bash
+madengine-cli generate slurm \
+    --manifest-file build_manifest.json \
+    --environment prod \
+    --output-dir slurm-setup
+```
+
+Step 2: Execute SLURM workload
+```bash
+madengine-cli runner slurm \
+    --inventory slurm_inventory.yml \
+    --job-scripts-dir slurm-setup \
+    --timeout 7200 \
+    --verbose
+```
+
 ### Inventory Configuration
 
 #### SSH/Ansible Inventory (inventory.yml)
@@ -793,6 +899,82 @@ gpu_nodes:
       datacenter: "dc2"
     environment:
       CUDA_VISIBLE_DEVICES: "0,1,2,3,4,5,6,7"
+```
+
+#### SLURM Inventory (slurm_inventory.yml)
+
+```yaml
+# SLURM cluster configuration
+slurm_cluster:
+  # Login/head node for SSH connection
+  login_node:
+    hostname: "hpc-login01"  
+    address: "hpc-login01.example.com"
+    port: 22
+    username: "madengine"
+    ssh_key_path: "~/.ssh/slurm_key"
+
+  # Cluster identification
+  cluster_name: "madengine-hpc-cluster"
+
+  # Available SLURM partitions
+  partitions:
+    - name: "gpu"
+      max_time: "24:00:00"
+      max_nodes: 32
+      default_gpu_count: 8
+      gpu_types: ["MI250X", "A100"]
+      memory_per_node: "256G"
+      gpu_vendor: "AMD"
+      qos: "normal"
+      account: "madengine_proj"
+
+    - name: "debug"
+      max_time: "02:00:00"
+      max_nodes: 4
+      default_gpu_count: 1
+      gpu_types: ["MI250X"]
+      memory_per_node: "64G"
+      gpu_vendor: "AMD"
+      qos: "debug"
+
+  # Module system configuration
+  modules:
+    - "rocm/5.7.0"
+    - "python/3.9"
+    - "gcc/11.2.0"
+
+  # Environment variables for jobs
+  environment:
+    ROCM_PATH: "/opt/rocm"
+    HCC_AMDGPU_TARGET: "gfx90a"
+    OMP_NUM_THREADS: "1"
+
+  # GPU vendor mapping for resource allocation
+  gpu_mapping:
+    AMD:
+      gres_name: "gpu"
+      constraint: "mi250x"
+      memory_per_gpu: "64G"
+    NVIDIA:
+      gres_name: "gpu"
+      constraint: "a100"
+      memory_per_gpu: "80G"
+
+  # Job execution settings
+  execution:
+    max_concurrent_jobs: 8
+    job_array_strategy: true
+    default_timeout: 3600
+    retry_failed_jobs: true
+    max_retries: 3
+
+# Workspace on shared filesystem
+workspace:
+  shared_filesystem: "/shared/madengine"
+  results_dir: "/shared/results"
+  logs_dir: "logs"
+  venv_path: "venv"
 ```
 
 #### Kubernetes Inventory (k8s_inventory.yml)
@@ -923,6 +1105,36 @@ madengine-cli runner ansible \
     --verbose
 ```
 
+#### Example 5: SLURM HPC Cluster
+
+Execute models on a SLURM-managed HPC cluster:
+
+```bash
+# Step 1: Generate SLURM job scripts and configuration
+madengine-cli generate slurm \
+    --manifest-file build_manifest.json \
+    --environment hpc \
+    --output-dir hpc-slurm-setup
+
+# Step 2: Execute on SLURM cluster
+madengine-cli runner slurm \
+    --inventory hpc_cluster.yml \
+    --job-scripts-dir hpc-slurm-setup \
+    --timeout 14400 \
+    --verbose
+
+# Alternative: Use production environment with custom timeout
+madengine-cli generate slurm \
+    --manifest-file production_manifest.json \
+    --environment prod \
+    --output-dir prod-slurm
+
+madengine-cli runner slurm \
+    --inventory prod_slurm_cluster.yml \
+    --job-scripts-dir prod-slurm \
+    --timeout 21600
+```
+
 ### Registry Integration
 
 #### Automatic Registry Detection
@@ -1025,8 +1237,15 @@ Contexts are runtime parameters that control model execution behavior:
 ```
 
 **Required Fields for Build Operations:**
-- `gpu_vendor`: AMD, NVIDIA, INTEL
-- `guest_os`: UBUNTU, CENTOS, ROCKY
+- `gpu_vendor`: AMD, NVIDIA, INTEL (case-insensitive, validated in CLI)
+- `guest_os`: UBUNTU, CENTOS, ROCKY (case-insensitive, validated in CLI)
+
+**Validation Features:**
+- Comprehensive input validation with helpful error messages
+- Rich formatted error panels with suggestions
+- Context validation for both string and file inputs
+- Registry connectivity validation
+- GPU architecture compatibility checks
 
 ### Credential Management
 
@@ -1092,27 +1311,39 @@ Customize build tools in `scripts/common/tools.json`:
 
 ### Environment Variables
 
-madengine supports various environment variables for configuration and behavior control:
+MADEngine supports various environment variables for configuration and behavior control:
 
 | Variable | Type | Description |
 |----------|------|-------------|
 | `MAD_VERBOSE_CONFIG` | boolean | Set to "true" to enable verbose configuration logging |
 | `MAD_SETUP_MODEL_DIR` | boolean | Set to "true" to enable automatic MODEL_DIR setup during import |
 | `MODEL_DIR` | string | Path to model directory to copy to current working directory |
+| `MAD_DOCKERHUB_USER` | string | Docker Hub username (overrides credential.json) |
+| `MAD_DOCKERHUB_PASSWORD` | string | Docker Hub password/token (overrides credential.json) |
+| `MAD_DOCKERHUB_REPO` | string | Docker Hub repository (overrides credential.json) |
 | `MAD_MINIO` | JSON string | MinIO configuration for distributed storage |
 | `MAD_AWS_S3` | JSON string | AWS S3 configuration for cloud storage |
 | `NAS_NODES` | JSON string | NAS nodes configuration for network storage |
 | `PUBLIC_GITHUB_ROCM_KEY` | JSON string | GitHub token configuration for ROCm access |
 
 **Configuration Priority:**
-1. Environment variables (as JSON strings)
-2. `credential.json` file
-3. Built-in defaults
+1. Environment variables (highest priority)
+2. Command-line arguments
+3. `credential.json` file
+4. Built-in defaults (lowest priority)
+
+**Docker Hub Override Feature:**
+Environment variables `MAD_DOCKERHUB_*` automatically override credential.json settings for enhanced CI/CD integration.
 
 **Example Usage:**
 ```bash
 # Enable verbose logging
 export MAD_VERBOSE_CONFIG=true
+
+# Configure Docker Hub credentials (CI/CD friendly)
+export MAD_DOCKERHUB_USER=my_username
+export MAD_DOCKERHUB_PASSWORD=my_token
+export MAD_DOCKERHUB_REPO=my_org/repo
 
 # Configure AWS S3 access
 export MAD_AWS_S3='{"username": "aws_access_key", "password": "aws_secret_key"}'
@@ -1240,6 +1471,33 @@ madengine-cli runner ansible \
   --verbose
 ```
 
+### Scenario 4: Academic/Research Institution HPC
+
+**Setup**: SLURM-managed HPC cluster with shared filesystem and job queuing  
+**Goal**: Large-scale model benchmarking for research publications
+
+```bash
+# Generate SLURM configuration for research workload
+madengine-cli generate slurm \
+  --manifest-file research_models.json \
+  --environment hpc \
+  --output-dir research-slurm-setup
+
+# Execute distributed benchmarking on HPC cluster
+madengine-cli runner slurm \
+  --inventory hpc_cluster.yml \
+  --job-scripts-dir research-slurm-setup \
+  --timeout 28800 \
+  --verbose
+
+# Monitor job progress
+squeue -u madengine
+sacct -j <job_id> --format=JobID,JobName,State,ExitCode,Elapsed,NodeList
+
+# Collect results from shared filesystem
+ls /shared/results/*/job_summary.json
+```
+
 ## Best Practices
 
 ### 1. Inventory Management
@@ -1353,6 +1611,31 @@ madengine-cli runner ansible \
 - Check permissions in working directory
 - Manually test venv creation: `python3 -m venv test_venv`
 
+#### 8. SLURM Job Issues
+
+**Problem**: SLURM jobs fail to submit or execute properly
+
+**Solutions:**
+- Check SLURM cluster status: `sinfo`
+- Verify partition availability: `sinfo -p gpu`
+- Test SSH connection to login node: `ssh user@hpc-login01`
+- Check job queue status: `squeue -u $(whoami)`
+- Verify account and QoS: `sacctmgr show assoc user=$(whoami)`
+- Check job script permissions: `ls -la slurm-setup/*.sh`
+- Test manual job submission: `sbatch slurm-setup/setup_environment.sh`
+- Review SLURM job logs: `cat logs/madengine_*.out logs/madengine_*.err`
+
+#### 9. Shared Filesystem Issues
+
+**Problem**: Cannot access shared filesystem or workspace setup fails
+
+**Solutions:**
+- Check mount points: `df -h | grep shared`
+- Verify filesystem permissions: `ls -la /shared/madengine`
+- Test file creation: `touch /shared/madengine/test_file`
+- Check NFS/Lustre status (if applicable)
+- Verify workspace directory exists and is writable
+
 ### Debugging Tips
 
 1. **Enable Verbose Logging**: Always use `--verbose` for troubleshooting
@@ -1395,10 +1678,10 @@ madengine-cli build [OPTIONS]
 madengine-cli run [OPTIONS]
 
 # Generate Commands
-madengine-cli generate <ansible|k8s> [OPTIONS]
+madengine-cli generate <ansible|k8s|slurm> [OPTIONS]
 
 # Runner Commands
-madengine-cli runner <ssh|ansible|k8s> [OPTIONS]
+madengine-cli runner <ssh|ansible|k8s|slurm> [OPTIONS]
 ```
 
 ### Build Command Options
@@ -1437,6 +1720,7 @@ madengine-cli runner <ssh|ansible|k8s> [OPTIONS]
 - `ssh`: SSH-based distributed runner
 - `ansible`: Ansible-based distributed runner  
 - `k8s`: Kubernetes-based distributed runner
+- `slurm`: SLURM HPC cluster distributed runner
 
 ### Build Modes
 
@@ -1479,6 +1763,14 @@ madengine-cli runner <ssh|ansible|k8s> [OPTIONS]
 | `--kubeconfig` | Path to kubeconfig file | Auto-detected |
 | `--report-output` | Output file for execution report | `runner_report.json` |
 
+#### SLURM Runner
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--inventory, -i` | Path to SLURM inventory file (YAML or JSON format) | `inventory.yml` |
+| `--job-scripts-dir, -j` | Directory containing generated SLURM job scripts (generated by 'madengine-cli generate slurm') | `slurm-setup` |
+| `--timeout, -t` | Execution timeout in seconds | `3600` |
+
 ### Exit Codes
 
 - `0`: Success
@@ -1487,9 +1779,36 @@ madengine-cli runner <ssh|ansible|k8s> [OPTIONS]
 - `3`: Run failure
 - `4`: Invalid arguments
 
+## Project Status
+
+### Current Implementation
+
+MADEngine is actively maintained with the following features fully implemented:
+
+✅ **Dual CLI Interface**: Both traditional and modern CLIs are production-ready  
+✅ **Distributed Runners**: SSH, Ansible, Kubernetes, and SLURM runners fully functional  
+✅ **Model Discovery**: All discovery methods (static, directory-specific, dynamic) working  
+✅ **Error Handling**: Comprehensive error system with Rich formatting  
+✅ **Testing Infrastructure**: Extensive test suite with high coverage  
+✅ **Documentation**: Complete API reference and usage examples  
+✅ **HPC Integration**: SLURM runner with job arrays and HPC cluster support  
+
+### Known Considerations
+
+⚠️ **Dual CLI Maintenance**: Currently maintaining two CLI implementations for compatibility  
+⚠️ **Complex Configuration**: Multiple configuration files may need consolidation  
+⚠️ **Long Functions**: Some orchestrator methods could benefit from refactoring  
+
+### Future Roadmap
+
+🔄 **CLI Consolidation**: Plan to streamline dual CLI approach while maintaining compatibility  
+🔄 **Configuration Simplification**: Unified configuration management system  
+🔄 **Enhanced Monitoring**: Advanced metrics and monitoring capabilities  
+🔄 **Performance Optimization**: Continued optimization for large-scale deployments  
+
 ## Contributing
 
-We welcome contributions to madengine! Please see our [contributing guidelines](CONTRIBUTING.md) for details.
+We welcome contributions to MADEngine! Please see our [contributing guidelines](CONTRIBUTING.md) for details.
 
 ### Development Setup
 
@@ -1516,9 +1835,10 @@ mypy src/madengine
 
 - Follow PEP 8 style guidelines
 - Add type hints for all functions
-- Write comprehensive tests
-- Update documentation for new features
+- Write comprehensive tests for new features
+- Update documentation for changes
 - Use semantic commit messages
+- Maintain backward compatibility where possible
 
 ## License
 
@@ -1567,6 +1887,84 @@ madengine run --tags models \
 madengine run --tags models \
   --additional-context '{"tools": [{"name":"trace"}]}'
 ```
+
+---
+
+## SLURM Runner Quick Reference
+
+### Two-Step Workflow
+
+**Step 1: Generate SLURM Configuration**
+```bash
+# Basic generation
+madengine-cli generate slurm --manifest-file build_manifest.json
+
+# Production environment with custom output
+madengine-cli generate slurm \
+  --manifest-file build_manifest.json \
+  --environment prod \
+  --output-dir production-slurm-setup
+```
+
+**Generated Files:**
+```
+slurm-setup/
+├── madengine_job_array.sh      # Main job array script
+├── setup_environment.sh       # Environment setup script
+├── inventory.yml              # SLURM cluster configuration
+├── submit_jobs.py             # Job submission helper
+└── job_scripts/               # Individual job scripts
+    ├── madengine_model1.sh
+    └── madengine_model2.sh
+```
+
+**Step 2: Execute SLURM Workload**
+```bash
+# Basic execution
+madengine-cli runner slurm \
+  --inventory slurm-setup/inventory.yml \
+  --job-scripts-dir slurm-setup
+
+# Production execution with extended timeout
+madengine-cli runner slurm \
+  --inventory production_cluster.yml \
+  --job-scripts-dir production-slurm-setup \
+  --timeout 14400 \
+  --verbose
+```
+
+### SLURM Commands Reference
+
+**Monitor Jobs:**
+```bash
+squeue -u $(whoami)                    # View your queued/running jobs
+sacct -j <job_id> --format=JobID,State,ExitCode,Elapsed,NodeList  # Job details
+sinfo -p gpu                          # Check partition status
+```
+
+**Job Management:**
+```bash
+sbatch setup_environment.sh           # Submit setup job manually
+sbatch madengine_job_array.sh         # Submit job array manually
+scancel <job_id>                      # Cancel job
+scontrol show job <job_id>            # Detailed job information
+```
+
+**Results Collection:**
+```bash
+ls /shared/results/*/job_summary.json # View job results
+cat logs/madengine_array_*.out        # View job output logs
+cat logs/madengine_array_*.err        # View job error logs
+```
+
+### Key Features
+
+- **Job Arrays**: Parallel execution of multiple models using SLURM job arrays
+- **Environment Setup**: Automated MAD repository cloning and madengine installation
+- **Resource Management**: GPU, CPU, and memory allocation per SLURM partition
+- **Module Integration**: Automatic loading of HPC environment modules
+- **Shared Filesystem**: Workspace management on shared storage systems
+- **SSH Connection**: Secure connection to SLURM login nodes for job management
 
 ---
 

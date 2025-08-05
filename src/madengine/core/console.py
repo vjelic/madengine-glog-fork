@@ -9,24 +9,22 @@ Copyright (c) Advanced Micro Devices, Inc. All rights reserved.
 import subprocess
 import typing
 import re
+
 # third-party modules
 import typing_extensions
 
 
 class Console:
     """Class to run console commands.
-    
+
     Attributes:
         shellVerbose (bool): The shell verbose flag.
         live_output (bool): The live output flag.
     """
-    def __init__(
-            self, 
-            shellVerbose: bool=True, 
-            live_output: bool=False
-        ) -> None:
+
+    def __init__(self, shellVerbose: bool = True, live_output: bool = False) -> None:
         """Constructor of the Console class.
-        
+
         Args:
             shellVerbose (bool): The shell verbose flag.
             live_output (bool): The live output flag.
@@ -36,19 +34,19 @@ class Console:
 
     def _highlight_docker_operations(self, command: str) -> str:
         """Highlight docker push/pull/build/run operations for better visibility.
-        
+
         Args:
             command (str): The command to potentially highlight.
-            
+
         Returns:
             str: The highlighted command if it's a docker operation.
         """
         # Check if this is a docker operation
-        docker_push_pattern = r'^docker\s+push\s+'
-        docker_pull_pattern = r'^docker\s+pull\s+'
-        docker_build_pattern = r'^docker\s+build\s+'
-        docker_run_pattern = r'^docker\s+run\s+'
-        
+        docker_push_pattern = r"^docker\s+push\s+"
+        docker_pull_pattern = r"^docker\s+pull\s+"
+        docker_build_pattern = r"^docker\s+build\s+"
+        docker_run_pattern = r"^docker\s+run\s+"
+
         if re.match(docker_push_pattern, command, re.IGNORECASE):
             return f"\n{'='*80}\n🚀 DOCKER PUSH OPERATION: {command}\n{'='*80}"
         elif re.match(docker_pull_pattern, command, re.IGNORECASE):
@@ -57,21 +55,21 @@ class Console:
             return f"\n{'='*80}\n🔨 DOCKER BUILD OPERATION: {command}\n{'='*80}"
         elif re.match(docker_run_pattern, command, re.IGNORECASE):
             return f"\n{'='*80}\n🏃 DOCKER RUN OPERATION: {command}\n{'='*80}"
-        
+
         return command
 
     def _show_docker_completion(self, command: str, success: bool = True) -> None:
         """Show completion message for docker operations.
-        
+
         Args:
             command (str): The command that was executed.
             success (bool): Whether the operation was successful.
         """
-        docker_push_pattern = r'^docker\s+push\s+'
-        docker_pull_pattern = r'^docker\s+pull\s+'
-        docker_build_pattern = r'^docker\s+build\s+'
-        docker_run_pattern = r'^docker\s+run\s+'
-        
+        docker_push_pattern = r"^docker\s+push\s+"
+        docker_pull_pattern = r"^docker\s+pull\s+"
+        docker_build_pattern = r"^docker\s+build\s+"
+        docker_run_pattern = r"^docker\s+run\s+"
+
         if re.match(docker_push_pattern, command, re.IGNORECASE):
             if success:
                 print(f"✅ DOCKER PUSH COMPLETED SUCCESSFULLY")
@@ -81,7 +79,7 @@ class Console:
                 print(f"{'='*80}\n")
         elif re.match(docker_pull_pattern, command, re.IGNORECASE):
             if success:
-                print(f"✅ DOCKER PULL COMPLETED SUCCESSFULLY") 
+                print(f"✅ DOCKER PULL COMPLETED SUCCESSFULLY")
                 print(f"{'='*80}\n")
             else:
                 print(f"❌ DOCKER PULL FAILED")
@@ -102,16 +100,16 @@ class Console:
                 print(f"{'='*80}\n")
 
     def sh(
-            self, 
-            command: str, 
-            canFail: bool=False, 
-            timeout: int=60, 
-            secret: bool=False, 
-            prefix: str="", 
-            env: typing.Optional[typing.Dict[str, str]]=None
-        ) -> str:
+        self,
+        command: str,
+        canFail: bool = False,
+        timeout: int = 60,
+        secret: bool = False,
+        prefix: str = "",
+        env: typing.Optional[typing.Dict[str, str]] = None,
+    ) -> str:
         """Run shell command.
-        
+
         Args:
             command (str): The shell command.
             canFail (bool): The flag to allow failure.
@@ -119,7 +117,7 @@ class Console:
             secret (bool): The flag to hide the command.
             prefix (str): The prefix of the output.
             env (typing_extensions.TypedDict): The environment variables.
-        
+
         Returns:
             str: The output of the shell command.
 
@@ -149,7 +147,12 @@ class Console:
                 outs, errs = proc.communicate(timeout=timeout)
             else:
                 outs = []
-                for stdout_line in iter(lambda: proc.stdout.readline().encode('utf-8', errors='replace').decode('utf-8', errors='replace'), ""):
+                for stdout_line in iter(
+                    lambda: proc.stdout.readline()
+                    .encode("utf-8", errors="replace")
+                    .decode("utf-8", errors="replace"),
+                    "",
+                ):
                     print(prefix + stdout_line, end="")
                     outs.append(stdout_line)
                 outs = "".join(outs)
@@ -158,14 +161,14 @@ class Console:
         except subprocess.TimeoutExpired as exc:
             proc.kill()
             raise RuntimeError("Console script timeout") from exc
-        
+
         # Check for failure
         success = proc.returncode == 0
-        
+
         # Show docker operation completion status
         if not secret:
             self._show_docker_completion(command, success)
-        
+
         if proc.returncode != 0:
             if not canFail:
                 if not secret:
@@ -182,6 +185,6 @@ class Console:
                         + "' failed with exit code "
                         + str(proc.returncode)
                     )
-                
+
         # Return the output
         return outs.strip()

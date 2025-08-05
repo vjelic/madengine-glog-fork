@@ -8,7 +8,7 @@ Environment Variables:
     - MAD_SETUP_MODEL_DIR: Set to "true" to enable automatic MODEL_DIR setup during import
     - MODEL_DIR: Path to model directory to copy to current working directory
     - MAD_MINIO: JSON string with MinIO configuration
-    - MAD_AWS_S3: JSON string with AWS S3 configuration  
+    - MAD_AWS_S3: JSON string with AWS S3 configuration
     - NAS_NODES: JSON string with NAS nodes configuration
     - PUBLIC_GITHUB_ROCM_KEY: JSON string with GitHub token configuration
 
@@ -17,7 +17,7 @@ Configuration Loading:
     1. Environment variables (as JSON strings)
     2. credential.json file
     3. Built-in defaults
-    
+
     Invalid JSON in environment variables will fall back to defaults with error logging.
 
 Copyright (c) Advanced Micro Devices, Inc. All rights reserved.
@@ -27,6 +27,7 @@ import os
 import json
 import logging
 
+
 # Utility function for optional verbose logging of configuration
 def _log_config_info(message: str, force_print: bool = False):
     """Log configuration information either to logger or print if specified."""
@@ -35,11 +36,13 @@ def _log_config_info(message: str, force_print: bool = False):
     else:
         logging.debug(message)
 
+
 # third-party modules
 from madengine.core.console import Console
 
 # Get the model directory, if it is not set, set it to None.
 MODEL_DIR = os.environ.get("MODEL_DIR")
+
 
 def _setup_model_dir():
     """Setup model directory if MODEL_DIR environment variable is set."""
@@ -52,12 +55,14 @@ def _setup_model_dir():
         console.sh(f"cp -vLR --preserve=all {MODEL_DIR}/* {cwd_path}")
         _log_config_info(f"Model dir: {MODEL_DIR} copied to current dir: {cwd_path}")
 
+
 # Only setup model directory if explicitly requested (when not just importing for constants)
 if os.environ.get("MAD_SETUP_MODEL_DIR", "").lower() == "true":
     _setup_model_dir()
 
 # MADEngine credentials configuration
 CRED_FILE = "credential.json"
+
 
 def _load_credentials():
     """Load credentials from file with proper error handling."""
@@ -77,7 +82,9 @@ def _load_credentials():
         _log_config_info(f"Unexpected error loading {CRED_FILE}: {e}, using defaults")
         return {}
 
+
 CREDS = _load_credentials()
+
 
 def _get_nas_nodes():
     """Initialize NAS_NODES configuration."""
@@ -88,28 +95,36 @@ def _get_nas_nodes():
             return CREDS["NAS_NODES"]
         else:
             _log_config_info("NAS_NODES is using default values.")
-            return [{
-                "NAME": "DEFAULT",
-                "HOST": "localhost",
-                "PORT": 22,
-                "USERNAME": "username",
-                "PASSWORD": "password",
-            }]
+            return [
+                {
+                    "NAME": "DEFAULT",
+                    "HOST": "localhost",
+                    "PORT": 22,
+                    "USERNAME": "username",
+                    "PASSWORD": "password",
+                }
+            ]
     else:
         _log_config_info("NAS_NODES is loaded from env variables.")
         try:
             return json.loads(os.environ["NAS_NODES"])
         except json.JSONDecodeError as e:
-            _log_config_info(f"Error parsing NAS_NODES environment variable: {e}, using defaults")
-            return [{
-                "NAME": "DEFAULT",
-                "HOST": "localhost",
-                "PORT": 22,
-                "USERNAME": "username",
-                "PASSWORD": "password",
-            }]
+            _log_config_info(
+                f"Error parsing NAS_NODES environment variable: {e}, using defaults"
+            )
+            return [
+                {
+                    "NAME": "DEFAULT",
+                    "HOST": "localhost",
+                    "PORT": 22,
+                    "USERNAME": "username",
+                    "PASSWORD": "password",
+                }
+            ]
+
 
 NAS_NODES = _get_nas_nodes()
+
 
 def _get_mad_aws_s3():
     """Initialize MAD_AWS_S3 configuration."""
@@ -129,13 +144,17 @@ def _get_mad_aws_s3():
         try:
             return json.loads(os.environ["MAD_AWS_S3"])
         except json.JSONDecodeError as e:
-            _log_config_info(f"Error parsing MAD_AWS_S3 environment variable: {e}, using defaults")
+            _log_config_info(
+                f"Error parsing MAD_AWS_S3 environment variable: {e}, using defaults"
+            )
             return {
                 "USERNAME": None,
                 "PASSWORD": None,
             }
 
+
 MAD_AWS_S3 = _get_mad_aws_s3()
+
 
 # Check the MAD_MINIO environment variable which is a dict.
 def _get_mad_minio():
@@ -150,7 +169,7 @@ def _get_mad_minio():
             return {
                 "USERNAME": None,
                 "PASSWORD": None,
-                "MINIO_ENDPOINT": "http://localhost:9000",  
+                "MINIO_ENDPOINT": "http://localhost:9000",
                 "AWS_ENDPOINT_URL_S3": "http://localhost:9000",
             }
     else:
@@ -158,15 +177,19 @@ def _get_mad_minio():
         try:
             return json.loads(os.environ["MAD_MINIO"])
         except json.JSONDecodeError as e:
-            _log_config_info(f"Error parsing MAD_MINIO environment variable: {e}, using defaults")
+            _log_config_info(
+                f"Error parsing MAD_MINIO environment variable: {e}, using defaults"
+            )
             return {
                 "USERNAME": None,
                 "PASSWORD": None,
-                "MINIO_ENDPOINT": "http://localhost:9000",  
+                "MINIO_ENDPOINT": "http://localhost:9000",
                 "AWS_ENDPOINT_URL_S3": "http://localhost:9000",
             }
 
+
 MAD_MINIO = _get_mad_minio()
+
 
 def _get_public_github_rocm_key():
     """Initialize PUBLIC_GITHUB_ROCM_KEY configuration."""
@@ -186,10 +209,13 @@ def _get_public_github_rocm_key():
         try:
             return json.loads(os.environ["PUBLIC_GITHUB_ROCM_KEY"])
         except json.JSONDecodeError as e:
-            _log_config_info(f"Error parsing PUBLIC_GITHUB_ROCM_KEY environment variable: {e}, using defaults")
+            _log_config_info(
+                f"Error parsing PUBLIC_GITHUB_ROCM_KEY environment variable: {e}, using defaults"
+            )
             return {
                 "username": None,
                 "token": None,
             }
+
 
 PUBLIC_GITHUB_ROCM_KEY = _get_public_github_rocm_key()

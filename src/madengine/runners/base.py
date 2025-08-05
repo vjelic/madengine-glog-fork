@@ -19,6 +19,7 @@ from madengine.core.console import Console
 @dataclass
 class NodeConfig:
     """Configuration for a single node in the distributed system."""
+
     hostname: str
     address: str
     port: int = 22
@@ -40,6 +41,7 @@ class NodeConfig:
 @dataclass
 class WorkloadSpec:
     """Specification for a distributed workload."""
+
     model_tags: List[str]
     manifest_file: str
     timeout: int = 3600
@@ -59,6 +61,7 @@ class WorkloadSpec:
 @dataclass
 class ExecutionResult:
     """Result of a distributed execution."""
+
     node_id: str
     model_tag: str
     status: str  # SUCCESS, FAILURE, TIMEOUT, SKIPPED
@@ -78,13 +81,14 @@ class ExecutionResult:
             "performance_metrics": self.performance_metrics,
             "error_message": self.error_message,
             "stdout": self.stdout,
-            "stderr": self.stderr
+            "stderr": self.stderr,
         }
 
 
 @dataclass
 class DistributedResult:
     """Overall result of a distributed execution."""
+
     total_nodes: int
     successful_executions: int
     failed_executions: int
@@ -106,17 +110,19 @@ class DistributedResult:
             "successful_executions": self.successful_executions,
             "failed_executions": self.failed_executions,
             "total_duration": self.total_duration,
-            "node_results": [result.to_dict() for result in self.node_results]
+            "node_results": [result.to_dict() for result in self.node_results],
         }
 
 
 class BaseDistributedRunner(ABC):
     """Abstract base class for distributed runners."""
 
-    def __init__(self,
-                 inventory_path: str,
-                 console: Optional[Console] = None,
-                 verbose: bool = False):
+    def __init__(
+        self,
+        inventory_path: str,
+        console: Optional[Console] = None,
+        verbose: bool = False,
+    ):
         """Initialize the distributed runner.
 
         Args:
@@ -137,7 +143,7 @@ class BaseDistributedRunner(ABC):
             total_nodes=len(self.nodes),
             successful_executions=0,
             failed_executions=0,
-            total_duration=0.0
+            total_duration=0.0,
         )
 
     def _load_inventory(self, inventory_path: str) -> List[NodeConfig]:
@@ -152,11 +158,12 @@ class BaseDistributedRunner(ABC):
         if not os.path.exists(inventory_path):
             raise FileNotFoundError(f"Inventory file not found: {inventory_path}")
 
-        with open(inventory_path, 'r') as f:
-            if inventory_path.endswith('.json'):
+        with open(inventory_path, "r") as f:
+            if inventory_path.endswith(".json"):
                 inventory_data = json.load(f)
-            elif inventory_path.endswith(('.yml', '.yaml')):
+            elif inventory_path.endswith((".yml", ".yaml")):
                 import yaml
+
                 inventory_data = yaml.safe_load(f)
             else:
                 raise ValueError(f"Unsupported inventory format: {inventory_path}")
@@ -240,7 +247,7 @@ class BaseDistributedRunner(ABC):
                 return False
 
             # Load and validate manifest
-            with open(workload.manifest_file, 'r') as f:
+            with open(workload.manifest_file, "r") as f:
                 manifest = json.load(f)
 
             if "built_images" not in manifest:
@@ -269,7 +276,7 @@ class BaseDistributedRunner(ABC):
             Execution context dictionary
         """
         # Load manifest
-        with open(workload.manifest_file, 'r') as f:
+        with open(workload.manifest_file, "r") as f:
             manifest = json.load(f)
 
         # Prepare context
@@ -279,7 +286,7 @@ class BaseDistributedRunner(ABC):
             "timeout": workload.timeout,
             "additional_context": workload.additional_context,
             "model_tags": workload.model_tags,
-            "parallelism": workload.parallelism
+            "parallelism": workload.parallelism,
         }
 
         return context
@@ -376,7 +383,7 @@ class BaseDistributedRunner(ABC):
         """
         report_data = self.results.to_dict()
 
-        with open(output_file, 'w') as f:
+        with open(output_file, "w") as f:
             json.dump(report_data, f, indent=2)
 
         return output_file
