@@ -1,4 +1,4 @@
-# MADEngine
+# madengine
 
 [![Python](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://python.org)
 [![CI](https://img.shields.io/badge/CI-GitHub%20Actions-green.svg)](https://github.com/ROCm/madengine/actions)
@@ -6,7 +6,7 @@
 
 > **Enterprise-grade AI model automation and distributed benchmarking platform**
 
-MADEngine is a sophisticated CLI tool designed for running Large Language Models (LLMs) and Deep Learning models across local and distributed environments. Built with modern Python practices, it provides both traditional single-node execution and advanced distributed orchestration capabilities as part of the [MAD (Model Automation and Dashboarding)](https://github.com/ROCm/MAD) ecosystem.
+madengine is a sophisticated CLI tool designed for running Large Language Models (LLMs) and Deep Learning models across local and distributed environments. Built with modern Python practices, it provides both traditional single-node execution and advanced distributed orchestration capabilities as part of the [MAD (Model Automation and Dashboarding)](https://github.com/ROCm/MAD) ecosystem.
 
 ## Table of Contents
 
@@ -28,7 +28,7 @@ MADEngine is a sophisticated CLI tool designed for running Large Language Models
 
 ## 🚀 Quick Start
 
-> **Important**: MADEngine must be executed from within a MAD package directory for proper model discovery.
+> **Important**: madengine must be executed from within a MAD package directory for proper model discovery.
 
 ### Prerequisites
 - Python 3.8+ with pip
@@ -36,7 +36,7 @@ MADEngine is a sophisticated CLI tool designed for running Large Language Models
 - Git for repository management
 - [MAD package](https://github.com/ROCm/MAD) cloned locally
 
-### Install MADEngine
+### Install madengine
 
 ```bash
 # Basic installation
@@ -78,7 +78,7 @@ madengine discover --tags dummy
 madengine discover --tags dummy2:dummy_2
 ```
 
-That's it! You're now ready to run AI models with MADEngine. Continue reading for advanced features and distributed execution.
+That's it! You're now ready to run AI models with madengine. Continue reading for advanced features and distributed execution.
 
 ## ✨ Features
 
@@ -106,7 +106,7 @@ That's it! You're now ready to run AI models with MADEngine. Continue reading fo
 
 ### MAD Ecosystem Integration
 
-MADEngine operates within the **MAD (Model Automation and Dashboarding)** ecosystem, providing:
+madengine operates within the **MAD (Model Automation and Dashboarding)** ecosystem, providing:
 
 - **Model Hub**: Centralized repository of AI models with standardized interfaces
 - **Configuration Management**: Docker definitions, scripts, and environment configurations
@@ -126,7 +126,7 @@ MAD/
 │   │   └── run.sh              # Execution script
 │   └── common/
 │       └── tools.json          # Build tools configuration
-└── pyproject.toml              # MADEngine configuration
+└── pyproject.toml              # madengine configuration
 ```
 
 ### Split Architecture Benefits
@@ -210,7 +210,7 @@ pre-commit install
 git clone https://github.com/ROCm/MAD.git
 cd MAD
 
-# Install MADEngine within MAD directory
+# Install madengine within MAD directory
 pip install git+https://github.com/ROCm/madengine.git
 
 # Verify installation
@@ -247,7 +247,7 @@ madengine-cli run --tags dummy --additional-context '{"gpu_vendor": "AMD", "gues
 
 ## 💻 Command Line Interface
 
-MADEngine provides dual CLI interfaces optimized for different use cases:
+madengine provides dual CLI interfaces optimized for different use cases:
 
 ### Interface Comparison
 
@@ -375,7 +375,7 @@ madengine database create-table
 | `--batch-manifest` | Batch build configuration | `--batch-manifest batch.json` |
 ## 🔍 Model Discovery
 
-MADEngine provides flexible model discovery through the MAD package ecosystem with support for static, directory-specific, and dynamic configurations.
+madengine provides flexible model discovery through the MAD package ecosystem with support for static, directory-specific, and dynamic configurations.
 
 ### Discovery Methods
 
@@ -430,7 +430,7 @@ MAD/
 │   │   └── Dockerfile          # Container definition
 │   └── common/
 │       └── tools.json          # Build tools configuration
-└── pyproject.toml              # MADEngine configuration
+└── pyproject.toml              # madengine configuration
 ```
 
 ### Discovery Commands
@@ -478,7 +478,7 @@ madengine-cli build --batch-manifest batch.json \
 
 ## 🌐 Distributed Execution
 
-MADEngine supports sophisticated distributed execution with unified orchestration across multiple infrastructure types for optimal resource utilization and scalability.
+madengine supports sophisticated distributed execution with unified orchestration across multiple infrastructure types for optimal resource utilization and scalability.
 
 ![Distributed Workflow](docs/img/distributed_workflow.png)
 
@@ -486,7 +486,7 @@ MADEngine supports sophisticated distributed execution with unified orchestratio
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                     MADEngine CLI                               │
+│                     madengine CLI                               │
 │                (madengine-cli runner)                           │
 └─────────────────────────────────────────────────────────────────┘
                                 │
@@ -563,7 +563,7 @@ All runners automatically perform these steps on each node/pod:
 
 1. **Clone MAD Repository** - Downloads latest MAD package from GitHub
 2. **Setup Virtual Environment** - Creates isolated Python environment  
-3. **Install Dependencies** - Installs MADEngine and all required packages
+3. **Install Dependencies** - Installs madengine and all required packages
 4. **Copy Configuration** - Transfers credentials, data configs, build manifests
 5. **Verify Installation** - Validates madengine-cli functionality
 6. **Execute from MAD Directory** - Runs with proper MODEL_DIR context
@@ -1588,7 +1588,7 @@ slurm_cluster:
 
 ## 🤝 Contributing
 
-We welcome contributions to MADEngine! This project follows modern Python development practices with comprehensive testing and code quality standards.
+We welcome contributions to madengine! This project follows modern Python development practices with comprehensive testing and code quality standards.
 
 ### 🚀 Quick Start for Contributors
 
@@ -1725,7 +1725,7 @@ madengine-cli run --tags dummy --sys-env-details --summary-output env_info.json
 - **Steps to Reproduce:** Minimal steps to reproduce the problem
 - **Expected Behavior:** What should happen
 - **Actual Behavior:** What actually happens
-- **Environment:** OS, Python version, Docker version, MADEngine version
+- **Environment:** OS, Python version, Docker version, madengine version
 - **Logs:** Relevant log output with `--verbose` enabled
 
 ### 💡 Feature Requests
