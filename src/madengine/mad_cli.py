@@ -6,6 +6,7 @@ Production-ready command-line interface built with Typer and Rich
 for building and running models in distributed scenarios.
 """
 
+import ast
 import json
 import logging
 import os
@@ -37,6 +38,7 @@ console = Console()
 
 # Import madengine components
 from madengine.tools.distributed_orchestrator import DistributedOrchestrator
+from madengine.tools.discover_models import DiscoverModels
 from madengine.runners.orchestrator_generation import (
     generate_ansible_setup,
     generate_k8s_setup,
@@ -57,7 +59,7 @@ app = typer.Typer(
 # Sub-applications for organized commands
 generate_app = typer.Typer(
     name="generate",
-    help="📋 Generate orchestration files (Ansible, Kubernetes)",
+    help="📋 Generate orchestration files (Slurm, Ansible, Kubernetes)",
     rich_markup_mode="rich",
 )
 app.add_typer(generate_app, name="generate")
@@ -65,7 +67,7 @@ app.add_typer(generate_app, name="generate")
 # Runner application for distributed execution
 runner_app = typer.Typer(
     name="runner",
-    help="🚀 Distributed runner for orchestrated execution across multiple nodes (SSH, Ansible, Kubernetes)",
+    help="🚀 Distributed runner for orchestrated execution across multiple nodes (SSH, Slurm, Ansible, Kubernetes)",
     rich_markup_mode="rich",
 )
 app.add_typer(runner_app, name="runner")
@@ -314,7 +316,6 @@ def _process_batch_manifest_entries(
         guest_os: Guest OS for the build
         gpu_vendor: GPU vendor for the build
     """
-    from madengine.tools.discover_models import DiscoverModels
 
     # Load the existing build manifest
     if os.path.exists(manifest_output):
@@ -929,25 +930,146 @@ def run(
                 raise typer.Exit(ExitCode.RUN_FAILURE)
 
         else:
-            # Full workflow
-            if manifest_file:
+            # Check if MAD_CONTAINER_IMAGE is provided - this enables local image mode
+            additional_context_dict = {}
+            try:
+                if additional_context and additional_context != "{}":
+                    additional_context_dict = json.loads(additional_context)
+            except json.JSONDecodeError:
+                try:
+                    # Try parsing as Python dict literal
+                    additional_context_dict = ast.literal_eval(additional_context)
+                except (ValueError, SyntaxError):
+                    console.print(
+                        f"❌ [red]Invalid additional_context format: {additional_context}[/red]"
+                    )
+                    raise typer.Exit(ExitCode.INVALID_ARGS)
+            
+            # Load additional context from file if provided
+            if additional_context_file and os.path.exists(additional_context_file):
+                try:
+                    with open(additional_context_file, 'r') as f:
+                        file_context = json.load(f)
+                        additional_context_dict.update(file_context)
+                except json.JSONDecodeError:
+                    console.print(
+                        f"❌ [red]Invalid JSON format in {additional_context_file}[/red]"
+                    )
+                    raise typer.Exit(ExitCode.INVALID_ARGS)
+
+            # Check for MAD_CONTAINER_IMAGE in additional context
+            mad_container_image = additional_context_dict.get("MAD_CONTAINER_IMAGE")
+            
+            if mad_container_image:
+                # Local image mode - skip build phase and generate manifest
                 console.print(
-                    f"⚠️  Manifest file [yellow]{manifest_file}[/yellow] not found, running complete workflow"
+                    Panel(
+                        f"🏠📦 [bold cyan]Local Image Mode (Skip Build + Run)[/bold cyan]\n"
+                        f"Container Image: [yellow]{mad_container_image}[/yellow]\n"
+                        f"Tags: [yellow]{', '.join(tags) if tags else 'All models'}[/yellow]\n"
+                        f"Timeout: [yellow]{timeout if timeout != -1 else 'Default'}[/yellow]s\n"
+                        f"[dim]Note: Build phase will be skipped, using local image[/dim]",
+                        title="Local Image Configuration",
+                        border_style="blue",
+                    )
                 )
 
-            console.print(
-                Panel(
-                    f"🔨🚀 [bold cyan]Complete Workflow (Build + Run)[/bold cyan]\n"
-                    f"Tags: [yellow]{', '.join(tags) if tags else 'All models'}[/yellow]\n"
-                    f"Registry: [yellow]{registry or 'Local only'}[/yellow]\n"
-                    f"Timeout: [yellow]{timeout if timeout != -1 else 'Default'}[/yellow]s",
-                    title="Workflow Configuration",
-                    border_style="magenta",
+                # Create arguments object for local image mode
+                args = create_args_namespace(
+                    tags=tags,
+                    registry=registry,
+                    timeout=timeout,
+                    additional_context=additional_context,
+                    additional_context_file=additional_context_file,
+                    keep_alive=keep_alive,
+                    keep_model_dir=keep_model_dir,
+                    skip_model_run=skip_model_run,
+                    clean_docker_cache=clean_docker_cache,
+                    manifest_output=manifest_output,
+                    live_output=live_output,
+                    output=output,
+                    ignore_deprecated_flag=ignore_deprecated_flag,
+                    data_config_file_name=data_config_file_name,
+                    tools_json_file_name=tools_json_file_name,
+                    generate_sys_env_details=generate_sys_env_details,
+                    force_mirror_local=force_mirror_local,
+                    disable_skip_gpu_arch=disable_skip_gpu_arch,
+                    verbose=verbose,
+                    _separate_phases=True,
                 )
-            )
 
-            # Create arguments object for full workflow
-            args = create_args_namespace(
+                with Progress(
+                    SpinnerColumn(),
+                    TextColumn("[progress.description]{task.description}"),
+                    console=console,
+                ) as progress:
+                    task = progress.add_task(
+                        "Initializing local image orchestrator...", total=None
+                    )
+                    orchestrator = DistributedOrchestrator(args)
+
+                    # Generate manifest for local image (skip build phase)
+                    progress.update(task, description="Generating manifest for local image...")
+                    build_summary = orchestrator.generate_local_image_manifest(
+                        container_image=mad_container_image,
+                        manifest_output=manifest_output,
+                    )
+
+                    # Run phase with local image
+                    progress.update(task, description="Running models with local image...")
+                    execution_summary = orchestrator.run_phase(
+                        manifest_file=manifest_output,
+                        registry=registry,
+                        timeout=timeout,
+                        keep_alive=keep_alive,
+                    )
+                    progress.update(task, description="Local image workflow completed!")
+
+                # Combine summaries for local image mode
+                workflow_summary = {
+                    "build_phase": build_summary,
+                    "run_phase": execution_summary,
+                    "local_image_mode": True,
+                    "container_image": mad_container_image,
+                    "overall_success": len(execution_summary.get("failed_runs", [])) == 0,
+                }
+
+                # Display results
+                display_results_table(execution_summary, "Local Image Execution Results")
+                save_summary_with_feedback(workflow_summary, summary_output, "Local Image Workflow")
+
+                if workflow_summary["overall_success"]:
+                    console.print(
+                        "🎉 [bold green]Local image workflow finished successfully![/bold green]"
+                    )
+                    raise typer.Exit(ExitCode.SUCCESS)
+                else:
+                    failed_runs = len(execution_summary.get("failed_runs", []))
+                    console.print(
+                        f"💥 [bold red]Local image workflow completed but {failed_runs} model executions failed[/bold red]"
+                    )
+                    raise typer.Exit(ExitCode.RUN_FAILURE)
+
+            else:
+                # Full workflow
+                if manifest_file:
+                    console.print(
+                        f"⚠️  Manifest file [yellow]{manifest_file}[/yellow] not found, running complete workflow"
+                    )
+
+                console.print(
+                    Panel(
+                        f"🔨🚀 [bold cyan]Complete Workflow (Build + Run)[/bold cyan]\n"
+                        f"Tags: [yellow]{', '.join(tags) if tags else 'All models'}[/yellow]\n"
+                        f"Registry: [yellow]{registry or 'Local only'}[/yellow]\n"
+                        f"Timeout: [yellow]{timeout if timeout != -1 else 'Default'}[/yellow]s",
+                        title="Workflow Configuration",
+                        border_style="magenta",
+                    )
+                )
+
+                # Create arguments object for full workflow
+                args = create_args_namespace(
                 tags=tags,
                 registry=registry,
                 timeout=timeout,
@@ -1044,6 +1166,51 @@ def run(
         raise
     except Exception as e:
         console.print(f"💥 [bold red]Run process failed: {e}[/bold red]")
+        if verbose:
+            console.print_exception()
+        raise typer.Exit(ExitCode.FAILURE)
+
+
+@app.command()
+def discover(
+    tags: Annotated[
+        List[str],
+        typer.Option("--tags", "-t", help="Model tags to discover (can specify multiple)"),
+    ] = [],
+    verbose: Annotated[
+        bool, typer.Option("--verbose", "-v", help="Enable verbose logging")
+    ] = False,
+) -> None:
+    """
+    🔍 Discover all models in the project.
+
+    This command discovers all available models in the project based on the
+    specified tags. If no tags are provided, all models will be discovered.
+    """
+    setup_logging(verbose)
+
+    console.print(
+        Panel(
+            f"🔍 [bold cyan]Discovering Models[/bold cyan]\n"
+            f"Tags: [yellow]{tags if tags else 'All models'}[/yellow]",
+            title="Model Discovery",
+            border_style="blue",
+        )
+    )
+
+    try:
+        # Create args namespace similar to mad.py
+        args = create_args_namespace(tags=tags)
+        
+        # Use DiscoverModels class
+        # Note: DiscoverModels prints output directly and returns None
+        discover_models_instance = DiscoverModels(args=args)
+        result = discover_models_instance.run()
+        
+        console.print("✅ [bold green]Model discovery completed successfully[/bold green]")
+
+    except Exception as e:
+        console.print(f"💥 [bold red]Model discovery failed: {e}[/bold red]")
         if verbose:
             console.print_exception()
         raise typer.Exit(ExitCode.FAILURE)

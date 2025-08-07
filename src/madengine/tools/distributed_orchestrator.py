@@ -207,6 +207,134 @@ class DistributedOrchestrator:
 
         return build_summary
 
+    def generate_local_image_manifest(
+        self,
+        container_image: str,
+        manifest_output: str = "build_manifest.json",
+    ) -> typing.Dict:
+        """Generate a build manifest for a local container image.
+
+        This method creates a build manifest that references a local container image,
+        skipping the build phase entirely. This is useful for legacy compatibility
+        when using MAD_CONTAINER_IMAGE.
+
+        Args:
+            container_image: The local container image tag (e.g., 'model:tag')
+            manifest_output: Output file for build manifest
+
+        Returns:
+            dict: Build summary compatible with regular build phase
+        """
+        self.rich_console.print(f"\n[dim]{'=' * 60}[/dim]")
+        self.rich_console.print("[bold blue]🏠 GENERATING LOCAL IMAGE MANIFEST[/bold blue]")
+        self.rich_console.print(f"Container Image: [yellow]{container_image}[/yellow]")
+        self.rich_console.print(f"\n[dim]{'=' * 60}[/dim]")
+
+        # Ensure runtime context is initialized for local image mode
+        self.context.ensure_runtime_context()
+        
+        # Discover models to get the model information
+        self.rich_console.print(f"\n[dim]{'=' * 60}[/dim]")
+        self.rich_console.print("[bold cyan]🔍 DISCOVERING MODELS[/bold cyan]")
+        discover_models = DiscoverModels(args=self.args)
+        models = discover_models.run()
+
+        print(f"Discovered {len(models)} models for local image")
+
+        # Copy scripts for running (even though we're skipping build)
+        self.rich_console.print(f"\n[dim]{'=' * 60}[/dim]")
+        self.rich_console.print("[bold cyan]📋 COPYING SCRIPTS[/bold cyan]")
+        self._copy_scripts()
+
+        # Create manifest entries for all discovered models using the local image
+        built_images = {}
+        built_models = {}
+        successful_builds = []
+
+        for model in models:
+            model_name = model["name"]
+            # Generate a pseudo-image name for compatibility
+            image_name = f"ci-{model_name.replace('/', '_').lower()}_local"
+            
+            # Create build info entry for the local image
+            built_images[image_name] = {
+                "model_name": model_name,
+                "docker_image": container_image,  # Use the provided local image
+                "dockerfile": model.get("dockerfile", ""),
+                "build_time": 0.0,  # No build time for local image
+                "registry": None,  # Local image, no registry
+                "local_image_mode": True,  # Flag to indicate this is a local image
+            }
+
+            # Create model info entry - use image_name as key for proper mapping
+            built_models[image_name] = {
+                "docker_image": container_image,
+                "image_name": image_name,
+                **model  # Include all original model information
+            }
+
+            successful_builds.append(model_name)
+
+        # Extract credentials from models
+        credentials_required = list(
+            set(
+                [
+                    model.get("cred", "")
+                    for model in models
+                    if model.get("cred", "") != ""
+                ]
+            )
+        )
+
+        # Create the manifest structure compatible with regular build phase
+        manifest = {
+            "built_images": built_images,
+            "built_models": built_models,
+            "context": {
+                "docker_env_vars": self.context.ctx.get("docker_env_vars", {}),
+                "docker_mounts": self.context.ctx.get("docker_mounts", {}),
+                "docker_build_arg": self.context.ctx.get("docker_build_arg", {}),
+                "gpu_vendor": self.context.ctx.get("gpu_vendor", ""),
+                "docker_gpus": self.context.ctx.get("docker_gpus", ""),
+                "MAD_CONTAINER_IMAGE": container_image,  # Include the local image reference
+            },
+            "credentials_required": credentials_required,
+            "local_image_mode": True,
+            "local_container_image": container_image,
+        }
+
+        # Add multi-node args to context if present
+        if "build_multi_node_args" in self.context.ctx:
+            manifest["context"]["multi_node_args"] = self.context.ctx[
+                "build_multi_node_args"
+            ]
+
+        # Write the manifest file
+        with open(manifest_output, "w") as f:
+            json.dump(manifest, f, indent=2)
+
+        # Create build summary compatible with regular build phase
+        build_summary = {
+            "successful_builds": successful_builds,
+            "failed_builds": [],
+            "total_build_time": 0.0,
+            "manifest_file": manifest_output,
+            "local_image_mode": True,
+            "container_image": container_image,
+        }
+
+        self.rich_console.print(f"\n[dim]{'=' * 60}[/dim]")
+        self.rich_console.print("[bold green]✅ LOCAL IMAGE MANIFEST GENERATED[/bold green]")
+        self.rich_console.print(f"  [green]Models configured: {len(successful_builds)}[/green]")
+        self.rich_console.print(f"  [blue]Container Image: {container_image}[/blue]")
+        self.rich_console.print(f"  [blue]Manifest saved to: {manifest_output}[/blue]")
+        self.rich_console.print(f"\n[dim]{'=' * 60}[/dim]")
+
+        # Cleanup scripts (optional for local image mode)
+        self.cleanup()
+
+        return build_summary
+
     def run_phase(
         self,
         manifest_file: str = "build_manifest.json",
@@ -322,69 +450,76 @@ class DistributedOrchestrator:
                         print(
                             f"\nRunning model {model_info['name']} with image {image_name}"
                         )
-                        # Use per-image registry if present, else CLI registry
-                        effective_registry = build_info.get("registry", registry)
-                        registry_image = build_info.get("registry_image")
-                        docker_image = build_info.get("docker_image")
-                        if registry_image:
-                            if effective_registry:
-                                print(f"Pulling image from registry: {registry_image}")
-                                try:
-                                    registry_image_str = (
-                                        str(registry_image) if registry_image else ""
-                                    )
-                                    docker_image_str = (
-                                        str(docker_image) if docker_image else ""
-                                    )
-                                    effective_registry_str = (
-                                        str(effective_registry)
-                                        if effective_registry
-                                        else ""
-                                    )
-                                    runner.pull_image(
-                                        registry_image_str,
-                                        docker_image_str,
-                                        effective_registry_str,
-                                        self.credentials,
-                                    )
-                                    actual_image = docker_image_str
-                                    print(
-                                        f"Successfully pulled and tagged as: {docker_image_str}"
-                                    )
-                                except Exception as e:
-                                    print(
-                                        f"Failed to pull from registry, falling back to local image: {e}"
-                                    )
-                                    actual_image = docker_image
-                            else:
-                                print(
-                                    f"Attempting to pull registry image as-is: {registry_image}"
-                                )
-                                try:
-                                    registry_image_str = (
-                                        str(registry_image) if registry_image else ""
-                                    )
-                                    docker_image_str = (
-                                        str(docker_image) if docker_image else ""
-                                    )
-                                    runner.pull_image(
-                                        registry_image_str, docker_image_str
-                                    )
-                                    actual_image = docker_image_str
-                                    print(
-                                        f"Successfully pulled and tagged as: {docker_image_str}"
-                                    )
-                                except Exception as e:
-                                    print(
-                                        f"Failed to pull from registry, falling back to local image: {e}"
-                                    )
-                                    actual_image = docker_image
+                        
+                        # Check if MAD_CONTAINER_IMAGE is set in context (for local image mode)
+                        if "MAD_CONTAINER_IMAGE" in self.context.ctx:
+                            actual_image = self.context.ctx["MAD_CONTAINER_IMAGE"]
+                            print(f"Using MAD_CONTAINER_IMAGE override: {actual_image}")
+                            print("Warning: User override MAD_CONTAINER_IMAGE. Model support on image not guaranteed.")
                         else:
-                            # No registry_image key - run container directly using docker_image
-                            actual_image = build_info["docker_image"]
-                            print(
-                                f"No registry image specified, using local image: {actual_image}"
-                            )
+                            # Use per-image registry if present, else CLI registry
+                            effective_registry = build_info.get("registry", registry)
+                            registry_image = build_info.get("registry_image")
+                            docker_image = build_info.get("docker_image")
+                            if registry_image:
+                                if effective_registry:
+                                    print(f"Pulling image from registry: {registry_image}")
+                                    try:
+                                        registry_image_str = (
+                                            str(registry_image) if registry_image else ""
+                                        )
+                                        docker_image_str = (
+                                            str(docker_image) if docker_image else ""
+                                        )
+                                        effective_registry_str = (
+                                            str(effective_registry)
+                                            if effective_registry
+                                            else ""
+                                        )
+                                        runner.pull_image(
+                                            registry_image_str,
+                                            docker_image_str,
+                                            effective_registry_str,
+                                            self.credentials,
+                                        )
+                                        actual_image = docker_image_str
+                                        print(
+                                            f"Successfully pulled and tagged as: {docker_image_str}"
+                                        )
+                                    except Exception as e:
+                                        print(
+                                            f"Failed to pull from registry, falling back to local image: {e}"
+                                        )
+                                        actual_image = docker_image
+                                else:
+                                    print(
+                                        f"Attempting to pull registry image as-is: {registry_image}"
+                                    )
+                                    try:
+                                        registry_image_str = (
+                                            str(registry_image) if registry_image else ""
+                                        )
+                                        docker_image_str = (
+                                            str(docker_image) if docker_image else ""
+                                        )
+                                        runner.pull_image(
+                                            registry_image_str, docker_image_str
+                                        )
+                                        actual_image = docker_image_str
+                                        print(
+                                            f"Successfully pulled and tagged as: {docker_image_str}"
+                                        )
+                                    except Exception as e:
+                                        print(
+                                            f"Failed to pull from registry, falling back to local image: {e}"
+                                        )
+                                        actual_image = docker_image
+                            else:
+                                # No registry_image key - run container directly using docker_image
+                                actual_image = build_info["docker_image"]
+                                print(
+                                    f"No registry image specified, using local image: {actual_image}"
+                                )
 
                         # Run the container
                         run_results = runner.run_container(
