@@ -181,6 +181,17 @@ class DistributedOrchestrator:
             else ""
         )
 
+        # Get target architectures from args if provided
+        target_archs = getattr(self.args, "target_archs", [])
+        
+        # Handle comma-separated architectures in a single string
+        if target_archs:
+            processed_archs = []
+            for arch_arg in target_archs:
+                # Split comma-separated values and add to list
+                processed_archs.extend([arch.strip() for arch in arch_arg.split(',') if arch.strip()])
+            target_archs = processed_archs
+
         # If batch_build_metadata is provided, use it to set per-model registry/registry_image
         build_summary = builder.build_all_models(
             models,
@@ -189,6 +200,7 @@ class DistributedOrchestrator:
             registry,
             phase_suffix,
             batch_build_metadata=batch_build_metadata,
+            target_archs=target_archs,
         )
 
         # Export build manifest with registry information

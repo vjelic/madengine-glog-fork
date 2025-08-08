@@ -507,6 +507,14 @@ def build(
         List[str],
         typer.Option("--tags", "-t", help="Model tags to build (can specify multiple)"),
     ] = [],
+    target_archs: Annotated[
+        List[str],
+        typer.Option(
+            "--target-archs", 
+            "-a", 
+            help="Target GPU architectures to build for (e.g., gfx908,gfx90a,gfx942). If not specified, builds single image with MAD_SYSTEM_GPU_ARCHITECTURE from additional_context or detected GPU architecture."
+        ),
+    ] = [],
     registry: Annotated[
         Optional[str],
         typer.Option("--registry", "-r", help="Docker registry to push images to"),
@@ -658,6 +666,7 @@ def build(
         # Create arguments object
         args = create_args_namespace(
             tags=effective_tags,
+            target_archs=target_archs,
             registry=registry,
             additional_context=additional_context,
             additional_context_file=additional_context_file,
