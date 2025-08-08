@@ -459,12 +459,16 @@ def _process_batch_manifest_entries(
     )
 
 
-def display_results_table(summary: Dict, title: str) -> None:
+def display_results_table(summary: Dict, title: str, show_gpu_arch: bool = False) -> None:
     """Display results in a formatted table."""
     table = Table(title=title, show_header=True, header_style="bold magenta")
     table.add_column("Status", style="bold")
     table.add_column("Count", justify="right")
     table.add_column("Items", style="dim")
+    
+    # Add GPU Architecture column if multi-arch build was used
+    if show_gpu_arch:
+        table.add_column("GPU Architecture", style="cyan")
 
     successful = summary.get("successful_builds", summary.get("successful_runs", []))
     failed = summary.get("failed_builds", summary.get("failed_runs", []))
@@ -510,14 +514,40 @@ def display_results_table(summary: Dict, title: str) -> None:
             result += "..."
         return result
 
+    # Helper function to extract GPU architectures from items
+    def get_gpu_architectures(items, limit=5):
+        if not items:
+            return ""
+            
+        gpu_archs = []
+        for item in items[:limit]:
+            if isinstance(item, dict) and "gpu_architecture" in item:
+                gpu_archs.append(item["gpu_architecture"])
+            else:
+                gpu_archs.append("N/A")
+        
+        result = ", ".join(gpu_archs)
+        if len(items) > limit:
+            result += "..."
+        return result
+
     if successful:
-        table.add_row("✅ Success", str(len(successful)), get_display_names(successful))
+        if show_gpu_arch:
+            table.add_row("✅ Success", str(len(successful)), get_display_names(successful), get_gpu_architectures(successful))
+        else:
+            table.add_row("✅ Success", str(len(successful)), get_display_names(successful))
 
     if failed:
-        table.add_row("❌ Failed", str(len(failed)), get_display_names(failed))
+        if show_gpu_arch:
+            table.add_row("❌ Failed", str(len(failed)), get_display_names(failed), get_gpu_architectures(failed))
+        else:
+            table.add_row("❌ Failed", str(len(failed)), get_display_names(failed))
 
     if not successful and not failed:
-        table.add_row("ℹ️ No items", "0", "")
+        if show_gpu_arch:
+            table.add_row("ℹ️ No items", "0", "", "")
+        else:
+            table.add_row("ℹ️ No items", "0", "")
 
     console.print(table)
 
@@ -746,7 +776,9 @@ def build(
                 )
 
         # Display results
-        display_results_table(build_summary, "Build Results")
+        # Check if target_archs was used to show GPU architecture column
+        show_gpu_arch = bool(target_archs)
+        display_results_table(build_summary, "Build Results", show_gpu_arch)
 
         # Save summary
         save_summary_with_feedback(build_summary, summary_output, "Build")

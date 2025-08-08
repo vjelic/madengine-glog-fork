@@ -781,71 +781,6 @@ class DockerBuilder:
         compatible_archs = compatibility_matrix.get(compile_arch, [compile_arch])
         return target_arch in compatible_archs
 
-    def _build_model_for_arch(
-        self, 
-        model_info: typing.Dict,
-        gpu_arch: str,
-        credentials: typing.Dict,
-        clean_cache: bool,
-        registry: str,
-        phase_suffix: str,
-        batch_build_metadata: typing.Optional[dict]
-    ) -> typing.List[typing.Dict]:
-        """Build model for specific GPU architecture with smart image naming."""
-        
-        # Find dockerfiles
-        dockerfiles = self._get_dockerfiles_for_model(model_info)
-        
-        arch_results = []
-        for dockerfile in dockerfiles:
-            # Smart image naming: add architecture suffix only if Dockerfile has GPU variables
-            has_gpu_vars, _ = self._check_dockerfile_has_gpu_variables(model_info)
-            
-            if has_gpu_vars:
-                # Create architecture-specific image name
-                base_image_name = self._create_base_image_name(model_info, dockerfile)
-                arch_image_name = f"{base_image_name}_{gpu_arch}"
-            else:
-                # Use existing docker image name (no suffix)
-                arch_image_name = self._create_base_image_name(model_info, dockerfile)
-            
-            # Set MAD_SYSTEM_GPU_ARCHITECTURE for this build
-            arch_build_args = {"MAD_SYSTEM_GPU_ARCHITECTURE": gpu_arch}
-            
-            # Build the image
-            build_info = self.build_image(
-                model_info, 
-                dockerfile, 
-                credentials,
-                clean_cache, 
-                phase_suffix,
-                additional_build_args=arch_build_args,
-                override_image_name=arch_image_name
-            )
-            
-            # Add architecture metadata
-            build_info["gpu_architecture"] = gpu_arch
-            
-            # Handle registry push with architecture-specific tagging
-            if registry:
-                if has_gpu_vars:
-                    registry_image = self._create_arch_registry_image_name(
-                        arch_image_name, gpu_arch, registry, batch_build_metadata, model_info
-                    )
-                else:
-                    registry_image = self._create_registry_image_name(
-                        arch_image_name, registry, batch_build_metadata, model_info
-                    )
-                try:
-                    self.push_image(arch_image_name, registry, credentials, registry_image)
-                    build_info["registry_image"] = registry_image
-                except Exception as e:
-                    build_info["push_error"] = str(e)
-            
-            arch_results.append(build_info)
-        
-        return arch_results
-
     def _build_model_single_arch(
         self, 
         model_info: typing.Dict,
@@ -1044,16 +979,10 @@ class DockerBuilder:
         
         arch_results = []
         for dockerfile in dockerfiles:
-            # Smart image naming: add architecture suffix only if Dockerfile has GPU variables
-            has_gpu_vars, _ = self._check_dockerfile_has_gpu_variables(model_info)
-            
-            if has_gpu_vars:
-                # Create architecture-specific image name
-                base_image_name = self._create_base_image_name(model_info, dockerfile)
-                arch_image_name = f"{base_image_name}_{gpu_arch}"
-            else:
-                # Use existing docker image name (no suffix)
-                arch_image_name = self._create_base_image_name(model_info, dockerfile)
+            # When using --target-archs, always add architecture suffix regardless of GPU variables
+            # This ensures consistent naming for multi-architecture builds
+            base_image_name = self._create_base_image_name(model_info, dockerfile)
+            arch_image_name = f"{base_image_name}_{gpu_arch}"
             
             # Set MAD_SYSTEM_GPU_ARCHITECTURE for this build
             arch_build_args = {"MAD_SYSTEM_GPU_ARCHITECTURE": gpu_arch}
