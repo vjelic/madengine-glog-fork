@@ -477,11 +477,32 @@ def display_results_table(summary: Dict, title: str) -> None:
         display_items = []
         for item in items[:limit]:
             if isinstance(item, dict):
-                # For dictionary items (run results), use model name or name field
-                name = item.get("model", item.get("name", str(item)[:20]))
-                display_items.append(name)
+                # For build results, prioritize docker_image extraction for model name
+                if "docker_image" in item:
+                    # Extract model name from docker image name
+                    # e.g., "ci-dummy_dummy.ubuntu.amd" -> "dummy"
+                    # e.g., "ci-dummy_dummy.ubuntu.amd_gfx908" -> "dummy"
+                    docker_image = item["docker_image"]
+                    if docker_image.startswith("ci-"):
+                        # Remove ci- prefix and extract model name
+                        parts = docker_image[3:].split("_")
+                        if len(parts) >= 2:
+                            model_name = parts[0]  # First part is the model name
+                        else:
+                            model_name = parts[0] if parts else docker_image
+                    else:
+                        model_name = docker_image
+                    display_items.append(model_name)
+                # For run results, use model name or name field
+                elif "model" in item:
+                    display_items.append(item["model"])
+                elif "name" in item:
+                    display_items.append(item["name"])
+                else:
+                    # Fallback to truncated string representation
+                    display_items.append(str(item)[:20])
             else:
-                # For string items (build results), use as-is
+                # For string items, use as-is
                 display_items.append(str(item))
 
         result = ", ".join(display_items)
