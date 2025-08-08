@@ -18,7 +18,16 @@ class TestMultiGPUArch:
         self.context = MagicMock()
         self.console = MagicMock()
         self.builder = DockerBuilder(self.context, self.console)
-        self.orchestrator = DistributedOrchestrator(MagicMock())
+        
+        # Mock args for DistributedOrchestrator to avoid file reading issues
+        mock_args = MagicMock()
+        mock_args.additional_context = None
+        mock_args.additional_context_file = None
+        mock_args.live_output = True
+        mock_args.data_config_file_name = "data.json"
+        
+        # Create orchestrator with mocked args and build_only_mode to avoid GPU detection
+        self.orchestrator = DistributedOrchestrator(mock_args, build_only_mode=True)
 
     # --- DockerBuilder Multi-Arch Logic ---
     @patch.object(DockerBuilder, "_get_dockerfiles_for_model")
@@ -130,19 +139,24 @@ class TestMultiGPUArch:
     # --- Run-Phase Manifest Filtering ---
     def test_filter_images_by_gpu_architecture(self):
         orch = self.orchestrator
-        orch.context = MagicMock()
-        orch.context.get_system_gpu_architecture.return_value = "gfx908"
-        # Exact match
+        
+        # Test exact match
         built_images = {"img1": {"gpu_architecture": "gfx908"}, "img2": {"gpu_architecture": "gfx90a"}}
         filtered = orch._filter_images_by_gpu_architecture(built_images, "gfx908")
         assert "img1" in filtered and "img2" not in filtered
-        # Legacy image (no arch field)
+        
+        # Test legacy image (no arch field)
         built_images = {"img1": {}, "img2": {"gpu_architecture": "gfx90a"}}
         filtered = orch._filter_images_by_gpu_architecture(built_images, "gfx908")
-        assert "img1" in filtered
-        # No match, error message includes available archs (simulate run_phase error)
+        assert "img1" in filtered  # Legacy images should be included for backward compatibility
+        assert "img2" not in filtered
+        
+        # Test no match case
         built_images = {"img1": {"gpu_architecture": "gfx90a"}, "img2": {"gpu_architecture": "gfx942"}}
-        try:
-            orch._filter_images_by_gpu_architecture(built_images, "gfx908")
-        except Exception:
-            pass
+        filtered = orch._filter_images_by_gpu_architecture(built_images, "gfx908")
+        assert len(filtered) == 0
+        
+        # Test all matching case
+        built_images = {"img1": {"gpu_architecture": "gfx908"}, "img2": {"gpu_architecture": "gfx908"}}
+        filtered = orch._filter_images_by_gpu_architecture(built_images, "gfx908")
+        assert len(filtered) == 2

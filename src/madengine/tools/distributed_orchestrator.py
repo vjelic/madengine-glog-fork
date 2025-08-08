@@ -401,6 +401,52 @@ class DistributedOrchestrator:
 
         print(f"Loaded manifest with {len(manifest['built_images'])} images")
 
+        # Filter images by GPU architecture compatibility
+        try:
+            runtime_gpu_arch = self.context.get_system_gpu_architecture()
+            print(f"Runtime GPU architecture detected: {runtime_gpu_arch}")
+            
+            # Filter manifest images by GPU architecture compatibility
+            compatible_images = self._filter_images_by_gpu_architecture(
+                manifest["built_images"], runtime_gpu_arch
+            )
+            
+            if not compatible_images:
+                available_archs = list(set(
+                    img.get('gpu_architecture', 'unknown') 
+                    for img in manifest['built_images'].values()
+                ))
+                available_archs = [arch for arch in available_archs if arch != 'unknown']
+                
+                if available_archs:
+                    error_msg = (
+                        f"No compatible Docker images found for runtime GPU architecture '{runtime_gpu_arch}'. "
+                        f"Available image architectures: {available_archs}. "
+                        f"Please build images for the target architecture using: "
+                        f"--target-archs {runtime_gpu_arch}"
+                    )
+                else:
+                    error_msg = (
+                        f"No compatible Docker images found for runtime GPU architecture '{runtime_gpu_arch}'. "
+                        f"The manifest contains legacy images without architecture information. "
+                        f"These will be treated as compatible for backward compatibility."
+                    )
+                
+                raise RuntimeError(error_msg)
+            
+            # Update manifest to only include compatible images
+            manifest["built_images"] = compatible_images
+            print(f"Filtered to {len(compatible_images)} compatible images for GPU architecture '{runtime_gpu_arch}'")
+            
+        except Exception as e:
+            # If GPU architecture detection fails, proceed with all images for backward compatibility
+            self.rich_console.print(
+                f"[yellow]Warning: GPU architecture filtering failed: {e}[/yellow]"
+            )
+            self.rich_console.print(
+                "[yellow]Proceeding with all available images (backward compatibility mode)[/yellow]"
+            )
+
         # Registry is now per-image; CLI registry is fallback
         if registry:
             print(f"Using registry from CLI: {registry}")
@@ -800,6 +846,48 @@ class DistributedOrchestrator:
         # copy the scripts to the model directory
         self.console.sh(f"cp -vLR --preserve=all {scripts_path} .")
         print(f"Scripts copied to {os.getcwd()}/scripts")
+
+    def _filter_images_by_gpu_architecture(self, built_images: typing.Dict, runtime_arch: str) -> typing.Dict:
+        """Filter built images by GPU architecture compatibility.
+        
+        Args:
+            built_images: Dictionary of built images from manifest
+            runtime_arch: Runtime GPU architecture (e.g., 'gfx908')
+            
+        Returns:
+            dict: Filtered dictionary containing only compatible images
+        """
+        compatible = {}
+        
+        self.rich_console.print(f"[cyan]Filtering images for runtime GPU architecture: {runtime_arch}[/cyan]")
+        
+        for image_name, image_info in built_images.items():
+            image_arch = image_info.get("gpu_architecture")
+            
+            if not image_arch:
+                # Legacy images without architecture info - assume compatible for backward compatibility
+                self.rich_console.print(
+                    f"[yellow]  Warning: Image {image_name} has no architecture info, assuming compatible (legacy mode)[/yellow]"
+                )
+                compatible[image_name] = image_info
+            elif image_arch == runtime_arch:
+                # Exact architecture match
+                self.rich_console.print(
+                    f"[green]  ✓ Compatible: {image_name} (architecture: {image_arch})[/green]"
+                )
+                compatible[image_name] = image_info
+            else:
+                # Architecture mismatch
+                self.rich_console.print(
+                    f"[red]  ✗ Incompatible: {image_name} (architecture: {image_arch}, runtime: {runtime_arch})[/red]"
+                )
+        
+        if not compatible:
+            self.rich_console.print(f"[red]No compatible images found for runtime architecture: {runtime_arch}[/red]")
+        else:
+            self.rich_console.print(f"[green]Found {len(compatible)} compatible image(s)[/green]")
+        
+        return compatible
 
     def cleanup(self) -> None:
         """Cleanup the scripts/common directory."""
