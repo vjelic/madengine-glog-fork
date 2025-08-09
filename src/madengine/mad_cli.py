@@ -460,94 +460,84 @@ def _process_batch_manifest_entries(
 
 
 def display_results_table(summary: Dict, title: str, show_gpu_arch: bool = False) -> None:
-    """Display results in a formatted table."""
+    """Display results in a formatted table with each model as a separate row."""
     table = Table(title=title, show_header=True, header_style="bold magenta")
+    table.add_column("Index", justify="right", style="dim")
     table.add_column("Status", style="bold")
-    table.add_column("Count", justify="right")
-    table.add_column("Items", style="dim")
+    table.add_column("Model", style="cyan")
     
     # Add GPU Architecture column if multi-arch build was used
     if show_gpu_arch:
-        table.add_column("GPU Architecture", style="cyan")
+        table.add_column("GPU Architecture", style="yellow")
 
     successful = summary.get("successful_builds", summary.get("successful_runs", []))
     failed = summary.get("failed_builds", summary.get("failed_runs", []))
 
-    # Helper function to extract display names from items
-    def get_display_names(items, limit=5):
-        if not items:
-            return ""
-
-        display_items = []
-        for item in items[:limit]:
-            if isinstance(item, dict):
-                # For build results, prioritize docker_image extraction for model name
-                if "docker_image" in item:
-                    # Extract model name from docker image name
-                    # e.g., "ci-dummy_dummy.ubuntu.amd" -> "dummy"
-                    # e.g., "ci-dummy_dummy.ubuntu.amd_gfx908" -> "dummy"
-                    docker_image = item["docker_image"]
-                    if docker_image.startswith("ci-"):
-                        # Remove ci- prefix and extract model name
-                        parts = docker_image[3:].split("_")
-                        if len(parts) >= 2:
-                            model_name = parts[0]  # First part is the model name
-                        else:
-                            model_name = parts[0] if parts else docker_image
+    # Helper function to extract model name from build result
+    def extract_model_name(item):
+        if isinstance(item, dict):
+            # For build results, prioritize docker_image extraction for model name
+            if "docker_image" in item:
+                # Extract model name from docker image name
+                # e.g., "ci-dummy_dummy.ubuntu.amd" -> "dummy"
+                # e.g., "ci-dummy_dummy.ubuntu.amd_gfx908" -> "dummy"
+                docker_image = item["docker_image"]
+                if docker_image.startswith("ci-"):
+                    # Remove ci- prefix and extract model name
+                    parts = docker_image[3:].split("_")
+                    if len(parts) >= 2:
+                        model_name = parts[0]  # First part is the model name
                     else:
-                        model_name = docker_image
-                    display_items.append(model_name)
-                # For run results, use model name or name field
-                elif "model" in item:
-                    display_items.append(item["model"])
-                elif "name" in item:
-                    display_items.append(item["name"])
+                        model_name = parts[0] if parts else docker_image
                 else:
-                    # Fallback to truncated string representation
-                    display_items.append(str(item)[:20])
-            else:
-                # For string items, use as-is
-                display_items.append(str(item))
+                    model_name = docker_image
+                return model_name
+            # For run results, use model name or name field
+            elif "model" in item:
+                return item["model"]
+            elif "name" in item:
+                return item["name"]
+        return str(item)[:20]  # Fallback
 
-        result = ", ".join(display_items)
-        if len(items) > limit:
-            result += "..."
-        return result
+    # Helper function to extract GPU architecture
+    def extract_gpu_arch(item):
+        if isinstance(item, dict) and "gpu_architecture" in item:
+            return item["gpu_architecture"]
+        return "N/A"
 
-    # Helper function to extract GPU architectures from items
-    def get_gpu_architectures(items, limit=5):
-        if not items:
-            return ""
-            
-        gpu_archs = []
-        for item in items[:limit]:
-            if isinstance(item, dict) and "gpu_architecture" in item:
-                gpu_archs.append(item["gpu_architecture"])
-            else:
-                gpu_archs.append("N/A")
-        
-        result = ", ".join(gpu_archs)
-        if len(items) > limit:
-            result += "..."
-        return result
-
-    if successful:
+    # Add successful builds/runs
+    row_index = 1
+    for item in successful:
+        model_name = extract_model_name(item)
         if show_gpu_arch:
-            table.add_row("✅ Success", str(len(successful)), get_display_names(successful), get_gpu_architectures(successful))
+            gpu_arch = extract_gpu_arch(item)
+            table.add_row(str(row_index), "✅ Success", model_name, gpu_arch)
         else:
-            table.add_row("✅ Success", str(len(successful)), get_display_names(successful))
+            table.add_row(str(row_index), "✅ Success", model_name)
+        row_index += 1
 
-    if failed:
-        if show_gpu_arch:
-            table.add_row("❌ Failed", str(len(failed)), get_display_names(failed), get_gpu_architectures(failed))
+    # Add failed builds/runs
+    for item in failed:
+        if isinstance(item, dict):
+            model_name = item.get("model", "Unknown")
+            if show_gpu_arch:
+                gpu_arch = item.get("architecture", "N/A")
+                table.add_row(str(row_index), "❌ Failed", model_name, gpu_arch)
+            else:
+                table.add_row(str(row_index), "❌ Failed", model_name)
         else:
-            table.add_row("❌ Failed", str(len(failed)), get_display_names(failed))
+            if show_gpu_arch:
+                table.add_row(str(row_index), "❌ Failed", str(item), "N/A")
+            else:
+                table.add_row(str(row_index), "❌ Failed", str(item))
+        row_index += 1
 
+    # Show empty state if no results
     if not successful and not failed:
         if show_gpu_arch:
-            table.add_row("ℹ️ No items", "0", "", "")
+            table.add_row("1", "ℹ️ No items", "", "")
         else:
-            table.add_row("ℹ️ No items", "0", "")
+            table.add_row("1", "ℹ️ No items", "")
 
     console.print(table)
 

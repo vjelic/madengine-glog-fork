@@ -518,32 +518,14 @@ class DockerBuilder:
                         "error": str(e)
                     })
             elif target_archs:
-                # Multi-architecture build mode with Dockerfile validation
+                # Multi-architecture build mode - always use architecture suffix
                 for arch in target_archs:
                     try:
-                        # Check if model's Dockerfile has GPU variables
-                        has_gpu_vars, dockerfile_path = self._check_dockerfile_has_gpu_variables(model_info)
-                        
-                        if has_gpu_vars:
-                            # Validate target architecture against model's Dockerfile
-                            if not self._validate_target_arch_against_dockerfile(model_info, arch):
-                                raise ValueError(
-                                    f"Target GPU architecture '{arch}' does not match model '{model_info['name']}' "
-                                    f"Dockerfile GPU architecture requirements. Cannot build image."
-                                )
-                            # Build with architecture suffix
-                            arch_build_info = self._build_model_for_arch(
-                                model_info, arch, credentials, clean_cache, 
-                                registry, phase_suffix, batch_build_metadata
-                            )
-                        else:
-                            # No GPU variables - run normal build using existing flow
-                            self.rich_console.print(f"[yellow]Info: No GPU architecture variables found in {dockerfile_path}, "
-                                  f"using normal build flow without architecture suffix for model {model_info['name']}[/yellow]")
-                            arch_build_info = self._build_model_single_arch(
-                                model_info, credentials, clean_cache, 
-                                registry, phase_suffix, batch_build_metadata
-                            )
+                        # Always build with architecture suffix when --target-archs is used
+                        arch_build_info = self._build_model_for_arch(
+                            model_info, arch, credentials, clean_cache, 
+                            registry, phase_suffix, batch_build_metadata
+                        )
                         
                         build_summary["successful_builds"].extend(arch_build_info)
                         build_summary["total_build_time"] += sum(
