@@ -1068,13 +1068,3 @@ class DockerBuilder:
             pass
         
         return None
-
-    def _create_base_image_name(self, model_info: typing.Dict, dockerfile_path: str) -> str:
-        """Create base image name for a model."""
-        # Use existing image naming logic from build_image method
-        # This is a simplified version - we may need to extract more from build_image
-        model_name = model_info["name"]
-        dockerfile_context = self.console.sh(
-            f"head -n5 {dockerfile_path} | grep '# CONTEXT ' | sed 's/# CONTEXT //g'"
-        )
-        return f"ci-{model_name}_{dockerfile_context}"
