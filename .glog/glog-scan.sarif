@@ -1,0 +1,130 @@
+{
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "Glog.AI",
+          "organization": "Glog.AI",
+          "fullName": "Glog, Making software more secure",
+          "version": "1.0.0",
+          "semanticVersion": "1.0.0",
+          "informationUri": "https://www.glog.ai",
+          "rules": [
+            {
+              "id": "glog-807b3cf2-4c49-4bae-9e71-bf185cc9f101",
+              "help": {
+                "text": "",
+                "markdown": "## Description\n\nSQL Injection Vulnerability via String-Based Query Construction is a common security vulnerability in applications that use an SQL database. It occurs when an application uses user input to construct SQL queries without properly sanitizing the input. This allows an attacker to manipulate the SQL query to perform unauthorized actions, such as viewing, modifying, or deleting data.\n\nIn Python, this vulnerability often occurs when using the `execute` method of a cursor object to execute an SQL query that includes user input. If the user input is included in the query string without being properly sanitized, an attacker can include SQL commands in the input that alter the query's behavior.\n\n## Mitigation Advice\n\nTo mitigate this vulnerability, never construct SQL queries using string formatting or concatenation with unsanitized user input. Instead, use parameterized queries or prepared statements, which can ensure that user input is properly sanitized and cannot alter the SQL query's structure.\n\n## Source Code Fix Recommendation\n\nHere is an example of vulnerable code and how to fix it:\n\n**Vulnerable Code:**\n\n```python\ndef get_user(username):\n    cursor.execute(f\"SELECT * FROM users WHERE username = '{username}'\")\n    return cursor.fetchone()\n```\n\n**Fixed Code:**\n\n```python\ndef get_user(username):\n    cursor.execute(\"SELECT * FROM users WHERE username = %s\", (username,))\n    return cursor.fetchone()\n```\n\nIn the fixed code, the SQL query is defined using a placeholder (`%s`), and the user input is passed as a second argument to the `execute` method. This ensures that the user input is properly sanitized and cannot alter the structure of the SQL query.\n\n## Library Dependencies\n\nThe code example requires the `mysql-connector-python` library to connect to a MySQL database and execute SQL queries.\n\n## References\n\n- [OWASP Python Security - SQL Injection](https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html)\n- [CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')](https://cwe.mitre.org/data/definitions/89.html)"
+              },
+              "properties": {
+                "tags": [
+                  "B608"
+                ]
+              }
+            },
+            {
+              "id": "glog-014c4dcd-4bbd-4b89-b326-456dac49bb52",
+              "help": {
+                "text": "",
+                "markdown": "## Description\n\nSQL Injection Vulnerability via String-Based Query Construction is a common security vulnerability in applications that use an SQL database. It occurs when an application uses input to construct an SQL query without properly sanitizing or escaping it. This allows an attacker to manipulate the query to execute arbitrary SQL commands, which can lead to unauthorized access, data corruption, or data loss.\n\nIn Python, this vulnerability often occurs when using the `format` function or string concatenation to construct SQL queries. This is because these methods do not automatically escape special characters in the input, which can be used to alter the structure of the query.\n\n## Mitigation Advice\n\nTo mitigate this vulnerability, you should never construct SQL queries using string formatting or concatenation with unsanitized input. Instead, use parameterized queries or prepared statements, which automatically sanitize input and prevent SQL injection.\n\nIf you must use string formatting to construct SQL queries, make sure to properly sanitize the input. This can be done using the `escape` function from the `mysql.connector` module, or the `quote` function from the `psycopg2` module, depending on the SQL database you are using.\n\n## Source Code Fix Recommendation\n\nHere is an example of a vulnerable code snippet and how to fix it:\n\n**Vulnerable Code:**\n\n```python\ndef update_user(username, email):\n    query = \"UPDATE users SET email = '{}' WHERE username = '{}'\".format(email, username)\n    cursor.execute(query)\n```\n\n**Fixed Code:**\n\n```python\ndef update_user(username, email):\n    query = \"UPDATE users SET email = %s WHERE username = %s\"\n    cursor.execute(query, (email, username))\n```\n\nIn the fixed code, we use a parameterized query to automatically sanitize the `email` and `username` inputs. This prevents an attacker from manipulating the query to execute arbitrary SQL commands.\n\n## Library Dependencies\n\nThe code example requires the following library dependencies:\n\n- An SQL connector library, such as `mysql-connector-python` or `psycopg2`, to connect to the SQL database and execute queries.\n\n## References\n\n- [OWASP Python Security - SQL Injection](https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html)\n- [CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')](https://cwe.mitre.org/data/definitions/89.html)"
+              },
+              "properties": {
+                "tags": [
+                  "B608"
+                ]
+              }
+            }
+          ],
+          "language": "en-US",
+          "contents": [
+            "localizedData",
+            "nonLocalizedData"
+          ],
+          "isComprehensive": false
+        }
+      },
+      "language": "en-US",
+      "results": [
+        {
+          "ruleId": "glog-807b3cf2-4c49-4bae-9e71-bf185cc9f101",
+          "kind": "fail",
+          "level": "warning",
+          "message": {
+            "text": "SQL Injection Vulnerability via String-Based Query Construction"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/madengine/db/database.py"
+                },
+                "region": {
+                  "startLine": 222,
+                  "startColumn": 9,
+                  "endLine": 223,
+                  "endColumn": 39,
+                  "snippet": {
+                    "text": "        \"SELECT `COLUMN_NAME` \\\n"
+                  }
+                },
+                "contextRegion": {
+                  "startLine": 221,
+                  "endLine": 226,
+                  "snippet": {
+                    "text": "    result = ENGINE.execute(\n        \"SELECT `COLUMN_NAME` \\\n            FROM `INFORMATION_SCHEMA`.`COLUMNS` \\\n                WHERE `TABLE_SCHEMA`='{}' \\\n                AND `TABLE_NAME`='{}'\".format(db_name, DB_TABLE.__tablename__)\n    )\n"
+                  }
+                }
+              }
+            }
+          ],
+          "properties": {
+            "issue_severity": "MEDIUM",
+            "issue_confidence": "MEDIUM"
+          }
+        },
+        {
+          "ruleId": "glog-014c4dcd-4bbd-4b89-b326-456dac49bb52",
+          "kind": "fail",
+          "level": "warning",
+          "message": {
+            "text": "SQL Injection Vulnerability via String-Based Query Construction"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/madengine/db/database.py"
+                },
+                "region": {
+                  "startLine": 199,
+                  "startColumn": 9,
+                  "endLine": 200,
+                  "endColumn": 24,
+                  "snippet": {
+                    "text": "        \"UPDATE {} \\\n"
+                  }
+                },
+                "contextRegion": {
+                  "startLine": 198,
+                  "endLine": 202,
+                  "snippet": {
+                    "text": "    ENGINE.execute(\n        \"UPDATE {} \\\n        SET \\\n        {} = TRIM({});\".format(\n            DB_TABLE.__tablename__, col_name, col_name\n"
+                  }
+                }
+              }
+            }
+          ],
+          "properties": {
+            "issue_severity": "MEDIUM",
+            "issue_confidence": "MEDIUM"
+          }
+        }
+      ],
+      "newlineSequences": [
+        "\r\n",
+        "\n"
+      ]
+    }
+  ]
+}
