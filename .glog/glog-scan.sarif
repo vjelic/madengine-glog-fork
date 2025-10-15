@@ -12,266 +12,730 @@
           "informationUri": "https://www.glog.ai",
           "rules": [
             {
-              "id": "glog-ab61403a-c772-4daf-b5bc-8046be1aface",
+              "id": "32c2046d-e80c-3287-afd9-4bc14c7251f7",
+              "name": "resources.rules.dlint-catastrophic-redos",
+              "shortDescription": {
+                "text": "Opengrep Finding: resources.rules.dlint-catastrophic-redos"
+              },
+              "fullDescription": {
+                "text": "Regex `$X` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)"
+              },
+              "defaultConfiguration": {
+                "enabled": true,
+                "level": "error"
+              },
               "help": {
-                "text": "",
-                "markdown": "## Description\n\nThe `shell=True` subprocess call security vulnerability in Python occurs when a developer uses the `shell=True` argument in the `subprocess` module's methods. This can lead to shell injection attacks if the command string that is passed is constructed using unsanitized input from an untrusted source.\n\nThe `subprocess` module allows you to spawn new processes, connect to their input/output/error pipes, and obtain their return codes. When `shell=True` is used, the specified command is executed through the shell. This can be a security hazard if combined with untrusted input as it allows for shell injection, a form of command injection attack where an attacker can execute arbitrary commands in the system's shell.\n\n## Mitigation Advice\n\nTo mitigate this vulnerability, avoid using `shell=True` in your `subprocess` calls, especially if you're using user-provided or otherwise externally-provided input to form your command string. If you must use `shell=True`, make sure to properly sanitize and escape all input.\n\n## Source Code Fix Recommendation\n\nInstead of using `shell=True`, you can pass the command and its arguments as a list. Here's an example:\n\n```python\n# Vulnerable code\nimport subprocess\ncommand = \"ls -l\"\nsubprocess.call(command, shell=True)\n\n# Recommended fix\nimport subprocess\ncommand = [\"ls\", \"-l\"]\nsubprocess.call(command)\n```\n\nIn the fixed code, the command and its arguments are passed as a list, and `shell=True` is not used. This way, even if an attacker can control some part of the command string, they cannot inject arbitrary commands.\n\n## References\n\n- [OWASP Command Injection](https://owasp.org/www-community/attacks/Command_Injection)\n- [CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')](https://cwe.mitre.org/data/definitions/78.html)"
+                "text": "Regex `$X` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)\n💎 Enable cross-file analysis and Pro rules for free at sg.run/pro",
+                "markdown": "Regex `$X` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)\n\n#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>\n\n<b>References:</b>\n - [https://r2c.dev/blog/2020/finding-python-redos-bugs-at-scale-using-dlint-and-r2c/](https://r2c.dev/blog/2020/finding-python-redos-bugs-at-scale-using-dlint-and-r2c/)\n - [https://r2c.dev/blog/2020/improving-redos-detection-with-dlint-and-r2c/](https://r2c.dev/blog/2020/improving-redos-detection-with-dlint-and-r2c/)\n"
               },
               "properties": {
+                "precision": "very-high",
                 "tags": [
-                  "B602"
+                  "resources.rules.dlint-catastrophic-redos"
                 ]
               }
             },
             {
-              "id": "glog-16e48097-92fe-4d3a-ba06-732f6e407b95",
+              "id": "02994616-8f63-3ed7-a082-3737fc942c0a",
+              "name": "resources.rules.detected-ssh-password",
+              "shortDescription": {
+                "text": "Opengrep Finding: resources.rules.detected-ssh-password"
+              },
+              "fullDescription": {
+                "text": "SSH Password detected"
+              },
+              "defaultConfiguration": {
+                "enabled": true,
+                "level": "error"
+              },
               "help": {
-                "text": "",
-                "markdown": "## Description\n\nSQL Injection Vulnerability via String-Based Query Construction is a common security vulnerability in applications that use an SQL database. It occurs when an application uses input to construct an SQL query without properly sanitizing or escaping it. This allows an attacker to manipulate the query to execute arbitrary SQL commands, which can lead to unauthorized access, data corruption, or data loss.\n\nIn Python, this vulnerability often occurs when using the `format` function or string concatenation to construct SQL queries. This is because these methods do not automatically escape special characters in the input, which can be used to alter the structure of the query.\n\n## Mitigation Advice\n\nTo mitigate this vulnerability, you should never construct SQL queries using string formatting or concatenation with unsanitized input. Instead, use parameterized queries or prepared statements, which automatically sanitize input and prevent SQL injection.\n\nIf you must use string formatting to construct SQL queries, make sure to properly sanitize the input. This can be done using the `escape` function from the `mysql.connector` module, or the `quote` function from the `psycopg2` module, depending on the SQL database you are using.\n\n## Source Code Fix Recommendation\n\nHere is an example of a vulnerable code snippet and how to fix it:\n\n**Vulnerable Code:**\n\n```python\ndef update_user(username, email):\n    query = \"UPDATE users SET email = '{}' WHERE username = '{}'\".format(email, username)\n    cursor.execute(query)\n```\n\n**Fixed Code:**\n\n```python\ndef update_user(username, email):\n    query = \"UPDATE users SET email = %s WHERE username = %s\"\n    cursor.execute(query, (email, username))\n```\n\nIn the fixed code, we use a parameterized query to automatically sanitize the `email` and `username` inputs. This prevents an attacker from manipulating the query to execute arbitrary SQL commands.\n\n## Library Dependencies\n\nThe code example requires the following library dependencies:\n\n- An SQL connector library, such as `mysql-connector-python` or `psycopg2`, to connect to the SQL database and execute queries.\n\n## References\n\n- [OWASP Python Security - SQL Injection](https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html)\n- [CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')](https://cwe.mitre.org/data/definitions/89.html)"
+                "text": "SSH Password detected\n💎 Enable cross-file analysis and Pro rules for free at sg.run/pro",
+                "markdown": "SSH Password detected\n\n#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>"
               },
               "properties": {
+                "precision": "very-high",
                 "tags": [
-                  "B608"
+                  "resources.rules.detected-ssh-password"
                 ]
               }
             },
             {
-              "id": "glog-f6dbf333-97e1-4884-a2e9-9c6d92e5e6ec",
+              "id": "ca51a855-3c83-3e66-ba88-37f6bfc433f6",
+              "name": "resources.rules.detected-ssh-password",
+              "shortDescription": {
+                "text": "Opengrep Finding: resources.rules.detected-ssh-password"
+              },
+              "fullDescription": {
+                "text": "SSH Password detected"
+              },
+              "defaultConfiguration": {
+                "enabled": true,
+                "level": "error"
+              },
               "help": {
-                "text": "",
-                "markdown": "## Description\n\nSQL Injection Vulnerability via String-Based Query Construction is a common security vulnerability in applications that use an SQL database. It occurs when an application uses input to construct an SQL query without properly sanitizing or escaping it. This allows an attacker to manipulate the query, potentially gaining unauthorized access to data, modifying data, or executing commands on the database server.\n\nIn Python, this vulnerability often occurs when using the `execute` method of a database cursor with a query string that includes unsanitized input. For example:\n\n```python\ncursor.execute(\"SELECT * FROM dlm_table WHERE column = '%s'\" % variable)\n```\n\nIn this case, if `variable` includes certain special characters (such as a single quote), it can be used to modify the query.\n\n## Mitigation Advice\n\nTo mitigate this vulnerability, never construct SQL queries using string formatting with unsanitized input. Instead, use parameterized queries, which can ensure that input is properly escaped, preventing SQL injection attacks.\n\nMost Python database libraries support parameterized queries. For example, in the `sqlite3` library, you can use `?` as a placeholder for parameters:\n\n```python\ncursor.execute(\"SELECT * FROM dlm_table WHERE column = ?\", (variable,))\n```\n\nIn this case, `variable` will be properly escaped, and cannot be used to modify the query.\n\n## Source Code Fix Recommendation\n\nAssuming the original vulnerable code is:\n\n```python\ncursor.execute(\"SELECT * FROM dlm_table WHERE column = '%s'\" % variable)\n```\n\nThe fixed code using parameterized queries would be:\n\n```python\ncursor.execute(\"SELECT * FROM dlm_table WHERE column = ?\", (variable,))\n```\n\n## Library Dependencies\n\nThe code example requires a Python SQL database library that provides a cursor object with an `execute` method. This could be `sqlite3`, `psycopg2`, `mysql-connector-python`, or another similar library.\n\n## References\n\n- [OWASP SQL Injection Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html)\n- [CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')](https://cwe.mitre.org/data/definitions/89.html)"
+                "text": "SSH Password detected\n💎 Enable cross-file analysis and Pro rules for free at sg.run/pro",
+                "markdown": "SSH Password detected\n\n#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>"
               },
               "properties": {
+                "precision": "very-high",
                 "tags": [
-                  "B608"
+                  "resources.rules.detected-ssh-password"
                 ]
               }
             },
             {
-              "id": "glog-113fb92e-cf17-489c-bbf4-7f104686cece",
+              "id": "86caaed8-1c62-38d9-ac88-b385d8db7473",
+              "name": "resources.rules.dlint-catastrophic-redos",
+              "shortDescription": {
+                "text": "Opengrep Finding: resources.rules.dlint-catastrophic-redos"
+              },
+              "fullDescription": {
+                "text": "Regex `$X` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)"
+              },
+              "defaultConfiguration": {
+                "enabled": true,
+                "level": "error"
+              },
               "help": {
-                "text": "",
-                "markdown": "## Description\n\nThe `shell=True` in the subprocess module of Python is a security vulnerability. When using `shell=True`, the specified command is executed through the shell. This can be a security hazard if combined with untrusted input as it allows for shell injection, a form of command injection attack where an attacker can execute arbitrary commands on the host's shell.\n\n## Mitigation Advice\n\nTo mitigate this vulnerability, avoid using `shell=True` whenever possible, especially if the command string is constructed using external input. Instead, use `shell=False` and pass the command and its arguments as a list.\n\n## Source Code Fix Recommendation\n\nHere is a fixed version of the code:\n\n```python\nimport subprocess\n\ncommand = ['command', 'arg1', 'arg2']\nproc = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=False, universal_newlines=True, bufsize=1)\n```\n\nIn this version, the command and its arguments are passed as a list and `shell=False` is used.\n\n## Library Dependencies\n\nThe code example requires the `subprocess` module, which is part of the Python Standard Library, so no additional library dependencies are needed.\n\n## References\n\n- [OWASP Command Injection](https://owasp.org/www-community/attacks/Command_Injection)\n- [CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')](https://cwe.mitre.org/data/definitions/78.html)"
+                "text": "Regex `$X` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)\n💎 Enable cross-file analysis and Pro rules for free at sg.run/pro",
+                "markdown": "Regex `$X` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)\n\n#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>\n\n<b>References:</b>\n - [https://r2c.dev/blog/2020/finding-python-redos-bugs-at-scale-using-dlint-and-r2c/](https://r2c.dev/blog/2020/finding-python-redos-bugs-at-scale-using-dlint-and-r2c/)\n - [https://r2c.dev/blog/2020/improving-redos-detection-with-dlint-and-r2c/](https://r2c.dev/blog/2020/improving-redos-detection-with-dlint-and-r2c/)\n"
               },
               "properties": {
+                "precision": "very-high",
                 "tags": [
-                  "B602"
+                  "resources.rules.dlint-catastrophic-redos"
                 ]
               }
             },
             {
-              "id": "glog-ad9e67d9-98bf-4554-88c6-759f813e2693",
+              "id": "88b7441d-9585-3026-ab49-905a71cf5dd0",
+              "name": "python.lang.security.audit.formatted-sql-query.formatted-sql-query",
+              "shortDescription": {
+                "text": "Opengrep Finding: python.lang.security.audit.formatted-sql-query.formatted-sql-query"
+              },
+              "fullDescription": {
+                "text": "Detected possible formatted SQL query. Use parameterized queries instead."
+              },
+              "defaultConfiguration": {
+                "enabled": true,
+                "level": "warning"
+              },
+              "helpUri": "https://semgrep.dev/r/python.lang.security.audit.formatted-sql-query.formatted-sql-query",
               "help": {
-                "text": "",
-                "markdown": "## Description\n\nThe `Shell=True` subprocess call security vulnerability in Python refers to the potential security risk when using the `subprocess` module with `shell=True` parameter. This vulnerability can lead to shell injection attacks where an attacker can execute arbitrary commands on the system by manipulating the input.\n\nThe `subprocess.run()` function is used to run a new subprocess and wait for its completion. When `shell=True` is used, the specified command is executed through the shell. This can be dangerous if combined with unsanitized user input, as it allows for shell injection.\n\n## Mitigation Advice\n\nTo mitigate this vulnerability, avoid using `shell=True` whenever possible, especially when the command string involves user input. Instead, use `shell=False` and pass the command and its arguments as a list. This way, the arguments are not processed by the shell, but are passed directly to the program.\n\nIf you must use `shell=True`, make sure to properly sanitize and escape all user input. Be aware that proper escaping can be complex and error-prone, so it's generally better to avoid `shell=True` if at all possible.\n\n## Source Code Fix Recommendation\n\nInstead of:\n\n```python\nsubprocess.run(commandstring, shell=True, check=True, executable=\"/bin/bash\")\n```\n\nUse:\n\n```python\nsubprocess.run(['command', 'arg1', 'arg2'], check=True)\n```\n\nReplace `'command'`, `'arg1'`, `'arg2'` with your actual command and arguments.\n\n## Library Dependencies\n\nThe code example requires the `subprocess` module, which is part of the Python Standard Library, so no additional library dependencies are needed.\n\n## References\n\n- [OWASP Python Security - Shell Injection](https://cheatsheetseries.owasp.org/cheatsheets/OS_Command_Injection_Defense_Cheat_Sheet.html)\n- [CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')](https://cwe.mitre.org/data/definitions/78.html)"
+                "text": "Detected possible formatted SQL query. Use parameterized queries instead.\n💎 Enable cross-file analysis and Pro rules for free at sg.run/pro",
+                "markdown": "Detected possible formatted SQL query. Use parameterized queries instead.\n\n#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>\n\n<b>References:</b>\n - [Semgrep Rule](https://semgrep.dev/r/python.lang.security.audit.formatted-sql-query.formatted-sql-query)\n - [https://stackoverflow.com/questions/775296/mysql-parameterized-queries](https://stackoverflow.com/questions/775296/mysql-parameterized-queries)\n"
               },
               "properties": {
+                "precision": "very-high",
                 "tags": [
-                  "B602"
+                  "python.lang.security.audit.formatted-sql-query.formatted-sql-query"
                 ]
               }
             },
             {
-              "id": "glog-eee2b7af-c788-40d9-87a2-99813830f994",
+              "id": "d4f3855b-a455-36dc-9180-11baa02ed7c4",
+              "name": "python.lang.security.audit.formatted-sql-query.formatted-sql-query",
+              "shortDescription": {
+                "text": "Opengrep Finding: python.lang.security.audit.formatted-sql-query.formatted-sql-query"
+              },
+              "fullDescription": {
+                "text": "Detected possible formatted SQL query. Use parameterized queries instead."
+              },
+              "defaultConfiguration": {
+                "enabled": true,
+                "level": "warning"
+              },
+              "helpUri": "https://semgrep.dev/r/python.lang.security.audit.formatted-sql-query.formatted-sql-query",
               "help": {
-                "text": "",
-                "markdown": "## Description\n\nThe `subprocess.run()` function in Python is used to run new applications or programs through Python code. When the `shell=True` argument is used, it specifies that the command will be executed through the shell. This can lead to a security vulnerability if the command string is constructed using unsanitized input from an untrusted source. This is because the shell can execute arbitrary commands, potentially leading to command injection attacks.\n\n## Mitigation Advice\n\nTo mitigate this vulnerability, avoid using `shell=True` in `subprocess.run()` whenever possible. If you must use it, ensure that the command string is not constructed from unsanitized user input. Instead, use static strings or sanitize the user input before using it to construct the command string.\n\n## Source Code Fix Recommendation\n\nInstead of using `shell=True`, you can pass the command and its arguments as a list. This way, the command is executed directly without going through the shell, thus avoiding the possibility of command injection. Here's how you can modify the code:\n\n```python\nimport subprocess\n\ncommand = [\"/bin/bash\", \"-c\", \"your_command_here\"]\nsubprocess.run(command, check=True)\n```\n\n## Library Dependencies\n\nThe code example requires the `subprocess` module, which is part of the Python Standard Library. Therefore, no additional library dependencies are required.\n\n## References\n\n- [OWASP Command Injection](https://owasp.org/www-community/attacks/Command_Injection)\n- [CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')](https://cwe.mitre.org/data/definitions/78.html)"
+                "text": "Detected possible formatted SQL query. Use parameterized queries instead.\n💎 Enable cross-file analysis and Pro rules for free at sg.run/pro",
+                "markdown": "Detected possible formatted SQL query. Use parameterized queries instead.\n\n#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>\n\n<b>References:</b>\n - [Semgrep Rule](https://semgrep.dev/r/python.lang.security.audit.formatted-sql-query.formatted-sql-query)\n - [https://stackoverflow.com/questions/775296/mysql-parameterized-queries](https://stackoverflow.com/questions/775296/mysql-parameterized-queries)\n"
               },
               "properties": {
+                "precision": "very-high",
                 "tags": [
-                  "B602"
+                  "python.lang.security.audit.formatted-sql-query.formatted-sql-query"
                 ]
               }
             },
             {
-              "id": "glog-bdcb1a80-10fe-45e4-a3c4-ac9e959a982c",
+              "id": "5f147ec9-4439-3125-a3a9-9aae64855da6",
+              "name": "python.lang.security.audit.formatted-sql-query.formatted-sql-query",
+              "shortDescription": {
+                "text": "Opengrep Finding: python.lang.security.audit.formatted-sql-query.formatted-sql-query"
+              },
+              "fullDescription": {
+                "text": "Detected possible formatted SQL query. Use parameterized queries instead."
+              },
+              "defaultConfiguration": {
+                "enabled": true,
+                "level": "warning"
+              },
+              "helpUri": "https://semgrep.dev/r/python.lang.security.audit.formatted-sql-query.formatted-sql-query",
               "help": {
-                "text": "",
-                "markdown": "## Description\n\nThe `subprocess.run()` function in Python is used to run new applications or programs through Python code. When the `shell=True` argument is used, it specifies that the command will be executed through the shell. This can lead to a security vulnerability if the command string is constructed using unsanitized input from an untrusted source. This is because the shell can execute arbitrary commands, potentially leading to command injection attacks.\n\n## Mitigation Advice\n\nTo mitigate this vulnerability, avoid using `shell=True` in `subprocess.run()` whenever possible. If you must use it, ensure that the command string is not constructed from unsanitized user input. Instead, use static strings or sanitize the user input before using it to construct the command string.\n\n## Source Code Fix Recommendation\n\nInstead of using `shell=True`, you can pass the command and its arguments as a list. This way, the command is executed directly without going through the shell, thus avoiding the possibility of command injection. Here's how you can modify the code:\n\n```python\nimport subprocess\n\ncommand = [\"/bin/bash\", \"-c\", \"your_command_here\"]\nsubprocess.run(command, check=True)\n```\n\n## Library Dependencies\n\nThe code example requires the `subprocess` module, which is part of the Python Standard Library. Therefore, no additional library dependencies are required.\n\n## References\n\n- [OWASP Command Injection](https://owasp.org/www-community/attacks/Command_Injection)\n- [CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')](https://cwe.mitre.org/data/definitions/78.html)"
+                "text": "Detected possible formatted SQL query. Use parameterized queries instead.\n💎 Enable cross-file analysis and Pro rules for free at sg.run/pro",
+                "markdown": "Detected possible formatted SQL query. Use parameterized queries instead.\n\n#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>\n\n<b>References:</b>\n - [Semgrep Rule](https://semgrep.dev/r/python.lang.security.audit.formatted-sql-query.formatted-sql-query)\n - [https://stackoverflow.com/questions/775296/mysql-parameterized-queries](https://stackoverflow.com/questions/775296/mysql-parameterized-queries)\n"
               },
               "properties": {
+                "precision": "very-high",
                 "tags": [
-                  "B602"
+                  "python.lang.security.audit.formatted-sql-query.formatted-sql-query"
                 ]
               }
             },
             {
-              "id": "glog-432f64f2-5069-47f9-8b07-21a5b8a2cfbf",
+              "id": "44b1b339-c1ad-3ed9-b3a7-d32a380144b5",
+              "name": "python.lang.security.audit.formatted-sql-query.formatted-sql-query",
+              "shortDescription": {
+                "text": "Opengrep Finding: python.lang.security.audit.formatted-sql-query.formatted-sql-query"
+              },
+              "fullDescription": {
+                "text": "Detected possible formatted SQL query. Use parameterized queries instead."
+              },
+              "defaultConfiguration": {
+                "enabled": true,
+                "level": "warning"
+              },
+              "helpUri": "https://semgrep.dev/r/python.lang.security.audit.formatted-sql-query.formatted-sql-query",
               "help": {
-                "text": "",
-                "markdown": "## Description\n\nSQL Injection Vulnerability via String-Based Query Construction is a common security vulnerability in applications that use an SQL database. It occurs when an application uses user input to construct SQL queries without properly sanitizing the input. This allows an attacker to manipulate the SQL query to perform unauthorized actions, such as viewing, modifying, or deleting data.\n\nIn Python, this vulnerability often occurs when using the `execute` method of a cursor object to execute an SQL query that includes user input. If the user input is included in the query string without being properly sanitized, an attacker can include SQL commands in the input that alter the query's behavior.\n\n## Mitigation Advice\n\nTo mitigate this vulnerability, never construct SQL queries using string formatting or concatenation with unsanitized user input. Instead, use parameterized queries or prepared statements, which can ensure that user input is properly sanitized and cannot alter the SQL query's structure.\n\n## Source Code Fix Recommendation\n\nHere is an example of vulnerable code and how to fix it:\n\n**Vulnerable Code:**\n\n```python\ndef get_user(username):\n    cursor.execute(f\"SELECT * FROM users WHERE username = '{username}'\")\n    return cursor.fetchone()\n```\n\n**Fixed Code:**\n\n```python\ndef get_user(username):\n    cursor.execute(\"SELECT * FROM users WHERE username = %s\", (username,))\n    return cursor.fetchone()\n```\n\nIn the fixed code, the SQL query is defined using a placeholder (`%s`), and the user input is passed as a second argument to the `execute` method. This ensures that the user input is properly sanitized and cannot alter the structure of the SQL query.\n\n## Library Dependencies\n\nThe code example requires the `mysql-connector-python` library to connect to a MySQL database and execute SQL queries.\n\n## References\n\n- [OWASP Python Security - SQL Injection](https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html)\n- [CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')](https://cwe.mitre.org/data/definitions/89.html)"
+                "text": "Detected possible formatted SQL query. Use parameterized queries instead.\n💎 Enable cross-file analysis and Pro rules for free at sg.run/pro",
+                "markdown": "Detected possible formatted SQL query. Use parameterized queries instead.\n\n#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>\n\n<b>References:</b>\n - [Semgrep Rule](https://semgrep.dev/r/python.lang.security.audit.formatted-sql-query.formatted-sql-query)\n - [https://stackoverflow.com/questions/775296/mysql-parameterized-queries](https://stackoverflow.com/questions/775296/mysql-parameterized-queries)\n"
               },
               "properties": {
+                "precision": "very-high",
                 "tags": [
-                  "B608"
+                  "python.lang.security.audit.formatted-sql-query.formatted-sql-query"
                 ]
               }
             },
             {
-              "id": "glog-980ad1cc-f349-4f81-abdb-8ee3b924a59e",
+              "id": "4e21be9e-40c7-3ff8-97c4-56ca3cb4dd80",
+              "name": "python.lang.security.audit.formatted-sql-query.formatted-sql-query",
+              "shortDescription": {
+                "text": "Opengrep Finding: python.lang.security.audit.formatted-sql-query.formatted-sql-query"
+              },
+              "fullDescription": {
+                "text": "Detected possible formatted SQL query. Use parameterized queries instead."
+              },
+              "defaultConfiguration": {
+                "enabled": true,
+                "level": "warning"
+              },
+              "helpUri": "https://semgrep.dev/r/python.lang.security.audit.formatted-sql-query.formatted-sql-query",
               "help": {
-                "text": "",
-                "markdown": "## Description\n\nSQL Injection Vulnerability via String-Based Query Construction is a common security vulnerability in applications that use an SQL database. It occurs when an application uses user input to construct SQL queries without properly sanitizing the input. This allows an attacker to manipulate the SQL query to perform unauthorized actions, such as viewing, modifying, or deleting data.\n\nIn Python, this vulnerability often occurs when using the `format` function or string concatenation to construct SQL queries. This allows an attacker to inject malicious SQL code by providing specially crafted input.\n\n## Mitigation Advice\n\nTo mitigate this vulnerability, never use string formatting or concatenation to construct SQL queries. Instead, use parameterized queries or prepared statements, which can ensure that user input is properly sanitized and cannot be used to inject malicious SQL code.\n\n## Source Code Fix Recommendation\n\nHere is an example of vulnerable code and how to fix it:\n\n**Vulnerable Code:**\n\n```python\ndef get_user(username):\n    query = \"SELECT * FROM users WHERE username = '{}'\".format(username)\n    cursor.execute(query)\n```\n\n**Fixed Code:**\n\n```python\ndef get_user(username):\n    query = \"SELECT * FROM users WHERE username = %s\"\n    cursor.execute(query, (username,))\n```\n\nIn the fixed code, we use a parameterized query to ensure that the `username` input is properly sanitized.\n\n## Library Dependencies\n\nThe code example requires the `psycopg2` library to interact with a PostgreSQL database.\n\n```bash\npip install psycopg2\n```\n\n## References\n\n- [OWASP SQL Injection Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html)\n- [CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')](https://cwe.mitre.org/data/definitions/89.html)"
+                "text": "Detected possible formatted SQL query. Use parameterized queries instead.\n💎 Enable cross-file analysis and Pro rules for free at sg.run/pro",
+                "markdown": "Detected possible formatted SQL query. Use parameterized queries instead.\n\n#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>\n\n<b>References:</b>\n - [Semgrep Rule](https://semgrep.dev/r/python.lang.security.audit.formatted-sql-query.formatted-sql-query)\n - [https://stackoverflow.com/questions/775296/mysql-parameterized-queries](https://stackoverflow.com/questions/775296/mysql-parameterized-queries)\n"
               },
               "properties": {
+                "precision": "very-high",
                 "tags": [
-                  "B608"
+                  "python.lang.security.audit.formatted-sql-query.formatted-sql-query"
                 ]
               }
             },
             {
-              "id": "glog-8f506d5f-a59a-4d6a-9ed5-08e67f577297",
+              "id": "64bb4d88-3207-342a-97c5-fe55118d8692",
+              "name": "python.lang.security.audit.formatted-sql-query.formatted-sql-query",
+              "shortDescription": {
+                "text": "Opengrep Finding: python.lang.security.audit.formatted-sql-query.formatted-sql-query"
+              },
+              "fullDescription": {
+                "text": "Detected possible formatted SQL query. Use parameterized queries instead."
+              },
+              "defaultConfiguration": {
+                "enabled": true,
+                "level": "warning"
+              },
+              "helpUri": "https://semgrep.dev/r/python.lang.security.audit.formatted-sql-query.formatted-sql-query",
               "help": {
-                "text": "",
-                "markdown": "## Description\n\nThe \"Auto-trust of Unknown Host Key in Paramiko Call\" vulnerability in Python programming language refers to a security flaw where the SSH client automatically trusts and adds an unknown host key to its list of known hosts. This happens when the `AutoAddPolicy()` method from the Paramiko library is used. This can lead to Man-in-the-Middle (MitM) attacks, where an attacker can intercept and possibly alter the communication between the client and the server.\n\n## Mitigation Advice\n\nTo mitigate this vulnerability, it is recommended to avoid using `AutoAddPolicy()`. Instead, use `RejectPolicy()` or `WarningPolicy()`. The former will reject unknown hosts, while the latter will issue a warning and reject the connection. It's also a good practice to manually manage your known hosts file and verify host keys before adding them.\n\n## Source Code Fix Recommendation\n\nReplace:\n\n```python\nssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())\n```\n\nWith:\n\n```python\nssh_client.set_missing_host_key_policy(paramiko.RejectPolicy())\n```\n\nOr:\n\n```python\nssh_client.set_missing_host_key_policy(paramiko.WarningPolicy())\n```\n\n## Library Dependencies\n\nThe code example requires the following library to execute properly:\n\n- Paramiko\n\n## References\n\n- [OWASP - Insecure Network Communication](https://owasp.org/www-project-mobile-top-10/2016-risks/m3-insecure-communication)\n- [CWE-295: Improper Certificate Validation](https://cwe.mitre.org/data/definitions/295.html)"
+                "text": "Detected possible formatted SQL query. Use parameterized queries instead.\n💎 Enable cross-file analysis and Pro rules for free at sg.run/pro",
+                "markdown": "Detected possible formatted SQL query. Use parameterized queries instead.\n\n#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>\n\n<b>References:</b>\n - [Semgrep Rule](https://semgrep.dev/r/python.lang.security.audit.formatted-sql-query.formatted-sql-query)\n - [https://stackoverflow.com/questions/775296/mysql-parameterized-queries](https://stackoverflow.com/questions/775296/mysql-parameterized-queries)\n"
               },
               "properties": {
+                "precision": "very-high",
                 "tags": [
-                  "B507"
+                  "python.lang.security.audit.formatted-sql-query.formatted-sql-query"
                 ]
               }
             },
             {
-              "id": "glog-dc03b5b1-edbf-4d16-b583-f47842091177",
+              "id": "6e70a3e8-fac5-3c21-b377-4656be2e0f3c",
+              "name": "python.lang.security.audit.formatted-sql-query.formatted-sql-query",
+              "shortDescription": {
+                "text": "Opengrep Finding: python.lang.security.audit.formatted-sql-query.formatted-sql-query"
+              },
+              "fullDescription": {
+                "text": "Detected possible formatted SQL query. Use parameterized queries instead."
+              },
+              "defaultConfiguration": {
+                "enabled": true,
+                "level": "warning"
+              },
+              "helpUri": "https://semgrep.dev/r/python.lang.security.audit.formatted-sql-query.formatted-sql-query",
               "help": {
-                "text": "",
-                "markdown": "## Description\n\nPotential Shell Injection through Paramiko Call is a vulnerability that occurs when an application provides an attacker the ability to control the argument to a system call that is made to the Paramiko library. This vulnerability can allow an attacker to execute arbitrary commands on the system with the privileges of the vulnerable application.\n\nIn the provided code snippet, the argument to the `exec_command` function is a static string `\"pwd\"`. However, if this argument is constructed using externally controlled input, then an attacker could potentially inject arbitrary commands.\n\n## Mitigation Advice\n\nTo mitigate this vulnerability, avoid using user-controlled input to construct system commands. If it is necessary to use user-controlled input in a system command, then the input should be properly sanitized and/or validated to ensure that it does not contain any malicious commands.\n\n## Source Code Fix Recommendation\n\nIf the command to be executed is static and known in advance, then it can be hardcoded as in the provided code snippet. If the command needs to be constructed dynamically, then it should be done in a way that does not allow command injection. Here is an example:\n\n```python\n# BAD: allows command injection\ncommand = \"ls \" + user_input\nssh_client.exec_command(command)\n\n# GOOD: prevents command injection\ncommand = [\"ls\", user_input]\nssh_client.exec_command(' '.join(pipes.quote(arg) for arg in command))\n```\n\nIn the above example, `pipes.quote` is used to properly escape any special characters in the user input that could potentially lead to command injection.\n\n## Library Dependencies\n\nThe provided code snippet requires the following Python library:\n\n- Paramiko\n\n## References\n\n- [OWASP Command Injection](https://owasp.org/www-community/attacks/Command_Injection)\n- [CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')](https://cwe.mitre.org/data/definitions/78.html)"
+                "text": "Detected possible formatted SQL query. Use parameterized queries instead.\n💎 Enable cross-file analysis and Pro rules for free at sg.run/pro",
+                "markdown": "Detected possible formatted SQL query. Use parameterized queries instead.\n\n#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>\n\n<b>References:</b>\n - [Semgrep Rule](https://semgrep.dev/r/python.lang.security.audit.formatted-sql-query.formatted-sql-query)\n - [https://stackoverflow.com/questions/775296/mysql-parameterized-queries](https://stackoverflow.com/questions/775296/mysql-parameterized-queries)\n"
               },
               "properties": {
+                "precision": "very-high",
                 "tags": [
-                  "B601"
+                  "python.lang.security.audit.formatted-sql-query.formatted-sql-query"
                 ]
               }
             },
             {
-              "id": "glog-84fc41a5-d320-49c5-96db-6d9d9b62b49e",
+              "id": "180b8146-af5a-3e07-8efd-05cf287b3b29",
+              "name": "python.lang.security.audit.formatted-sql-query.formatted-sql-query",
+              "shortDescription": {
+                "text": "Opengrep Finding: python.lang.security.audit.formatted-sql-query.formatted-sql-query"
+              },
+              "fullDescription": {
+                "text": "Detected possible formatted SQL query. Use parameterized queries instead."
+              },
+              "defaultConfiguration": {
+                "enabled": true,
+                "level": "warning"
+              },
+              "helpUri": "https://semgrep.dev/r/python.lang.security.audit.formatted-sql-query.formatted-sql-query",
               "help": {
-                "text": "",
-                "markdown": "## Description\n\nThe vulnerability \"Potential Shell Injection through Paramiko Call\" in Python refers to the potential for an attacker to inject malicious shell commands through the use of the `exec_command` function in the Paramiko library. This function is used to execute shell commands on a remote server via SSH. If the command string passed to `exec_command` is constructed using unsanitized user input, it can lead to shell injection attacks.\n\nIn the provided code snippet, the `upload_script_path_remote` variable is directly formatted into the command string. If an attacker can control the value of `upload_script_path_remote`, they could potentially execute arbitrary commands on the remote server.\n\n## Mitigation Advice\n\nTo mitigate this vulnerability, it is recommended to avoid constructing shell commands using string formatting or concatenation with user-controlled input. Instead, use the built-in mechanisms provided by the library to handle command parameters.\n\n## Source Code Fix Recommendation\n\nIn the case of Paramiko, the `exec_command` function does not provide a mechanism for handling command parameters. Therefore, it is recommended to sanitize the `upload_script_path_remote` variable before using it in the command string. This can be done using the `shlex.quote` function from the Python standard library:\n\n```python\nimport shlex\n\nsanitized_path = shlex.quote(upload_script_path_remote)\nprint_ssh_out(ssh_client.exec_command(\"rm -rf {}\".format(sanitized_path)))\n```\n\n## Library Dependencies\n\nThe code example requires the following Python libraries:\n\n- Paramiko: for SSH client functionality.\n\n## References\n\n- [OWASP Command Injection](https://owasp.org/www-community/attacks/Command_Injection)\n- [CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')](https://cwe.mitre.org/data/definitions/78.html)"
+                "text": "Detected possible formatted SQL query. Use parameterized queries instead.\n💎 Enable cross-file analysis and Pro rules for free at sg.run/pro",
+                "markdown": "Detected possible formatted SQL query. Use parameterized queries instead.\n\n#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>\n\n<b>References:</b>\n - [Semgrep Rule](https://semgrep.dev/r/python.lang.security.audit.formatted-sql-query.formatted-sql-query)\n - [https://stackoverflow.com/questions/775296/mysql-parameterized-queries](https://stackoverflow.com/questions/775296/mysql-parameterized-queries)\n"
               },
               "properties": {
+                "precision": "very-high",
                 "tags": [
-                  "B601"
+                  "python.lang.security.audit.formatted-sql-query.formatted-sql-query"
                 ]
               }
             },
             {
-              "id": "glog-261d3d16-9309-4c0b-a021-eabf57159e6d",
+              "id": "5ea1d124-0b6d-314b-9fb0-c7d626975cd5",
+              "name": "resources.rules.dangerous-system-call",
+              "shortDescription": {
+                "text": "Opengrep Finding: resources.rules.dangerous-system-call"
+              },
+              "fullDescription": {
+                "text": "Found dynamic content used in a system call. This is dangerous if external data can reach this function call because it allows a malicious actor to execute commands. Use the 'subprocess' module instead, which is easier to use without accidentally exposing a command injection vulnerability."
+              },
+              "defaultConfiguration": {
+                "enabled": true,
+                "level": "warning"
+              },
               "help": {
-                "text": "",
-                "markdown": "## Description\n\nPotential Shell Injection through Paramiko Call is a vulnerability that occurs when an application provides an attacker the ability to control the argument to a system call that is made to the shell. This vulnerability can allow an attacker to execute arbitrary commands on the system with the privileges of the vulnerable application.\n\nIn the provided Python code, the argument to the `exec_command` function is a static string, which does not pose a risk by itself. However, if this string were to be constructed using user-supplied input, it could potentially lead to a shell injection vulnerability.\n\n## Mitigation Advice\n\nTo mitigate this vulnerability, avoid using shell commands whenever possible. If it is necessary to use shell commands, never construct command strings using user-supplied input. Instead, use library functions that allow you to pass command arguments as an array or list, which prevents shell metacharacters from being interpreted.\n\n## Source Code Fix Recommendation\n\nIf you must use the `exec_command` function with user-supplied input, sanitize the input first. Here's an example of how you might do this:\n\n```python\nimport shlex\nuser_input = get_user_input()  # This is a placeholder for your user input retrieval code\nsafe_input = shlex.quote(user_input)\nprint_ssh_out(ssh_client.exec_command(f\"ls -l {safe_input}\"))\n```\n\nIn this code, `shlex.quote` is used to safely quote a string for use as a shell token.\n\n## Library Dependencies\n\nThe code example requires the following library:\n\n- Paramiko\n\n## OWASP Resources\n\n- [Command Injection](https://owasp.org/www-community/attacks/Command_Injection)\n- [Injection Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Injection_Prevention_Cheat_Sheet.html)\n\n## Common Weakness Enumeration (CWE)\n\n- [CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')](https://cwe.mitre.org/data/definitions/78.html)"
+                "text": "Found dynamic content used in a system call. This is dangerous if external data can reach this function call because it allows a malicious actor to execute commands. Use the 'subprocess' module instead, which is easier to use without accidentally exposing a command injection vulnerability.\n💎 Enable cross-file analysis and Pro rules for free at sg.run/pro",
+                "markdown": "Found dynamic content used in a system call. This is dangerous if external data can reach this function call because it allows a malicious actor to execute commands. Use the 'subprocess' module instead, which is easier to use without accidentally exposing a command injection vulnerability.\n\n#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>"
               },
               "properties": {
+                "precision": "very-high",
                 "tags": [
-                  "B601"
+                  "resources.rules.dangerous-system-call"
                 ]
               }
             },
             {
-              "id": "glog-2a9e4f3a-134b-4137-a198-97c1b2b9cfac",
+              "id": "9bd14bdd-eb56-3319-924f-49b8cf371221",
+              "name": "resources.rules.dlint-catastrophic-redos",
+              "shortDescription": {
+                "text": "Opengrep Finding: resources.rules.dlint-catastrophic-redos"
+              },
+              "fullDescription": {
+                "text": "Regex `$X` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)"
+              },
+              "defaultConfiguration": {
+                "enabled": true,
+                "level": "error"
+              },
               "help": {
-                "text": "",
-                "markdown": "## Description\n\nPotential Shell Injection through Paramiko Call is a vulnerability that occurs when an application provides an attacker the ability to control the argument to a system call that is made to the shell. This vulnerability can allow an attacker to execute arbitrary commands on the system with the privileges of the vulnerable application.\n\nIn the provided Python code, the argument to the `exec_command` function is a static string, which does not pose a risk by itself. However, if this string were to be constructed using user-supplied input, it could potentially lead to a shell injection vulnerability.\n\n## Mitigation Advice\n\nTo mitigate this vulnerability, avoid using shell commands whenever possible. If it is necessary to use shell commands, never construct command strings using user-supplied input. Instead, use library functions that allow you to pass command arguments as an array or list, which prevents shell metacharacters from being interpreted.\n\n## Source Code Fix Recommendation\n\nIf you must use the `exec_command` function with user-supplied input, sanitize the input first. Here's an example of how you might do this:\n\n```python\nimport shlex\nuser_input = get_user_input()  # This is a placeholder for your user input retrieval code\nsafe_input = shlex.quote(user_input)\nprint_ssh_out(ssh_client.exec_command(f\"ls -l {safe_input}\"))\n```\n\nIn this code, `shlex.quote` is used to safely quote a string for use as a shell token.\n\n## Library Dependencies\n\nThe code example requires the following library:\n\n- Paramiko\n\n## OWASP Resources\n\n- [Command Injection](https://owasp.org/www-community/attacks/Command_Injection)\n- [Injection Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Injection_Prevention_Cheat_Sheet.html)\n\n## Common Weakness Enumeration (CWE)\n\n- [CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')](https://cwe.mitre.org/data/definitions/78.html)"
+                "text": "Regex `$X` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)\n💎 Enable cross-file analysis and Pro rules for free at sg.run/pro",
+                "markdown": "Regex `$X` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)\n\n#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>\n\n<b>References:</b>\n - [https://r2c.dev/blog/2020/finding-python-redos-bugs-at-scale-using-dlint-and-r2c/](https://r2c.dev/blog/2020/finding-python-redos-bugs-at-scale-using-dlint-and-r2c/)\n - [https://r2c.dev/blog/2020/improving-redos-detection-with-dlint-and-r2c/](https://r2c.dev/blog/2020/improving-redos-detection-with-dlint-and-r2c/)\n"
               },
               "properties": {
+                "precision": "very-high",
                 "tags": [
-                  "B601"
+                  "resources.rules.dlint-catastrophic-redos"
                 ]
               }
             },
             {
-              "id": "glog-6c027fd6-29b6-4bb2-a1fd-99fed14d0ac2",
+              "id": "88dd386b-11ac-3388-96c2-596e5f0c01ba",
+              "name": "resources.rules.dlint-catastrophic-redos",
+              "shortDescription": {
+                "text": "Opengrep Finding: resources.rules.dlint-catastrophic-redos"
+              },
+              "fullDescription": {
+                "text": "Regex `$X` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)"
+              },
+              "defaultConfiguration": {
+                "enabled": true,
+                "level": "error"
+              },
               "help": {
-                "text": "",
-                "markdown": "## Description\n\nThe \"Paramiko Call Shell Injection Vulnerability\" is a security vulnerability that occurs when an attacker is able to inject malicious shell commands into the `exec_command` function of the Paramiko SSH client in Python. This can lead to remote code execution, unauthorized access, data leakage, and other security breaches.\n\n## Mitigation Advice\n\nTo mitigate this vulnerability, it is recommended to avoid using user-supplied input directly in the `exec_command` function without proper sanitization and validation. User input should be treated as untrusted by default. \n\n## Source Code Fix Recommendation\n\nHere is an example of how to sanitize user input before using it in `exec_command`:\n\n```python\nimport shlex\nimport paramiko\n\nssh_client = paramiko.SSHClient()\nssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())\nssh_client.connect('hostname', username='username', password='password')\n\ncommand = input(\"Enter your command: \")\nsafe_command = shlex.quote(command)\n\nstdin, stdout, stderr = ssh_client.exec_command(safe_command)\n```\n\nIn this example, the `shlex.quote` function is used to sanitize the user input. This function returns a shell-escaped version of the input string, making it safe to use as a token in a shell command.\n\n## Library Dependencies\n\nThe code example requires the following Python libraries:\n\n- `paramiko`\n- `shlex`\n\n## References\n\n- [OWASP Injection Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Injection_Prevention_Cheat_Sheet.html)\n- [CWE-77: Improper Neutralization of Special Elements used in a Command ('Command Injection')](https://cwe.mitre.org/data/definitions/77.html)"
+                "text": "Regex `$X` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)\n💎 Enable cross-file analysis and Pro rules for free at sg.run/pro",
+                "markdown": "Regex `$X` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)\n\n#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>\n\n<b>References:</b>\n - [https://r2c.dev/blog/2020/finding-python-redos-bugs-at-scale-using-dlint-and-r2c/](https://r2c.dev/blog/2020/finding-python-redos-bugs-at-scale-using-dlint-and-r2c/)\n - [https://r2c.dev/blog/2020/improving-redos-detection-with-dlint-and-r2c/](https://r2c.dev/blog/2020/improving-redos-detection-with-dlint-and-r2c/)\n"
               },
               "properties": {
+                "precision": "very-high",
                 "tags": [
-                  "B601"
+                  "resources.rules.dlint-catastrophic-redos"
                 ]
               }
             },
             {
-              "id": "glog-a5dafe84-3b2a-4ba1-8689-e8602834ac30",
+              "id": "226511f9-17c0-3382-a17c-31ea6f7390d1",
+              "name": "resources.rules.dlint-catastrophic-redos",
+              "shortDescription": {
+                "text": "Opengrep Finding: resources.rules.dlint-catastrophic-redos"
+              },
+              "fullDescription": {
+                "text": "Regex `$X` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)"
+              },
+              "defaultConfiguration": {
+                "enabled": true,
+                "level": "error"
+              },
               "help": {
-                "text": "",
-                "markdown": "## Description\n\nPotential Shell Injection through Paramiko Call is a vulnerability that occurs when an application provides an attacker the ability to control the argument to a system call that is made to the shell. This vulnerability can allow an attacker to execute arbitrary commands on the system with the privileges of the vulnerable application.\n\nIn the provided Python code, the argument to the `exec_command` function is a static string, which does not pose a risk by itself. However, if this string were to be constructed using user-supplied input, it could potentially lead to a shell injection vulnerability.\n\n## Mitigation Advice\n\nTo mitigate this vulnerability, avoid using shell commands whenever possible. If it is necessary to use shell commands, never construct command strings using user-supplied input. Instead, use library functions that allow you to pass command arguments as an array or list, which prevents shell metacharacters from being interpreted.\n\n## Source Code Fix Recommendation\n\nIf you must use the `exec_command` function with user-supplied input, sanitize the input first. Here's an example of how you might do this:\n\n```python\nimport shlex\nuser_input = get_user_input()  # This is a placeholder for your user input retrieval code\nsafe_input = shlex.quote(user_input)\nprint_ssh_out(ssh_client.exec_command(f\"ls -l {safe_input}\"))\n```\n\nIn this code, `shlex.quote` is used to safely quote a string for use as a shell token.\n\n## Library Dependencies\n\nThe code example requires the following library:\n\n- Paramiko\n\n## OWASP Resources\n\n- [Command Injection](https://owasp.org/www-community/attacks/Command_Injection)\n- [Injection Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Injection_Prevention_Cheat_Sheet.html)\n\n## Common Weakness Enumeration (CWE)\n\n- [CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')](https://cwe.mitre.org/data/definitions/78.html)"
+                "text": "Regex `$X` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)\n💎 Enable cross-file analysis and Pro rules for free at sg.run/pro",
+                "markdown": "Regex `$X` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)\n\n#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>\n\n<b>References:</b>\n - [https://r2c.dev/blog/2020/finding-python-redos-bugs-at-scale-using-dlint-and-r2c/](https://r2c.dev/blog/2020/finding-python-redos-bugs-at-scale-using-dlint-and-r2c/)\n - [https://r2c.dev/blog/2020/improving-redos-detection-with-dlint-and-r2c/](https://r2c.dev/blog/2020/improving-redos-detection-with-dlint-and-r2c/)\n"
               },
               "properties": {
+                "precision": "very-high",
                 "tags": [
-                  "B601"
+                  "resources.rules.dlint-catastrophic-redos"
                 ]
               }
             },
             {
-              "id": "glog-8b9cc6b3-fc71-42de-9df7-f6ea00a83dba",
+              "id": "8cb450e5-f9b5-35c7-9903-49b1451a94c3",
+              "name": "resources.rules.dlint-catastrophic-redos",
+              "shortDescription": {
+                "text": "Opengrep Finding: resources.rules.dlint-catastrophic-redos"
+              },
+              "fullDescription": {
+                "text": "Regex `$X` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)"
+              },
+              "defaultConfiguration": {
+                "enabled": true,
+                "level": "error"
+              },
               "help": {
-                "text": "",
-                "markdown": "## Description\n\nThe \"Auto-trust of Unknown Host Key in Paramiko Call\" vulnerability in Python programming language refers to a security flaw where the SSH client automatically trusts and adds an unknown host key to its list of known hosts. This happens when the `AutoAddPolicy()` method from the Paramiko library is used. This can lead to Man-in-the-Middle (MitM) attacks, where an attacker can intercept and possibly alter the communication between the client and the server.\n\n## Mitigation Advice\n\nTo mitigate this vulnerability, it is recommended to avoid using `AutoAddPolicy()`. Instead, use `RejectPolicy()` or `WarningPolicy()`. The former will reject unknown hosts, while the latter will issue a warning and reject the connection. It's also a good practice to manually manage your known hosts file and verify host keys before adding them.\n\n## Source Code Fix Recommendation\n\nReplace:\n\n```python\nssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())\n```\n\nWith:\n\n```python\nssh_client.set_missing_host_key_policy(paramiko.RejectPolicy())\n```\n\nOr:\n\n```python\nssh_client.set_missing_host_key_policy(paramiko.WarningPolicy())\n```\n\n## Library Dependencies\n\nThe code example requires the following library to execute properly:\n\n- Paramiko\n\n## References\n\n- [OWASP - Insecure Network Communication](https://owasp.org/www-project-mobile-top-10/2016-risks/m3-insecure-communication)\n- [CWE-295: Improper Certificate Validation](https://cwe.mitre.org/data/definitions/295.html)"
+                "text": "Regex `$X` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)\n💎 Enable cross-file analysis and Pro rules for free at sg.run/pro",
+                "markdown": "Regex `$X` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)\n\n#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>\n\n<b>References:</b>\n - [https://r2c.dev/blog/2020/finding-python-redos-bugs-at-scale-using-dlint-and-r2c/](https://r2c.dev/blog/2020/finding-python-redos-bugs-at-scale-using-dlint-and-r2c/)\n - [https://r2c.dev/blog/2020/improving-redos-detection-with-dlint-and-r2c/](https://r2c.dev/blog/2020/improving-redos-detection-with-dlint-and-r2c/)\n"
               },
               "properties": {
+                "precision": "very-high",
                 "tags": [
-                  "B507"
+                  "resources.rules.dlint-catastrophic-redos"
                 ]
               }
             },
             {
-              "id": "glog-b70bfe83-b173-4a1d-b6d8-3f1b48378141",
+              "id": "52b2d43e-6b6c-319f-82d7-df37958c1ae2",
+              "name": "resources.rules.dlint-catastrophic-redos",
+              "shortDescription": {
+                "text": "Opengrep Finding: resources.rules.dlint-catastrophic-redos"
+              },
+              "fullDescription": {
+                "text": "Regex `$X` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)"
+              },
+              "defaultConfiguration": {
+                "enabled": true,
+                "level": "error"
+              },
               "help": {
-                "text": "",
-                "markdown": "## Description\n\nPotential Shell Injection through Paramiko Call is a vulnerability that occurs when an application provides an attacker the ability to control the argument to a system call that is made to the shell. This vulnerability can allow an attacker to execute arbitrary commands on the system with the privileges of the vulnerable application.\n\nIn the provided Python code, the argument to the `exec_command` function is a static string, which does not pose a risk by itself. However, if this string were to be constructed using user-supplied input, it could potentially lead to a shell injection vulnerability.\n\n## Mitigation Advice\n\nTo mitigate this vulnerability, avoid using shell commands whenever possible. If it is necessary to use shell commands, never construct command strings using user-supplied input. Instead, use library functions that allow you to pass command arguments as an array or list, which prevents shell metacharacters from being interpreted.\n\n## Source Code Fix Recommendation\n\nIf you must use the `exec_command` function with user-supplied input, sanitize the input first. Here's an example of how you might do this:\n\n```python\nimport shlex\nuser_input = get_user_input()  # This is a placeholder for your user input retrieval code\nsafe_input = shlex.quote(user_input)\nprint_ssh_out(ssh_client.exec_command(f\"ls -l {safe_input}\"))\n```\n\nIn this code, `shlex.quote` is used to safely quote a string for use as a shell token.\n\n## Library Dependencies\n\nThe code example requires the following library:\n\n- Paramiko\n\n## OWASP Resources\n\n- [Command Injection](https://owasp.org/www-community/attacks/Command_Injection)\n- [Injection Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Injection_Prevention_Cheat_Sheet.html)\n\n## Common Weakness Enumeration (CWE)\n\n- [CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')](https://cwe.mitre.org/data/definitions/78.html)"
+                "text": "Regex `$X` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)\n💎 Enable cross-file analysis and Pro rules for free at sg.run/pro",
+                "markdown": "Regex `$X` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)\n\n#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>\n\n<b>References:</b>\n - [https://r2c.dev/blog/2020/finding-python-redos-bugs-at-scale-using-dlint-and-r2c/](https://r2c.dev/blog/2020/finding-python-redos-bugs-at-scale-using-dlint-and-r2c/)\n - [https://r2c.dev/blog/2020/improving-redos-detection-with-dlint-and-r2c/](https://r2c.dev/blog/2020/improving-redos-detection-with-dlint-and-r2c/)\n"
               },
               "properties": {
+                "precision": "very-high",
                 "tags": [
-                  "B601"
+                  "resources.rules.dlint-catastrophic-redos"
                 ]
               }
             },
             {
-              "id": "glog-2c6f4af7-86a7-4c3b-9efb-19b1b94ca7b8",
+              "id": "d31fe5b1-dba4-3504-92dd-df7375f998c9",
+              "name": "resources.rules.arbitrary-sleep",
+              "shortDescription": {
+                "text": "Opengrep Finding: resources.rules.arbitrary-sleep"
+              },
+              "fullDescription": {
+                "text": "time.sleep() call; did you mean to leave this in?"
+              },
+              "defaultConfiguration": {
+                "enabled": true,
+                "level": "error"
+              },
               "help": {
-                "text": "",
-                "markdown": "## Description\n\nPotential Shell Injection through Paramiko Call is a vulnerability that occurs when an application provides an attacker the ability to control the argument to a system call that is made to the Paramiko library. This vulnerability can allow an attacker to execute arbitrary commands on the system with the privileges of the vulnerable application.\n\nIn the provided code snippet, the argument to the `exec_command` function is a static string `\"pwd\"`. However, if this argument is constructed using externally controlled input, then an attacker could potentially inject arbitrary commands.\n\n## Mitigation Advice\n\nTo mitigate this vulnerability, avoid using user-controlled input to construct system commands. If it is necessary to use user-controlled input in a system command, then the input should be properly sanitized and/or validated to ensure that it does not contain any malicious commands.\n\n## Source Code Fix Recommendation\n\nIf the command to be executed is static and known in advance, then it can be hardcoded as in the provided code snippet. If the command needs to be constructed dynamically, then it should be done in a way that does not allow command injection. Here is an example:\n\n```python\n# BAD: allows command injection\ncommand = \"ls \" + user_input\nssh_client.exec_command(command)\n\n# GOOD: prevents command injection\ncommand = [\"ls\", user_input]\nssh_client.exec_command(' '.join(pipes.quote(arg) for arg in command))\n```\n\nIn the above example, `pipes.quote` is used to properly escape any special characters in the user input that could potentially lead to command injection.\n\n## Library Dependencies\n\nThe provided code snippet requires the following Python library:\n\n- Paramiko\n\n## References\n\n- [OWASP Command Injection](https://owasp.org/www-community/attacks/Command_Injection)\n- [CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')](https://cwe.mitre.org/data/definitions/78.html)"
+                "text": "time.sleep() call; did you mean to leave this in?\n💎 Enable cross-file analysis and Pro rules for free at sg.run/pro",
+                "markdown": "time.sleep() call; did you mean to leave this in?\n\n#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>"
               },
               "properties": {
+                "precision": "very-high",
                 "tags": [
-                  "B601"
+                  "resources.rules.arbitrary-sleep"
                 ]
               }
             },
             {
-              "id": "glog-b98437a2-ab06-4c0b-a769-35e6e9f2cf64",
+              "id": "94d74b31-b2ac-32a4-be8c-99dfab9cdf24",
+              "name": "resources.rules.unquoted-csv-writer",
+              "shortDescription": {
+                "text": "Opengrep Finding: resources.rules.unquoted-csv-writer"
+              },
+              "fullDescription": {
+                "text": "Found an unquoted CSV writer. This is susceptible to injection. Use 'quoting=csv.QUOTE_ALL'."
+              },
+              "defaultConfiguration": {
+                "enabled": true,
+                "level": "error"
+              },
               "help": {
-                "text": "",
-                "markdown": "## Description\n\nThe vulnerability \"Potential Shell Injection through Paramiko Call\" in Python refers to the potential for an attacker to inject malicious shell commands through the use of the `exec_command` function in the Paramiko library. This function is used to execute shell commands on a remote server via SSH. If the command string passed to `exec_command` is constructed using unsanitized user input, it can lead to shell injection attacks.\n\nIn the provided code snippet, the `upload_script_path_remote` variable is directly formatted into the command string. If an attacker can control the value of `upload_script_path_remote`, they could potentially execute arbitrary commands on the remote server.\n\n## Mitigation Advice\n\nTo mitigate this vulnerability, it is recommended to avoid constructing shell commands using string formatting or concatenation with user-controlled input. Instead, use the built-in mechanisms provided by the library to handle command parameters.\n\n## Source Code Fix Recommendation\n\nIn the case of Paramiko, the `exec_command` function does not provide a mechanism for handling command parameters. Therefore, it is recommended to sanitize the `upload_script_path_remote` variable before using it in the command string. This can be done using the `shlex.quote` function from the Python standard library:\n\n```python\nimport shlex\n\nsanitized_path = shlex.quote(upload_script_path_remote)\nprint_ssh_out(ssh_client.exec_command(\"rm -rf {}\".format(sanitized_path)))\n```\n\n## Library Dependencies\n\nThe code example requires the following Python libraries:\n\n- Paramiko: for SSH client functionality.\n\n## References\n\n- [OWASP Command Injection](https://owasp.org/www-community/attacks/Command_Injection)\n- [CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')](https://cwe.mitre.org/data/definitions/78.html)"
+                "text": "Found an unquoted CSV writer. This is susceptible to injection. Use 'quoting=csv.QUOTE_ALL'.\n💎 Enable cross-file analysis and Pro rules for free at sg.run/pro",
+                "markdown": "Found an unquoted CSV writer. This is susceptible to injection. Use 'quoting=csv.QUOTE_ALL'.\n\n#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>\n\n<b>References:</b>\n - [https://affinity-it-security.com/how-to-prevent-csv-injection/](https://affinity-it-security.com/how-to-prevent-csv-injection/)\n"
               },
               "properties": {
+                "precision": "very-high",
                 "tags": [
-                  "B601"
+                  "resources.rules.unquoted-csv-writer"
                 ]
               }
             },
             {
-              "id": "glog-b8d5a561-6846-4da2-8cef-124633a9d779",
+              "id": "367b786f-bab3-3c86-ac56-98e0f5df7d92",
+              "name": "resources.rules.arbitrary-sleep",
+              "shortDescription": {
+                "text": "Opengrep Finding: resources.rules.arbitrary-sleep"
+              },
+              "fullDescription": {
+                "text": "time.sleep() call; did you mean to leave this in?"
+              },
+              "defaultConfiguration": {
+                "enabled": true,
+                "level": "error"
+              },
               "help": {
-                "text": "",
-                "markdown": "## Description\n\nThe \"Paramiko Call Shell Injection Vulnerability\" in Python refers to a security flaw where an attacker can inject arbitrary shell commands that get executed on a remote server. This is possible when user-supplied input is used directly in a command that is executed on the server. In the provided code example, the `csv_file_path_remote` variable is directly used in a command without any sanitization or validation, making it a potential point of injection.\n\n## Mitigation Advice\n\nTo mitigate this vulnerability, it is recommended to avoid using user-supplied input directly in shell commands. If it's necessary to use user input, it should be properly sanitized and validated to ensure it does not contain any malicious commands. \n\n## Source Code Fix Recommendation\n\nA safer approach would be to use the `os.path` library to handle file paths and the `os` library to handle file operations. This way, you can avoid shell command injection vulnerabilities. Here is a fixed version of the code:\n\n```python\nimport os\nimport paramiko\n\nssh_client = paramiko.SSHClient()\nssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())\nssh_client.connect('hostname', username='username', password='password')\n\nsftp_client = ssh_client.open_sftp()\n\ntry:\n    sftp_client.remove(csv_file_path_remote)\nexcept IOError as e:\n    print(f\"Failed to remove {csv_file_path_remote}: {str(e)}\")\n```\n\nIn this code, the `sftp_client.remove()` function is used to delete the file, which avoids the need for a shell command.\n\n## Library Dependencies\n\nThe code example requires the following Python libraries:\n\n- `paramiko`\n- `os`\n\n## References\n\n- [OWASP Command Injection](https://owasp.org/www-community/attacks/Command_Injection)\n- [CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')](https://cwe.mitre.org/data/definitions/78.html)"
+                "text": "time.sleep() call; did you mean to leave this in?\n💎 Enable cross-file analysis and Pro rules for free at sg.run/pro",
+                "markdown": "time.sleep() call; did you mean to leave this in?\n\n#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>"
               },
               "properties": {
+                "precision": "very-high",
                 "tags": [
-                  "B601"
+                  "resources.rules.arbitrary-sleep"
                 ]
               }
             },
             {
-              "id": "glog-33dba3a9-f1c6-4b3c-a108-cbd33f5e94b1",
+              "id": "b64483c9-242f-3ef5-8dca-489d165d509d",
+              "name": "resources.rules.use-sys-exit",
+              "shortDescription": {
+                "text": "Opengrep Finding: resources.rules.use-sys-exit"
+              },
+              "fullDescription": {
+                "text": "Use `sys.exit` over the python shell `exit` built-in. `exit` is a helper for the interactive shell and may not be available on all Python implementations. https://stackoverflow.com/questions/6501121/difference-between-exit-and-sys-exit-in-python"
+              },
+              "defaultConfiguration": {
+                "enabled": true,
+                "level": "warning"
+              },
               "help": {
-                "text": "",
-                "markdown": "## Description\n\nThe \"Paramiko Call Shell Injection Vulnerability\" is a security vulnerability that occurs when an attacker is able to inject malicious shell commands into the `exec_command` function of the Paramiko SSH client in Python. This can lead to remote code execution, unauthorized access, data leakage, and other security breaches.\n\n## Mitigation Advice\n\nTo mitigate this vulnerability, it is recommended to avoid using user-supplied input directly in the `exec_command` function without proper sanitization and validation. User input should be treated as untrusted by default. \n\n## Source Code Fix Recommendation\n\nHere is an example of how to sanitize user input before using it in `exec_command`:\n\n```python\nimport shlex\nimport paramiko\n\nssh_client = paramiko.SSHClient()\nssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())\nssh_client.connect('hostname', username='username', password='password')\n\ncommand = input(\"Enter your command: \")\nsafe_command = shlex.quote(command)\n\nstdin, stdout, stderr = ssh_client.exec_command(safe_command)\n```\n\nIn this example, the `shlex.quote` function is used to sanitize the user input. This function returns a shell-escaped version of the input string, making it safe to use as a token in a shell command.\n\n## Library Dependencies\n\nThe code example requires the following Python libraries:\n\n- `paramiko`\n- `shlex`\n\n## References\n\n- [OWASP Injection Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Injection_Prevention_Cheat_Sheet.html)\n- [CWE-77: Improper Neutralization of Special Elements used in a Command ('Command Injection')](https://cwe.mitre.org/data/definitions/77.html)"
+                "text": "Use `sys.exit` over the python shell `exit` built-in. `exit` is a helper for the interactive shell and may not be available on all Python implementations. https://stackoverflow.com/questions/6501121/difference-between-exit-and-sys-exit-in-python\n💎 Enable cross-file analysis and Pro rules for free at sg.run/pro",
+                "markdown": "Use `sys.exit` over the python shell `exit` built-in. `exit` is a helper for the interactive shell and may not be available on all Python implementations. https://stackoverflow.com/questions/6501121/difference-between-exit-and-sys-exit-in-python\n\n#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>"
               },
               "properties": {
+                "precision": "very-high",
                 "tags": [
-                  "B601"
+                  "resources.rules.use-sys-exit"
+                ]
+              }
+            },
+            {
+              "id": "746b342e-b76d-38a4-9d64-2a8d3479fbbb",
+              "name": "resources.rules.use-sys-exit",
+              "shortDescription": {
+                "text": "Opengrep Finding: resources.rules.use-sys-exit"
+              },
+              "fullDescription": {
+                "text": "Use `sys.exit` over the python shell `exit` built-in. `exit` is a helper for the interactive shell and may not be available on all Python implementations. https://stackoverflow.com/questions/6501121/difference-between-exit-and-sys-exit-in-python"
+              },
+              "defaultConfiguration": {
+                "enabled": true,
+                "level": "warning"
+              },
+              "help": {
+                "text": "Use `sys.exit` over the python shell `exit` built-in. `exit` is a helper for the interactive shell and may not be available on all Python implementations. https://stackoverflow.com/questions/6501121/difference-between-exit-and-sys-exit-in-python\n💎 Enable cross-file analysis and Pro rules for free at sg.run/pro",
+                "markdown": "Use `sys.exit` over the python shell `exit` built-in. `exit` is a helper for the interactive shell and may not be available on all Python implementations. https://stackoverflow.com/questions/6501121/difference-between-exit-and-sys-exit-in-python\n\n#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>"
+              },
+              "properties": {
+                "precision": "very-high",
+                "tags": [
+                  "resources.rules.use-sys-exit"
+                ]
+              }
+            },
+            {
+              "id": "47096f50-f442-3c8b-9c0a-a32efb25d6c0",
+              "name": "resources.rules.use-sys-exit",
+              "shortDescription": {
+                "text": "Opengrep Finding: resources.rules.use-sys-exit"
+              },
+              "fullDescription": {
+                "text": "Use `sys.exit` over the python shell `exit` built-in. `exit` is a helper for the interactive shell and may not be available on all Python implementations. https://stackoverflow.com/questions/6501121/difference-between-exit-and-sys-exit-in-python"
+              },
+              "defaultConfiguration": {
+                "enabled": true,
+                "level": "warning"
+              },
+              "help": {
+                "text": "Use `sys.exit` over the python shell `exit` built-in. `exit` is a helper for the interactive shell and may not be available on all Python implementations. https://stackoverflow.com/questions/6501121/difference-between-exit-and-sys-exit-in-python\n💎 Enable cross-file analysis and Pro rules for free at sg.run/pro",
+                "markdown": "Use `sys.exit` over the python shell `exit` built-in. `exit` is a helper for the interactive shell and may not be available on all Python implementations. https://stackoverflow.com/questions/6501121/difference-between-exit-and-sys-exit-in-python\n\n#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>"
+              },
+              "properties": {
+                "precision": "very-high",
+                "tags": [
+                  "resources.rules.use-sys-exit"
+                ]
+              }
+            },
+            {
+              "id": "39e852e4-46c9-3a29-84fa-045bdd3024c7",
+              "name": "resources.rules.dangerous-subprocess-use",
+              "shortDescription": {
+                "text": "Opengrep Finding: resources.rules.dangerous-subprocess-use"
+              },
+              "fullDescription": {
+                "text": "Detected subprocess function '$FUNC' without a static string. If this data can be\ncontrolled by a malicious actor, it may be an instance of command injection.\nAudit the use of this call to ensure it is not controllable by an external resource.\nYou may consider using 'shlex.escape()'.\n"
+              },
+              "defaultConfiguration": {
+                "enabled": true,
+                "level": "warning"
+              },
+              "help": {
+                "text": "Detected subprocess function '$FUNC' without a static string. If this data can be\ncontrolled by a malicious actor, it may be an instance of command injection.\nAudit the use of this call to ensure it is not controllable by an external resource.\nYou may consider using 'shlex.escape()'.\n\n💎 Enable cross-file analysis and Pro rules for free at sg.run/pro",
+                "markdown": "Detected subprocess function '$FUNC' without a static string. If this data can be\ncontrolled by a malicious actor, it may be an instance of command injection.\nAudit the use of this call to ensure it is not controllable by an external resource.\nYou may consider using 'shlex.escape()'.\n\n\n#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>\n\n<b>References:</b>\n - [https://stackoverflow.com/questions/3172470/actual-meaning-of-shell-true-in-subprocess](https://stackoverflow.com/questions/3172470/actual-meaning-of-shell-true-in-subprocess)\n - [https://docs.python.org/3/library/subprocess.html](https://docs.python.org/3/library/subprocess.html)\n - [https://docs.python.org/3/library/shlex.html](https://docs.python.org/3/library/shlex.html)\n"
+              },
+              "properties": {
+                "precision": "very-high",
+                "tags": [
+                  "resources.rules.dangerous-subprocess-use"
+                ]
+              }
+            },
+            {
+              "id": "9a04cb3a-9131-3c83-bb64-f023a07b8a2c",
+              "name": "resources.rules.dlint-catastrophic-redos",
+              "shortDescription": {
+                "text": "Opengrep Finding: resources.rules.dlint-catastrophic-redos"
+              },
+              "fullDescription": {
+                "text": "Regex `$X` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)"
+              },
+              "defaultConfiguration": {
+                "enabled": true,
+                "level": "error"
+              },
+              "help": {
+                "text": "Regex `$X` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)\n💎 Enable cross-file analysis and Pro rules for free at sg.run/pro",
+                "markdown": "Regex `$X` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)\n\n#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>\n\n<b>References:</b>\n - [https://r2c.dev/blog/2020/finding-python-redos-bugs-at-scale-using-dlint-and-r2c/](https://r2c.dev/blog/2020/finding-python-redos-bugs-at-scale-using-dlint-and-r2c/)\n - [https://r2c.dev/blog/2020/improving-redos-detection-with-dlint-and-r2c/](https://r2c.dev/blog/2020/improving-redos-detection-with-dlint-and-r2c/)\n"
+              },
+              "properties": {
+                "precision": "very-high",
+                "tags": [
+                  "resources.rules.dlint-catastrophic-redos"
+                ]
+              }
+            },
+            {
+              "id": "1f301fc1-ddc1-34ae-9bbe-20c434102ca9",
+              "name": "resources.rules.dangerous-subprocess-use",
+              "shortDescription": {
+                "text": "Opengrep Finding: resources.rules.dangerous-subprocess-use"
+              },
+              "fullDescription": {
+                "text": "Detected subprocess function '$FUNC' without a static string. If this data can be\ncontrolled by a malicious actor, it may be an instance of command injection.\nAudit the use of this call to ensure it is not controllable by an external resource.\nYou may consider using 'shlex.escape()'.\n"
+              },
+              "defaultConfiguration": {
+                "enabled": true,
+                "level": "warning"
+              },
+              "help": {
+                "text": "Detected subprocess function '$FUNC' without a static string. If this data can be\ncontrolled by a malicious actor, it may be an instance of command injection.\nAudit the use of this call to ensure it is not controllable by an external resource.\nYou may consider using 'shlex.escape()'.\n\n💎 Enable cross-file analysis and Pro rules for free at sg.run/pro",
+                "markdown": "Detected subprocess function '$FUNC' without a static string. If this data can be\ncontrolled by a malicious actor, it may be an instance of command injection.\nAudit the use of this call to ensure it is not controllable by an external resource.\nYou may consider using 'shlex.escape()'.\n\n\n#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>\n\n<b>References:</b>\n - [https://stackoverflow.com/questions/3172470/actual-meaning-of-shell-true-in-subprocess](https://stackoverflow.com/questions/3172470/actual-meaning-of-shell-true-in-subprocess)\n - [https://docs.python.org/3/library/subprocess.html](https://docs.python.org/3/library/subprocess.html)\n - [https://docs.python.org/3/library/shlex.html](https://docs.python.org/3/library/shlex.html)\n"
+              },
+              "properties": {
+                "precision": "very-high",
+                "tags": [
+                  "resources.rules.dangerous-subprocess-use"
+                ]
+              }
+            },
+            {
+              "id": "1daf892d-80a2-322f-b1a5-3d7017c5e19a",
+              "name": "resources.rules.dangerous-subprocess-use",
+              "shortDescription": {
+                "text": "Opengrep Finding: resources.rules.dangerous-subprocess-use"
+              },
+              "fullDescription": {
+                "text": "Detected subprocess function '$FUNC' without a static string. If this data can be\ncontrolled by a malicious actor, it may be an instance of command injection.\nAudit the use of this call to ensure it is not controllable by an external resource.\nYou may consider using 'shlex.escape()'.\n"
+              },
+              "defaultConfiguration": {
+                "enabled": true,
+                "level": "warning"
+              },
+              "help": {
+                "text": "Detected subprocess function '$FUNC' without a static string. If this data can be\ncontrolled by a malicious actor, it may be an instance of command injection.\nAudit the use of this call to ensure it is not controllable by an external resource.\nYou may consider using 'shlex.escape()'.\n\n💎 Enable cross-file analysis and Pro rules for free at sg.run/pro",
+                "markdown": "Detected subprocess function '$FUNC' without a static string. If this data can be\ncontrolled by a malicious actor, it may be an instance of command injection.\nAudit the use of this call to ensure it is not controllable by an external resource.\nYou may consider using 'shlex.escape()'.\n\n\n#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>\n\n<b>References:</b>\n - [https://stackoverflow.com/questions/3172470/actual-meaning-of-shell-true-in-subprocess](https://stackoverflow.com/questions/3172470/actual-meaning-of-shell-true-in-subprocess)\n - [https://docs.python.org/3/library/subprocess.html](https://docs.python.org/3/library/subprocess.html)\n - [https://docs.python.org/3/library/shlex.html](https://docs.python.org/3/library/shlex.html)\n"
+              },
+              "properties": {
+                "precision": "very-high",
+                "tags": [
+                  "resources.rules.dangerous-subprocess-use"
+                ]
+              }
+            },
+            {
+              "id": "34556df0-b24c-344b-87de-7351b40cc3b6",
+              "name": "resources.rules.dlint-catastrophic-redos",
+              "shortDescription": {
+                "text": "Opengrep Finding: resources.rules.dlint-catastrophic-redos"
+              },
+              "fullDescription": {
+                "text": "Regex `$X` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)"
+              },
+              "defaultConfiguration": {
+                "enabled": true,
+                "level": "error"
+              },
+              "help": {
+                "text": "Regex `$X` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)\n💎 Enable cross-file analysis and Pro rules for free at sg.run/pro",
+                "markdown": "Regex `$X` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)\n\n#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>\n\n<b>References:</b>\n - [https://r2c.dev/blog/2020/finding-python-redos-bugs-at-scale-using-dlint-and-r2c/](https://r2c.dev/blog/2020/finding-python-redos-bugs-at-scale-using-dlint-and-r2c/)\n - [https://r2c.dev/blog/2020/improving-redos-detection-with-dlint-and-r2c/](https://r2c.dev/blog/2020/improving-redos-detection-with-dlint-and-r2c/)\n"
+              },
+              "properties": {
+                "precision": "very-high",
+                "tags": [
+                  "resources.rules.dlint-catastrophic-redos"
+                ]
+              }
+            },
+            {
+              "id": "c54d7fab-7202-30cc-b79f-3c2e15550e9c",
+              "name": "resources.rules.dangerous-subprocess-use",
+              "shortDescription": {
+                "text": "Opengrep Finding: resources.rules.dangerous-subprocess-use"
+              },
+              "fullDescription": {
+                "text": "Detected subprocess function '$FUNC' without a static string. If this data can be\ncontrolled by a malicious actor, it may be an instance of command injection.\nAudit the use of this call to ensure it is not controllable by an external resource.\nYou may consider using 'shlex.escape()'.\n"
+              },
+              "defaultConfiguration": {
+                "enabled": true,
+                "level": "warning"
+              },
+              "help": {
+                "text": "Detected subprocess function '$FUNC' without a static string. If this data can be\ncontrolled by a malicious actor, it may be an instance of command injection.\nAudit the use of this call to ensure it is not controllable by an external resource.\nYou may consider using 'shlex.escape()'.\n\n💎 Enable cross-file analysis and Pro rules for free at sg.run/pro",
+                "markdown": "Detected subprocess function '$FUNC' without a static string. If this data can be\ncontrolled by a malicious actor, it may be an instance of command injection.\nAudit the use of this call to ensure it is not controllable by an external resource.\nYou may consider using 'shlex.escape()'.\n\n\n#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>\n\n<b>References:</b>\n - [https://stackoverflow.com/questions/3172470/actual-meaning-of-shell-true-in-subprocess](https://stackoverflow.com/questions/3172470/actual-meaning-of-shell-true-in-subprocess)\n - [https://docs.python.org/3/library/subprocess.html](https://docs.python.org/3/library/subprocess.html)\n - [https://docs.python.org/3/library/shlex.html](https://docs.python.org/3/library/shlex.html)\n"
+              },
+              "properties": {
+                "precision": "very-high",
+                "tags": [
+                  "resources.rules.dangerous-subprocess-use"
                 ]
               }
             }
@@ -287,818 +751,934 @@
       "language": "en-US",
       "results": [
         {
-          "ruleId": "glog-ab61403a-c772-4daf-b5bc-8046be1aface",
+          "ruleId": "32c2046d-e80c-3287-afd9-4bc14c7251f7",
           "kind": "fail",
-          "level": "error",
+          "level": "warning",
           "message": {
-            "text": "\"Shell=True Subprocess Call Security Vulnerability Detected\""
+            "text": "Regex `r\"\\d+\"` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)"
           },
           "locations": [
             {
               "physicalLocation": {
                 "artifactLocation": {
-                  "uri": "src/madengine/core/console.py"
+                  "uri": "src/madengine/core/context.py",
+                  "uriBaseId": "%SRCROOT%"
                 },
                 "region": {
-                  "startLine": 66,
-                  "startColumn": 16,
-                  "endLine": 67,
-                  "endColumn": 10,
+                  "startLine": 335,
+                  "startColumn": 36,
+                  "endLine": 335,
+                  "endColumn": 69,
                   "snippet": {
-                    "text": "        try:\n"
-                  }
-                },
-                "contextRegion": {
-                  "startLine": 70,
-                  "endLine": 81,
-                  "snippet": {
-                    "text": "            stderr=subprocess.STDOUT,\n            shell=True,\n            universal_newlines=True,\n            bufsize=1,\n            env=env,\n        )\n\n        # Get the output of the shell command, and check for failure, and return the output.\n        try:\n            if not self.live_output:\n                outs, errs = proc.communicate(timeout=timeout)\n            else:\n"
+                    "text": "                kfd_nodeids = [int(re.search(r\"\\d+\",line.split()[0]).group()) for line in kfd_properties]"
                   }
                 }
               }
             }
           ],
-          "properties": {
-            "issue_severity": "HIGH",
-            "issue_confidence": "HIGH"
-          }
+          "fingerprints": {
+            "matchBasedId/v1": "a9fc6381b8fcc35f48f4757e47364d43b88b29404568e15436015449cb7bb405825307b8fdb339f5f9a8b38595458d04d3672d2ea6d38d1229e80a72f92bf499_0"
+          },
+          "properties": {}
         },
         {
-          "ruleId": "glog-16e48097-92fe-4d3a-ba06-732f6e407b95",
+          "ruleId": "02994616-8f63-3ed7-a082-3737fc942c0a",
           "kind": "fail",
           "level": "warning",
           "message": {
-            "text": "SQL Injection Vulnerability via String-Based Query Construction"
+            "text": "SSH Password detected"
           },
           "locations": [
             {
               "physicalLocation": {
                 "artifactLocation": {
-                  "uri": "src/madengine/db/database.py"
+                  "uri": "src/madengine/core/dataprovider.py",
+                  "uriBaseId": "%SRCROOT%"
                 },
                 "region": {
-                  "startLine": 199,
-                  "startColumn": 9,
-                  "endLine": 200,
-                  "endColumn": 24,
+                  "startLine": 336,
+                  "startColumn": 23,
+                  "endLine": 336,
+                  "endColumn": 105,
                   "snippet": {
-                    "text": "        \"UPDATE {} \\\n"
+                    "text": "                echo 'sshpass -p {password} rsync --progress -avz -e \\\\\\\"ssh -p {port} \\\\\\\" \\\\\\\"\\$@\\\\\\\"' >> /tmp/ssh.sh"
                   }
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "matchBasedId/v1": "b72a2c91fa847d57cb3802f6eb45e7d2bf8e15cad6b800f0e484e4796308245c0d5a2158d7a14ac53237dc4c75575f65d12df7ae420a137f59c99d5ae2f9e0e3_0"
+          },
+          "properties": {}
+        },
+        {
+          "ruleId": "ca51a855-3c83-3e66-ba88-37f6bfc433f6",
+          "kind": "fail",
+          "level": "warning",
+          "message": {
+            "text": "SSH Password detected"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/madengine/core/dataprovider.py",
+                  "uriBaseId": "%SRCROOT%"
                 },
-                "contextRegion": {
+                "region": {
+                  "startLine": 374,
+                  "startColumn": 23,
+                  "endLine": 374,
+                  "endColumn": 56,
+                  "snippet": {
+                    "text": "                echo 'sshpass -p {password} ssh -v \\$*' >> /tmp/ssh.sh"
+                  }
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "matchBasedId/v1": "b72a2c91fa847d57cb3802f6eb45e7d2bf8e15cad6b800f0e484e4796308245c0d5a2158d7a14ac53237dc4c75575f65d12df7ae420a137f59c99d5ae2f9e0e3_1"
+          },
+          "properties": {}
+        },
+        {
+          "ruleId": "86caaed8-1c62-38d9-ac88-b385d8db7473",
+          "kind": "fail",
+          "level": "warning",
+          "message": {
+            "text": "Regex `r\"\\n\\d+\\s+\\d+\"` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/madengine/core/context.py",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 341,
+                  "startColumn": 24,
+                  "endLine": 341,
+                  "endColumn": 87,
+                  "snippet": {
+                    "text": "                rsmi = re.findall(r\"\\n\\d+\\s+\\d+\",self.console.sh(\"rocm-smi --showhw\"))"
+                  }
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "matchBasedId/v1": "9baa648063af0c2e6392d5bd3f30af9e9060f75eba98d322f60c459c267311b4f87071115a113e840450dd5a15277d34f0422d3ee871336ed44888e304154994_0"
+          },
+          "properties": {}
+        },
+        {
+          "ruleId": "88b7441d-9585-3026-ab49-905a71cf5dd0",
+          "kind": "fail",
+          "level": "warning",
+          "message": {
+            "text": "Detected possible formatted SQL query. Use parameterized queries instead."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/madengine/db/database.py",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 102,
+                  "startColumn": 9,
+                  "endLine": 102,
+                  "endColumn": 49,
+                  "snippet": {
+                    "text": "        ENGINE.execute(\"Use {}\".format(db_name))"
+                  }
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "matchBasedId/v1": "2bb2a949e4d14c9fc5e1aa7e73eb5aa3a5da195afff04571b927f1f924afa6497908aff81ac6e0a18eaee0b74465f7d588ef5b02fe33e97c380933a45df0c16f_0"
+          },
+          "properties": {}
+        },
+        {
+          "ruleId": "d4f3855b-a455-36dc-9180-11baa02ed7c4",
+          "kind": "fail",
+          "level": "warning",
+          "message": {
+            "text": "Detected possible formatted SQL query. Use parameterized queries instead."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/madengine/db/database.py",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 114,
+                  "startColumn": 5,
+                  "endLine": 114,
+                  "endColumn": 45,
+                  "snippet": {
+                    "text": "    ENGINE.execute(\"Use {}\".format(db_name))"
+                  }
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "matchBasedId/v1": "2bb2a949e4d14c9fc5e1aa7e73eb5aa3a5da195afff04571b927f1f924afa6497908aff81ac6e0a18eaee0b74465f7d588ef5b02fe33e97c380933a45df0c16f_2"
+          },
+          "properties": {}
+        },
+        {
+          "ruleId": "5f147ec9-4439-3125-a3a9-9aae64855da6",
+          "kind": "fail",
+          "level": "warning",
+          "message": {
+            "text": "Detected possible formatted SQL query. Use parameterized queries instead."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/madengine/db/database.py",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 110,
+                  "startColumn": 9,
+                  "endLine": 110,
+                  "endColumn": 75,
+                  "snippet": {
+                    "text": "        ENGINE.execute(\"Create database if not exists {}\".format(db_name))"
+                  }
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "matchBasedId/v1": "2bb2a949e4d14c9fc5e1aa7e73eb5aa3a5da195afff04571b927f1f924afa6497908aff81ac6e0a18eaee0b74465f7d588ef5b02fe33e97c380933a45df0c16f_1"
+          },
+          "properties": {}
+        },
+        {
+          "ruleId": "44b1b339-c1ad-3ed9-b3a7-d32a380144b5",
+          "kind": "fail",
+          "level": "warning",
+          "message": {
+            "text": "Detected possible formatted SQL query. Use parameterized queries instead."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/madengine/db/database.py",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 129,
+                  "startColumn": 9,
+                  "endLine": 129,
+                  "endColumn": 69,
+                  "snippet": {
+                    "text": "        ENGINE.execute(\"DROP DATABASE IF EXISTS {}\".format(db_name))"
+                  }
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "matchBasedId/v1": "2bb2a949e4d14c9fc5e1aa7e73eb5aa3a5da195afff04571b927f1f924afa6497908aff81ac6e0a18eaee0b74465f7d588ef5b02fe33e97c380933a45df0c16f_3"
+          },
+          "properties": {}
+        },
+        {
+          "ruleId": "4e21be9e-40c7-3ff8-97c4-56ca3cb4dd80",
+          "kind": "fail",
+          "level": "warning",
+          "message": {
+            "text": "Detected possible formatted SQL query. Use parameterized queries instead."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/madengine/db/database.py",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 146,
+                  "startColumn": 18,
+                  "endLine": 150,
+                  "endColumn": 10,
+                  "snippet": {
+                    "text": "        result = ENGINE.execute(\n            \"SELECT * FROM {} \\\n                WHERE {}.created_date= \\\n                    (SELECT MAX(created_date) FROM {}) ;\".format(DB_TABLE.__tablename__)\n        )"
+                  }
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "matchBasedId/v1": "2bb2a949e4d14c9fc5e1aa7e73eb5aa3a5da195afff04571b927f1f924afa6497908aff81ac6e0a18eaee0b74465f7d588ef5b02fe33e97c380933a45df0c16f_4"
+          },
+          "properties": {}
+        },
+        {
+          "ruleId": "64bb4d88-3207-342a-97c5-fe55118d8692",
+          "kind": "fail",
+          "level": "warning",
+          "message": {
+            "text": "Detected possible formatted SQL query. Use parameterized queries instead."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/madengine/db/database.py",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
                   "startLine": 198,
-                  "endLine": 202,
+                  "startColumn": 5,
+                  "endLine": 204,
+                  "endColumn": 6,
                   "snippet": {
-                    "text": "    ENGINE.execute(\n        \"UPDATE {} \\\n        SET \\\n        {} = TRIM({});\".format(\n            DB_TABLE.__tablename__, col_name, col_name\n"
+                    "text": "    ENGINE.execute(\n        \"UPDATE {} \\\n        SET \\\n        {} = TRIM({});\".format(\n            DB_TABLE.__tablename__, col_name, col_name\n        )\n    )"
                   }
                 }
               }
             }
           ],
-          "properties": {
-            "issue_severity": "MEDIUM",
-            "issue_confidence": "MEDIUM"
-          }
+          "fingerprints": {
+            "matchBasedId/v1": "2bb2a949e4d14c9fc5e1aa7e73eb5aa3a5da195afff04571b927f1f924afa6497908aff81ac6e0a18eaee0b74465f7d588ef5b02fe33e97c380933a45df0c16f_5"
+          },
+          "properties": {}
         },
         {
-          "ruleId": "glog-f6dbf333-97e1-4884-a2e9-9c6d92e5e6ec",
+          "ruleId": "6e70a3e8-fac5-3c21-b377-4656be2e0f3c",
           "kind": "fail",
           "level": "warning",
           "message": {
-            "text": "SQL Injection Vulnerability via String-Based Query Construction"
+            "text": "Detected possible formatted SQL query. Use parameterized queries instead."
           },
           "locations": [
             {
               "physicalLocation": {
                 "artifactLocation": {
-                  "uri": "src/madengine/db/database_functions.py"
+                  "uri": "src/madengine/db/database.py",
+                  "uriBaseId": "%SRCROOT%"
                 },
                 "region": {
-                  "startLine": 56,
-                  "startColumn": 9,
-                  "endLine": 57,
-                  "endColumn": 10,
-                  "snippet": {
-                    "text": "        \"SELECT * FROM dlm_table \\\n"
-                  }
-                },
-                "contextRegion": {
-                  "startLine": 55,
-                  "endLine": 60,
-                  "snippet": {
-                    "text": "    matching_entries = ENGINE.execute(\n        \"SELECT * FROM dlm_table \\\n        WHERE model='{}' \\\n        AND gpu_architecture='{}' \\\n        \".format(\n            recent_entry[\"model\"], \n"
-                  }
-                }
-              }
-            }
-          ],
-          "properties": {
-            "issue_severity": "MEDIUM",
-            "issue_confidence": "MEDIUM"
-          }
-        },
-        {
-          "ruleId": "glog-113fb92e-cf17-489c-bbf4-7f104686cece",
-          "kind": "fail",
-          "level": "error",
-          "message": {
-            "text": "\"Shell=True in Subprocess Call Security Vulnerability\""
-          },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "src/madengine/scripts/common/pre_scripts/rocEnvTool/console.py"
-                },
-                "region": {
-                  "startLine": 19,
+                  "startLine": 221,
                   "startColumn": 14,
-                  "endLine": 19,
-                  "endColumn": 160,
+                  "endLine": 226,
+                  "endColumn": 6,
                   "snippet": {
-                    "text": "      proc = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True, universal_newlines=True, bufsize=1)\n"
-                  }
-                },
-                "contextRegion": {
-                  "startLine": 18,
-                  "endLine": 20,
-                  "snippet": {
-                    "text": "          print(\"> \" + command, flush=True)\n      proc = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True, universal_newlines=True, bufsize=1)\n      try:\n"
+                    "text": "    result = ENGINE.execute(\n        \"SELECT `COLUMN_NAME` \\\n            FROM `INFORMATION_SCHEMA`.`COLUMNS` \\\n                WHERE `TABLE_SCHEMA`='{}' \\\n                AND `TABLE_NAME`='{}'\".format(db_name, DB_TABLE.__tablename__)\n    )"
                   }
                 }
               }
             }
           ],
-          "properties": {
-            "issue_severity": "HIGH",
-            "issue_confidence": "HIGH"
-          }
-        },
-        {
-          "ruleId": "glog-ad9e67d9-98bf-4554-88c6-759f813e2693",
-          "kind": "fail",
-          "level": "error",
-          "message": {
-            "text": "\"Shell=True Subprocess Call Security Vulnerability\""
+          "fingerprints": {
+            "matchBasedId/v1": "2bb2a949e4d14c9fc5e1aa7e73eb5aa3a5da195afff04571b927f1f924afa6497908aff81ac6e0a18eaee0b74465f7d588ef5b02fe33e97c380933a45df0c16f_6"
           },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "src/madengine/scripts/common/tools/gpu_info_profiler.py"
-                },
-                "region": {
-                  "startLine": 59,
-                  "startColumn": 5,
-                  "endLine": 59,
-                  "endColumn": 82,
-                  "snippet": {
-                    "text": "    subprocess.run(commandstring, shell=True, check=True, executable=\"/bin/bash\")\n"
-                  }
-                },
-                "contextRegion": {
-                  "startLine": 58,
-                  "endLine": 60,
-                  "snippet": {
-                    "text": "    logging.debug(commandstring)\n    subprocess.run(commandstring, shell=True, check=True, executable=\"/bin/bash\")\n\n"
-                  }
-                }
-              }
-            }
-          ],
-          "properties": {
-            "issue_severity": "HIGH",
-            "issue_confidence": "HIGH"
-          }
+          "properties": {}
         },
         {
-          "ruleId": "glog-eee2b7af-c788-40d9-87a2-99813830f994",
-          "kind": "fail",
-          "level": "error",
-          "message": {
-            "text": "Shell=True Subprocess Call Security Vulnerability Detected"
-          },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "src/madengine/scripts/common/tools/gpu_info_profiler.py"
-                },
-                "region": {
-                  "startLine": 79,
-                  "startColumn": 5,
-                  "endLine": 79,
-                  "endColumn": 76,
-                  "snippet": {
-                    "text": "    subprocess.run(command, shell=True, check=True, executable=\"/bin/bash\")\n"
-                  }
-                },
-                "contextRegion": {
-                  "startLine": 78,
-                  "endLine": 80,
-                  "snippet": {
-                    "text": "    logging.debug(command)\n    subprocess.run(command, shell=True, check=True, executable=\"/bin/bash\")\n\n"
-                  }
-                }
-              }
-            }
-          ],
-          "properties": {
-            "issue_severity": "HIGH",
-            "issue_confidence": "HIGH"
-          }
-        },
-        {
-          "ruleId": "glog-bdcb1a80-10fe-45e4-a3c4-ac9e959a982c",
-          "kind": "fail",
-          "level": "error",
-          "message": {
-            "text": "Shell=True Subprocess Call Security Vulnerability Detected"
-          },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "src/madengine/scripts/common/tools/gpu_info_profiler.py"
-                },
-                "region": {
-                  "startLine": 99,
-                  "startColumn": 5,
-                  "endLine": 99,
-                  "endColumn": 76,
-                  "snippet": {
-                    "text": "    subprocess.run(command, shell=True, check=True, executable=\"/bin/bash\")\n"
-                  }
-                },
-                "contextRegion": {
-                  "startLine": 98,
-                  "endLine": 100,
-                  "snippet": {
-                    "text": "    logging.debug(command)\n    subprocess.run(command, shell=True, check=True, executable=\"/bin/bash\")\n\n"
-                  }
-                }
-              }
-            }
-          ],
-          "properties": {
-            "issue_severity": "HIGH",
-            "issue_confidence": "HIGH"
-          }
-        },
-        {
-          "ruleId": "glog-432f64f2-5069-47f9-8b07-21a5b8a2cfbf",
+          "ruleId": "180b8146-af5a-3e07-8efd-05cf287b3b29",
           "kind": "fail",
           "level": "warning",
           "message": {
-            "text": "SQL Injection Vulnerability via String-Based Query Construction"
+            "text": "Detected possible formatted SQL query. Use parameterized queries instead."
           },
           "locations": [
             {
               "physicalLocation": {
                 "artifactLocation": {
-                  "uri": "src/madengine/db/database.py"
+                  "uri": "src/madengine/db/database_functions.py",
+                  "uriBaseId": "%SRCROOT%"
                 },
                 "region": {
-                  "startLine": 222,
+                  "startLine": 55,
+                  "startColumn": 24,
+                  "endLine": 63,
+                  "endColumn": 6,
+                  "snippet": {
+                    "text": "    matching_entries = ENGINE.execute(\n        \"SELECT * FROM dlm_table \\\n        WHERE model='{}' \\\n        AND gpu_architecture='{}' \\\n        \".format(\n            recent_entry[\"model\"], \n            recent_entry[\"gpu_architecture\"]\n        )\n    )"
+                  }
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "matchBasedId/v1": "2d2d3061663ccd43d7c29ad825470cc416e8b0ee362eadd4edcb12dd2ea8e26cd2c61889ce50e417bd58e76e18cf94a6e8c86e84fbb02a6bb2a927e33fe0ae5c_0"
+          },
+          "properties": {}
+        },
+        {
+          "ruleId": "5ea1d124-0b6d-314b-9fb0-c7d626975cd5",
+          "kind": "fail",
+          "level": "warning",
+          "message": {
+            "text": "Found dynamic content used in a system call. This is dangerous if external data can reach this function call because it allows a malicious actor to execute commands. Use the 'subprocess' module instead, which is easier to use without accidentally exposing a command injection vulnerability."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/madengine/scripts/common/pre_scripts/rocEnvTool/rocenv_tool.py",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 290,
                   "startColumn": 9,
-                  "endLine": 223,
+                  "endLine": 290,
                   "endColumn": 39,
                   "snippet": {
-                    "text": "        \"SELECT `COLUMN_NAME` \\\n"
-                  }
-                },
-                "contextRegion": {
-                  "startLine": 221,
-                  "endLine": 226,
-                  "snippet": {
-                    "text": "    result = ENGINE.execute(\n        \"SELECT `COLUMN_NAME` \\\n            FROM `INFORMATION_SCHEMA`.`COLUMNS` \\\n                WHERE `TABLE_SCHEMA`='{}' \\\n                AND `TABLE_NAME`='{}'\".format(db_name, DB_TABLE.__tablename__)\n    )\n"
+                    "text": "        os.system(\"rm -rf \" + out_dir)"
                   }
                 }
               }
             }
           ],
-          "properties": {
-            "issue_severity": "MEDIUM",
-            "issue_confidence": "MEDIUM"
-          }
+          "fingerprints": {
+            "matchBasedId/v1": "bb979b7abc500b8ed1bc74157e4a8fc3f71e7370989da8b6907c62f2bc8b072e44a6b16a0b45aea50abf2b96a96ccd6d865ac0c47009b8921bd41161c123c9a5_0"
+          },
+          "properties": {}
         },
         {
-          "ruleId": "glog-980ad1cc-f349-4f81-abdb-8ee3b924a59e",
+          "ruleId": "9bd14bdd-eb56-3319-924f-49b8cf371221",
           "kind": "fail",
           "level": "warning",
           "message": {
-            "text": "SQL Injection Vulnerability via String-Based Query Construction"
+            "text": "Regex `r\"^Running kernel: (.*)$\"` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)"
           },
           "locations": [
             {
               "physicalLocation": {
                 "artifactLocation": {
-                  "uri": "src/madengine/db/database.py"
+                  "uri": "src/madengine/scripts/common/tools/get_library_trace.py",
+                  "uriBaseId": "%SRCROOT%"
                 },
                 "region": {
-                  "startLine": 147,
-                  "startColumn": 13,
-                  "endLine": 148,
-                  "endColumn": 58,
-                  "snippet": {
-                    "text": "            \"SELECT * FROM {} \\\n"
-                  }
-                },
-                "contextRegion": {
-                  "startLine": 146,
-                  "endLine": 150,
-                  "snippet": {
-                    "text": "        result = ENGINE.execute(\n            \"SELECT * FROM {} \\\n                WHERE {}.created_date= \\\n                    (SELECT MAX(created_date) FROM {}) ;\".format(DB_TABLE.__tablename__)\n        )\n"
-                  }
-                }
-              }
-            }
-          ],
-          "properties": {
-            "issue_severity": "MEDIUM",
-            "issue_confidence": "MEDIUM"
-          }
-        },
-        {
-          "ruleId": "glog-8f506d5f-a59a-4d6a-9ed5-08e67f577297",
-          "kind": "fail",
-          "level": "error",
-          "message": {
-            "text": "\"Auto-trust of Unknown Host Key in Paramiko Call\""
-          },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "src/madengine/tools/create_table_db.py"
-                },
-                "region": {
-                  "startLine": 148,
-                  "startColumn": 9,
-                  "endLine": 148,
-                  "endColumn": 73,
-                  "snippet": {
-                    "text": "        ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())\n"
-                  }
-                },
-                "contextRegion": {
-                  "startLine": 147,
-                  "endLine": 149,
-                  "snippet": {
-                    "text": "        ssh_client = paramiko.SSHClient()\n        ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())\n        ssh_client.load_system_host_keys()\n"
-                  }
-                }
-              }
-            }
-          ],
-          "properties": {
-            "issue_severity": "HIGH",
-            "issue_confidence": "MEDIUM"
-          }
-        },
-        {
-          "ruleId": "glog-dc03b5b1-edbf-4d16-b583-f47842091177",
-          "kind": "fail",
-          "level": "warning",
-          "message": {
-            "text": "\"Potential Shell Injection through Paramiko Call\""
-          },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "src/madengine/tools/create_table_db.py"
-                },
-                "region": {
-                  "startLine": 173,
-                  "startColumn": 23,
-                  "endLine": 173,
+                  "startLine": 122,
+                  "startColumn": 16,
+                  "endLine": 122,
                   "endColumn": 53,
                   "snippet": {
-                    "text": "        print_ssh_out(ssh_client.exec_command(\"pwd\"))\n"
-                  }
-                },
-                "contextRegion": {
-                  "startLine": 172,
-                  "endLine": 174,
-                  "snippet": {
-                    "text": "        # print remote dir layout\n        print_ssh_out(ssh_client.exec_command(\"pwd\"))\n        print_ssh_out(ssh_client.exec_command(\"ls -l\"))\n"
+                    "text": "    RE_MATCH = re.compile(r\"^Running kernel: (.*)$\")"
                   }
                 }
               }
             }
           ],
-          "properties": {
-            "issue_severity": "MEDIUM",
-            "issue_confidence": "MEDIUM"
-          }
+          "fingerprints": {
+            "matchBasedId/v1": "f3d086d7b2df4b352ab79ac4fe08918088655cfd57d33c04ea108d3cabda3ef8480246f20d2e2b07543133562dc38142fe5736f7ca79e19644081d5a05db88f6_0"
+          },
+          "properties": {}
         },
         {
-          "ruleId": "glog-84fc41a5-d320-49c5-96db-6d9d9b62b49e",
+          "ruleId": "88dd386b-11ac-3388-96c2-596e5f0c01ba",
           "kind": "fail",
           "level": "warning",
           "message": {
-            "text": "\"Potential Shell Injection through Paramiko Call\""
+            "text": "Regex `p` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)"
           },
           "locations": [
             {
               "physicalLocation": {
                 "artifactLocation": {
-                  "uri": "src/madengine/tools/create_table_db.py"
+                  "uri": "src/madengine/scripts/common/tools/get_library_trace.py",
+                  "uriBaseId": "%SRCROOT%"
                 },
                 "region": {
-                  "startLine": 181,
-                  "startColumn": 23,
-                  "endLine": 181,
-                  "endColumn": 93,
+                  "startLine": 55,
+                  "startColumn": 19,
+                  "endLine": 55,
+                  "endColumn": 32,
                   "snippet": {
-                    "text": "        print_ssh_out(ssh_client.exec_command(\"rm -rf {}\".format(upload_script_path_remote)))\n"
-                  }
-                },
-                "contextRegion": {
-                  "startLine": 180,
-                  "endLine": 182,
-                  "snippet": {
-                    "text": "        # clean up previous uploads\n        print_ssh_out(ssh_client.exec_command(\"rm -rf {}\".format(upload_script_path_remote)))\n        print_ssh_out(ssh_client.exec_command(\"ls -l\"))       \n"
+                    "text": "    regexes = {p: re.compile(p) for p in patterns}"
                   }
                 }
               }
             }
           ],
-          "properties": {
-            "issue_severity": "MEDIUM",
-            "issue_confidence": "MEDIUM"
-          }
+          "fingerprints": {
+            "matchBasedId/v1": "e9f7b10d682a5a12def3b443e616e65ab8af045c65a1f245710880f227afd23ecb9a24b860ac80657f224bebbb4790c65bd65ebf81f12f8d1b9e09d29a042013_0"
+          },
+          "properties": {}
         },
         {
-          "ruleId": "glog-261d3d16-9309-4c0b-a021-eabf57159e6d",
+          "ruleId": "226511f9-17c0-3382-a17c-31ea6f7390d1",
           "kind": "fail",
           "level": "warning",
           "message": {
-            "text": "\"Potential Shell Injection through Paramiko Call\""
+            "text": "Regex `p` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)"
           },
           "locations": [
             {
               "physicalLocation": {
                 "artifactLocation": {
-                  "uri": "src/madengine/tools/create_table_db.py"
+                  "uri": "src/madengine/scripts/common/tools/get_library_trace.py",
+                  "uriBaseId": "%SRCROOT%"
                 },
                 "region": {
-                  "startLine": 174,
-                  "startColumn": 23,
-                  "endLine": 174,
-                  "endColumn": 55,
+                  "startLine": 89,
+                  "startColumn": 19,
+                  "endLine": 89,
+                  "endColumn": 32,
                   "snippet": {
-                    "text": "        print_ssh_out(ssh_client.exec_command(\"ls -l\"))\n"
-                  }
-                },
-                "contextRegion": {
-                  "startLine": 173,
-                  "endLine": 175,
-                  "snippet": {
-                    "text": "        print_ssh_out(ssh_client.exec_command(\"pwd\"))\n        print_ssh_out(ssh_client.exec_command(\"ls -l\"))\n\n"
+                    "text": "    regexes = {p: re.compile(p) for p in patterns}"
                   }
                 }
               }
             }
           ],
-          "properties": {
-            "issue_severity": "MEDIUM",
-            "issue_confidence": "MEDIUM"
-          }
+          "fingerprints": {
+            "matchBasedId/v1": "e9f7b10d682a5a12def3b443e616e65ab8af045c65a1f245710880f227afd23ecb9a24b860ac80657f224bebbb4790c65bd65ebf81f12f8d1b9e09d29a042013_1"
+          },
+          "properties": {}
         },
         {
-          "ruleId": "glog-2a9e4f3a-134b-4137-a198-97c1b2b9cfac",
+          "ruleId": "8cb450e5-f9b5-35c7-9903-49b1451a94c3",
           "kind": "fail",
           "level": "warning",
           "message": {
-            "text": "\"Potential Shell Injection through Paramiko Call\""
+            "text": "Regex `r\"MIOpen\\(HIP\\): Command \\[.*\\] (./bin/MIOpenDriver .*)$\"` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)"
           },
           "locations": [
             {
               "physicalLocation": {
                 "artifactLocation": {
-                  "uri": "src/madengine/tools/create_table_db.py"
+                  "uri": "src/madengine/scripts/common/tools/get_library_trace.py",
+                  "uriBaseId": "%SRCROOT%"
                 },
                 "region": {
-                  "startLine": 182,
-                  "startColumn": 23,
-                  "endLine": 182,
-                  "endColumn": 55,
+                  "startLine": 156,
+                  "startColumn": 16,
+                  "endLine": 156,
+                  "endColumn": 85,
                   "snippet": {
-                    "text": "        print_ssh_out(ssh_client.exec_command(\"ls -l\"))       \n"
-                  }
-                },
-                "contextRegion": {
-                  "startLine": 181,
-                  "endLine": 183,
-                  "snippet": {
-                    "text": "        print_ssh_out(ssh_client.exec_command(\"rm -rf {}\".format(upload_script_path_remote)))\n        print_ssh_out(ssh_client.exec_command(\"ls -l\"))       \n\n"
+                    "text": "    RE_MATCH = re.compile(r\"MIOpen\\(HIP\\): Command \\[.*\\] (./bin/MIOpenDriver .*)$\")"
                   }
                 }
               }
             }
           ],
-          "properties": {
-            "issue_severity": "MEDIUM",
-            "issue_confidence": "MEDIUM"
-          }
+          "fingerprints": {
+            "matchBasedId/v1": "5d2d744153736e79d13ee38eefac76b2aac93c450bb44cd26922fdaf3fe8ed7da56f05b8ce8bbfb9d820f9dad85102014c7b9604fcb75e2e444adbcd4157a6f8_0"
+          },
+          "properties": {}
         },
         {
-          "ruleId": "glog-6c027fd6-29b6-4bb2-a1fd-99fed14d0ac2",
+          "ruleId": "52b2d43e-6b6c-319f-82d7-df37958c1ae2",
           "kind": "fail",
           "level": "warning",
           "message": {
-            "text": "\"Paramiko Call Shell Injection Vulnerability\""
+            "text": "Regex `\"([~ ]|^).*get_library_trace \"` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)"
           },
           "locations": [
             {
               "physicalLocation": {
                 "artifactLocation": {
-                  "uri": "src/madengine/tools/create_table_db.py"
+                  "uri": "src/madengine/scripts/common/tools/get_library_trace.py",
+                  "uriBaseId": "%SRCROOT%"
                 },
                 "region": {
-                  "startLine": 195,
-                  "startColumn": 13,
-                  "endLine": 196,
-                  "endColumn": 14,
+                  "startLine": 292,
+                  "startColumn": 21,
+                  "endLine": 292,
+                  "endColumn": 78,
                   "snippet": {
-                    "text": "            ssh_client.exec_command(\n"
-                  }
-                },
-                "contextRegion": {
-                  "startLine": 194,
-                  "endLine": 204,
-                  "snippet": {
-                    "text": "        print_ssh_out(\n            ssh_client.exec_command(\n                \"TUNA_DB_USER_NAME={} TUNA_DB_USER_PASSWORD={} TUNA_DB_NAME={} TUNA_DB_HOSTNAME={} python3 {}\".format(\n                    self.user_name,\n                    self.user_password,\n                    self.db_name,\n                    self.db_hostname,\n                    main_script,\n                )\n            )\n        )\n"
+                    "text": "    commandstring = re.sub(\"([~ ]|^).*get_library_trace \", \"\", commandstring)"
                   }
                 }
               }
             }
           ],
-          "properties": {
-            "issue_severity": "MEDIUM",
-            "issue_confidence": "MEDIUM"
-          }
+          "fingerprints": {
+            "matchBasedId/v1": "4b5fbdd12b004b5a198ef90594c7a91daf70411c49853ca2dba8d6be7dcc5b2b8a4c02ed299881bd6b997c6b379c58f8f51997d94d99fd61a78086d11539013e_0"
+          },
+          "properties": {}
         },
         {
-          "ruleId": "glog-a5dafe84-3b2a-4ba1-8689-e8602834ac30",
+          "ruleId": "d31fe5b1-dba4-3504-92dd-df7375f998c9",
           "kind": "fail",
           "level": "warning",
           "message": {
-            "text": "\"Potential Shell Injection through Paramiko Call\""
+            "text": "time.sleep() call; did you mean to leave this in?"
           },
           "locations": [
             {
               "physicalLocation": {
                 "artifactLocation": {
-                  "uri": "src/madengine/tools/create_table_db.py"
+                  "uri": "src/madengine/scripts/common/tools/gpu_info_profiler.py",
+                  "uriBaseId": "%SRCROOT%"
                 },
                 "region": {
-                  "startLine": 207,
-                  "startColumn": 23,
-                  "endLine": 207,
-                  "endColumn": 55,
-                  "snippet": {
-                    "text": "        print_ssh_out(ssh_client.exec_command(\"ls -l\"))\n"
-                  }
-                },
-                "contextRegion": {
-                  "startLine": 206,
-                  "endLine": 208,
-                  "snippet": {
-                    "text": "        # print remote dir after upload\n        print_ssh_out(ssh_client.exec_command(\"ls -l\"))\n\n"
-                  }
-                }
-              }
-            }
-          ],
-          "properties": {
-            "issue_severity": "MEDIUM",
-            "issue_confidence": "MEDIUM"
-          }
-        },
-        {
-          "ruleId": "glog-8b9cc6b3-fc71-42de-9df7-f6ea00a83dba",
-          "kind": "fail",
-          "level": "error",
-          "message": {
-            "text": "\"Auto-trust of Unknown Host Key in Paramiko Call\""
-          },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "src/madengine/tools/update_table_db.py"
-                },
-                "region": {
-                  "startLine": 150,
+                  "startLine": 139,
                   "startColumn": 9,
-                  "endLine": 150,
-                  "endColumn": 73,
+                  "endLine": 139,
+                  "endColumn": 22,
                   "snippet": {
-                    "text": "        ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())\n"
-                  }
-                },
-                "contextRegion": {
-                  "startLine": 149,
-                  "endLine": 151,
-                  "snippet": {
-                    "text": "        ssh_client = paramiko.SSHClient()\n        ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())\n        ssh_client.load_system_host_keys()\n"
+                    "text": "        time.sleep(1)"
                   }
                 }
               }
             }
           ],
-          "properties": {
-            "issue_severity": "HIGH",
-            "issue_confidence": "MEDIUM"
-          }
+          "fingerprints": {
+            "matchBasedId/v1": "bc9a0c1fe08eebc0f84c183d2b2c7af1ef0ef9e85641638221072768fceeb4f17a19957caf29047923091fdb65f5d34bc6cd067ccd312ea80f91b3a1c83310e3_0"
+          },
+          "properties": {}
         },
         {
-          "ruleId": "glog-b70bfe83-b173-4a1d-b6d8-3f1b48378141",
+          "ruleId": "94d74b31-b2ac-32a4-be8c-99dfab9cdf24",
           "kind": "fail",
           "level": "warning",
           "message": {
-            "text": "\"Potential Shell Injection through Paramiko Call\""
+            "text": "Found an unquoted CSV writer. This is susceptible to injection. Use 'quoting=csv.QUOTE_ALL'."
           },
           "locations": [
             {
               "physicalLocation": {
                 "artifactLocation": {
-                  "uri": "src/madengine/tools/update_table_db.py"
+                  "uri": "src/madengine/scripts/common/tools/get_library_trace.py",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 324,
+                  "startColumn": 21,
+                  "endLine": 324,
+                  "endColumn": 40,
+                  "snippet": {
+                    "text": "        csvwriter = csv.writer(csvfile)"
+                  }
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "matchBasedId/v1": "c35a060a6d23fd2e2aa8e137bebc9703ebb2181eaeae7703e175443870b24b9ada321fa2abfe43cc4e4eb8af6bc18e0cecf9399f5b4d589c32e4c1ebc3b942fd_0"
+          },
+          "properties": {}
+        },
+        {
+          "ruleId": "367b786f-bab3-3c86-ac56-98e0f5df7d92",
+          "kind": "fail",
+          "level": "warning",
+          "message": {
+            "text": "time.sleep() call; did you mean to leave this in?"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/madengine/scripts/common/tools/gpu_info_profiler.py",
+                  "uriBaseId": "%SRCROOT%"
                 },
                 "region": {
                   "startLine": 176,
-                  "startColumn": 23,
+                  "startColumn": 9,
                   "endLine": 176,
-                  "endColumn": 55,
+                  "endColumn": 22,
                   "snippet": {
-                    "text": "        print_ssh_out(ssh_client.exec_command(\"ls -l\"))\n"
-                  }
-                },
-                "contextRegion": {
-                  "startLine": 175,
-                  "endLine": 177,
-                  "snippet": {
-                    "text": "        print_ssh_out(ssh_client.exec_command(\"pwd\"))\n        print_ssh_out(ssh_client.exec_command(\"ls -l\"))\n\n"
+                    "text": "        time.sleep(1)"
                   }
                 }
               }
             }
           ],
-          "properties": {
-            "issue_severity": "MEDIUM",
-            "issue_confidence": "MEDIUM"
-          }
+          "fingerprints": {
+            "matchBasedId/v1": "bc9a0c1fe08eebc0f84c183d2b2c7af1ef0ef9e85641638221072768fceeb4f17a19957caf29047923091fdb65f5d34bc6cd067ccd312ea80f91b3a1c83310e3_1"
+          },
+          "properties": {}
         },
         {
-          "ruleId": "glog-2c6f4af7-86a7-4c3b-9efb-19b1b94ca7b8",
+          "ruleId": "b64483c9-242f-3ef5-8dca-489d165d509d",
           "kind": "fail",
           "level": "warning",
           "message": {
-            "text": "\"Potential Shell Injection through Paramiko Call\""
+            "text": "Use `sys.exit` over the python shell `exit` built-in. `exit` is a helper for the interactive shell and may not be available on all Python implementations. https://stackoverflow.com/questions/6501121/difference-between-exit-and-sys-exit-in-python"
           },
           "locations": [
             {
               "physicalLocation": {
                 "artifactLocation": {
-                  "uri": "src/madengine/tools/update_table_db.py"
+                  "uri": "src/madengine/scripts/common/tools/rocm_smi_utils.py",
+                  "uriBaseId": "%SRCROOT%"
                 },
                 "region": {
-                  "startLine": 175,
-                  "startColumn": 23,
-                  "endLine": 175,
-                  "endColumn": 53,
+                  "startLine": 29,
+                  "startColumn": 21,
+                  "endLine": 29,
+                  "endColumn": 35,
                   "snippet": {
-                    "text": "        print_ssh_out(ssh_client.exec_command(\"pwd\"))\n"
-                  }
-                },
-                "contextRegion": {
-                  "startLine": 174,
-                  "endLine": 176,
-                  "snippet": {
-                    "text": "        # print remote dir layout\n        print_ssh_out(ssh_client.exec_command(\"pwd\"))\n        print_ssh_out(ssh_client.exec_command(\"ls -l\"))\n"
+                    "text": "                    exit(ret_init)"
                   }
                 }
               }
             }
           ],
-          "properties": {
-            "issue_severity": "MEDIUM",
-            "issue_confidence": "MEDIUM"
-          }
+          "fingerprints": {
+            "matchBasedId/v1": "753b380cb4c5a6276dba628b6f67edf272aaee5cd31e15c7690d2ec25b4369ceaa87d09f1c961e68b8fffe08c95da30f3a870fda57f0f1a6f16c04f56cbe86c0_0"
+          },
+          "properties": {}
         },
         {
-          "ruleId": "glog-b98437a2-ab06-4c0b-a769-35e6e9f2cf64",
+          "ruleId": "746b342e-b76d-38a4-9d64-2a8d3479fbbb",
           "kind": "fail",
           "level": "warning",
           "message": {
-            "text": "\"Potential Shell Injection through Paramiko Call\""
+            "text": "Use `sys.exit` over the python shell `exit` built-in. `exit` is a helper for the interactive shell and may not be available on all Python implementations. https://stackoverflow.com/questions/6501121/difference-between-exit-and-sys-exit-in-python"
           },
           "locations": [
             {
               "physicalLocation": {
                 "artifactLocation": {
-                  "uri": "src/madengine/tools/update_table_db.py"
+                  "uri": "src/madengine/scripts/common/tools/rocm_smi_utils.py",
+                  "uriBaseId": "%SRCROOT%"
                 },
                 "region": {
-                  "startLine": 185,
-                  "startColumn": 23,
-                  "endLine": 185,
+                  "startLine": 32,
+                  "startColumn": 17,
+                  "endLine": 32,
+                  "endColumn": 24,
+                  "snippet": {
+                    "text": "                exit(0)"
+                  }
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "matchBasedId/v1": "753b380cb4c5a6276dba628b6f67edf272aaee5cd31e15c7690d2ec25b4369ceaa87d09f1c961e68b8fffe08c95da30f3a870fda57f0f1a6f16c04f56cbe86c0_1"
+          },
+          "properties": {}
+        },
+        {
+          "ruleId": "47096f50-f442-3c8b-9c0a-a32efb25d6c0",
+          "kind": "fail",
+          "level": "warning",
+          "message": {
+            "text": "Use `sys.exit` over the python shell `exit` built-in. `exit` is a helper for the interactive shell and may not be available on all Python implementations. https://stackoverflow.com/questions/6501121/difference-between-exit-and-sys-exit-in-python"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/madengine/scripts/common/tools/rocm_smi_utils.py",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 63,
+                  "startColumn": 17,
+                  "endLine": 63,
+                  "endColumn": 26,
+                  "snippet": {
+                    "text": "                exit(ret)"
+                  }
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "matchBasedId/v1": "753b380cb4c5a6276dba628b6f67edf272aaee5cd31e15c7690d2ec25b4369ceaa87d09f1c961e68b8fffe08c95da30f3a870fda57f0f1a6f16c04f56cbe86c0_2"
+          },
+          "properties": {}
+        },
+        {
+          "ruleId": "39e852e4-46c9-3a29-84fa-045bdd3024c7",
+          "kind": "fail",
+          "level": "warning",
+          "message": {
+            "text": "Detected subprocess function 'Popen' without a static string. If this data can be\ncontrolled by a malicious actor, it may be an instance of command injection.\nAudit the use of this call to ensure it is not controllable by an external resource.\nYou may consider using 'shlex.escape()'.\n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/madengine/tools/create_table_db.py",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 100,
+                  "startColumn": 19,
+                  "endLine": 100,
                   "endColumn": 93,
                   "snippet": {
-                    "text": "        print_ssh_out(ssh_client.exec_command(\"rm -rf {}\".format(upload_script_path_remote)))\n"
-                  }
-                },
-                "contextRegion": {
-                  "startLine": 184,
-                  "endLine": 186,
-                  "snippet": {
-                    "text": "        # clean up previous uploads\n        print_ssh_out(ssh_client.exec_command(\"rm -rf {}\".format(upload_script_path_remote)))\n        print_ssh_out(ssh_client.exec_command(\"rm -rf {}\".format(csv_file_path_remote)))\n"
+                    "text": "            ret = subprocess.Popen(cmd_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE)"
                   }
                 }
               }
             }
           ],
-          "properties": {
-            "issue_severity": "MEDIUM",
-            "issue_confidence": "MEDIUM"
-          }
+          "fingerprints": {
+            "matchBasedId/v1": "3e79f408619cbcd5f61a200786b6d111f7fcc3f5f59663fc6592f4063e5876432f928aded2070bb1098974276f652d4ce565734b577800a09c87b91c435a60db_0"
+          },
+          "properties": {}
         },
         {
-          "ruleId": "glog-b8d5a561-6846-4da2-8cef-124633a9d779",
+          "ruleId": "9a04cb3a-9131-3c83-bb64-f023a07b8a2c",
           "kind": "fail",
           "level": "warning",
           "message": {
-            "text": "\"Paramiko Call Shell Injection Vulnerability\""
+            "text": "Regex `'.*:'` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)"
           },
           "locations": [
             {
               "physicalLocation": {
                 "artifactLocation": {
-                  "uri": "src/madengine/tools/update_table_db.py"
+                  "uri": "src/madengine/tools/run_models.py",
+                  "uriBaseId": "%SRCROOT%"
                 },
                 "region": {
-                  "startLine": 186,
-                  "startColumn": 23,
-                  "endLine": 186,
-                  "endColumn": 88,
+                  "startLine": 584,
+                  "startColumn": 45,
+                  "endLine": 584,
+                  "endColumn": 80,
                   "snippet": {
-                    "text": "        print_ssh_out(ssh_client.exec_command(\"rm -rf {}\".format(csv_file_path_remote)))\n"
-                  }
-                },
-                "contextRegion": {
-                  "startLine": 185,
-                  "endLine": 187,
-                  "snippet": {
-                    "text": "        print_ssh_out(ssh_client.exec_command(\"rm -rf {}\".format(upload_script_path_remote)))\n        print_ssh_out(ssh_client.exec_command(\"rm -rf {}\".format(csv_file_path_remote)))\n\n"
+                    "text": "            container_name = \"container_\" + re.sub('.*:','', image_docker_name) # remove docker container hub details"
                   }
                 }
               }
             }
           ],
-          "properties": {
-            "issue_severity": "MEDIUM",
-            "issue_confidence": "MEDIUM"
-          }
+          "fingerprints": {
+            "matchBasedId/v1": "6d06dae2fb11cb20151a968cdcb6f6a6126e84df890893fb1ef43a86b2b952366b95ab6853a777880167901b8b8d1b2d14c7dc62d1733b44ec6d2554fcc2d5f3_0"
+          },
+          "properties": {}
         },
         {
-          "ruleId": "glog-33dba3a9-f1c6-4b3c-a108-cbd33f5e94b1",
+          "ruleId": "1f301fc1-ddc1-34ae-9bbe-20c434102ca9",
           "kind": "fail",
           "level": "warning",
           "message": {
-            "text": "\"Paramiko Call Shell Injection Vulnerability\""
+            "text": "Detected subprocess function 'Popen' without a static string. If this data can be\ncontrolled by a malicious actor, it may be an instance of command injection.\nAudit the use of this call to ensure it is not controllable by an external resource.\nYou may consider using 'shlex.escape()'.\n"
           },
           "locations": [
             {
               "physicalLocation": {
                 "artifactLocation": {
-                  "uri": "src/madengine/tools/update_table_db.py"
+                  "uri": "src/madengine/tools/create_table_db.py",
+                  "uriBaseId": "%SRCROOT%"
                 },
                 "region": {
-                  "startLine": 207,
-                  "startColumn": 13,
-                  "endLine": 208,
-                  "endColumn": 14,
+                  "startLine": 120,
+                  "startColumn": 19,
+                  "endLine": 120,
+                  "endColumn": 107,
                   "snippet": {
-                    "text": "            ssh_client.exec_command(\n"
-                  }
-                },
-                "contextRegion": {
-                  "startLine": 206,
-                  "endLine": 217,
-                  "snippet": {
-                    "text": "        print_ssh_out(\n            ssh_client.exec_command(\n                \"TUNA_DB_USER_NAME={} TUNA_DB_USER_PASSWORD={} TUNA_DB_NAME={} TUNA_DB_HOSTNAME={} python3 {} --csv-file-path {}\".format(\n                    self.user_name,\n                    self.user_password,\n                    self.db_name,\n                    self.db_hostname,\n                    main_script,\n                    csv_file_path_remote,\n                )\n            )\n        )\n"
+                    "text": "            ret = subprocess.Popen(cmd_list, env=env_vars, stdout=subprocess.PIPE, stderr=subprocess.PIPE)"
                   }
                 }
               }
             }
           ],
-          "properties": {
-            "issue_severity": "MEDIUM",
-            "issue_confidence": "MEDIUM"
-          }
+          "fingerprints": {
+            "matchBasedId/v1": "3e79f408619cbcd5f61a200786b6d111f7fcc3f5f59663fc6592f4063e5876432f928aded2070bb1098974276f652d4ce565734b577800a09c87b91c435a60db_1"
+          },
+          "properties": {}
+        },
+        {
+          "ruleId": "1daf892d-80a2-322f-b1a5-3d7017c5e19a",
+          "kind": "fail",
+          "level": "warning",
+          "message": {
+            "text": "Detected subprocess function 'Popen' without a static string. If this data can be\ncontrolled by a malicious actor, it may be an instance of command injection.\nAudit the use of this call to ensure it is not controllable by an external resource.\nYou may consider using 'shlex.escape()'.\n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/madengine/tools/update_table_db.py",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 102,
+                  "startColumn": 19,
+                  "endLine": 102,
+                  "endColumn": 93,
+                  "snippet": {
+                    "text": "            ret = subprocess.Popen(cmd_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE)"
+                  }
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "matchBasedId/v1": "5d1a4f06b2eeb7a3b635fe081562ac1967dad3b194b1cb198613f843102f88deef087f5192368c0c8d4f4abf7fc5177548fddf0f6a6a8a7973eca096aed87209_0"
+          },
+          "properties": {}
+        },
+        {
+          "ruleId": "34556df0-b24c-344b-87de-7351b40cc3b6",
+          "kind": "fail",
+          "level": "warning",
+          "message": {
+            "text": "Regex `special_char` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/madengine/tools/run_models.py",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 741,
+                  "startColumn": 20,
+                  "endLine": 741,
+                  "endColumn": 54,
+                  "snippet": {
+                    "text": "                if re.search(special_char, model_dir) is not None:"
+                  }
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "matchBasedId/v1": "2ca0763aecddef1c9526e56794c8e6411ffd10c4c02b64fb0d62ded504008f965bbb6e1000f0238dbba0400b803a1f129b55a72e7da0b5bc82f77c512ed3f86c_0"
+          },
+          "properties": {}
+        },
+        {
+          "ruleId": "c54d7fab-7202-30cc-b79f-3c2e15550e9c",
+          "kind": "fail",
+          "level": "warning",
+          "message": {
+            "text": "Detected subprocess function 'Popen' without a static string. If this data can be\ncontrolled by a malicious actor, it may be an instance of command injection.\nAudit the use of this call to ensure it is not controllable by an external resource.\nYou may consider using 'shlex.escape()'.\n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/madengine/tools/update_table_db.py",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 120,
+                  "startColumn": 19,
+                  "endLine": 120,
+                  "endColumn": 107,
+                  "snippet": {
+                    "text": "            ret = subprocess.Popen(cmd_list, env=env_vars, stdout=subprocess.PIPE, stderr=subprocess.PIPE)"
+                  }
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "matchBasedId/v1": "5d1a4f06b2eeb7a3b635fe081562ac1967dad3b194b1cb198613f843102f88deef087f5192368c0c8d4f4abf7fc5177548fddf0f6a6a8a7973eca096aed87209_1"
+          },
+          "properties": {}
         }
       ],
       "newlineSequences": [
