@@ -12,30 +12,6 @@
           "informationUri": "https://www.glog.ai",
           "rules": [
             {
-              "id": "32c2046d-e80c-3287-afd9-4bc14c7251f7",
-              "name": "resources.rules.dlint-catastrophic-redos",
-              "shortDescription": {
-                "text": "Opengrep Finding: resources.rules.dlint-catastrophic-redos"
-              },
-              "fullDescription": {
-                "text": "Regex `$X` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)"
-              },
-              "defaultConfiguration": {
-                "enabled": true,
-                "level": "error"
-              },
-              "help": {
-                "text": "Regex `$X` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)\n💎 Enable cross-file analysis and Pro rules for free at sg.run/pro",
-                "markdown": "Regex `$X` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)\n\n#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>\n\n<b>References:</b>\n - [https://r2c.dev/blog/2020/finding-python-redos-bugs-at-scale-using-dlint-and-r2c/](https://r2c.dev/blog/2020/finding-python-redos-bugs-at-scale-using-dlint-and-r2c/)\n - [https://r2c.dev/blog/2020/improving-redos-detection-with-dlint-and-r2c/](https://r2c.dev/blog/2020/improving-redos-detection-with-dlint-and-r2c/)\n"
-              },
-              "properties": {
-                "precision": "very-high",
-                "tags": [
-                  "resources.rules.dlint-catastrophic-redos"
-                ]
-              }
-            },
-            {
               "id": "02994616-8f63-3ed7-a082-3737fc942c0a",
               "name": "resources.rules.detected-ssh-password",
               "shortDescription": {
@@ -56,6 +32,30 @@
                 "precision": "very-high",
                 "tags": [
                   "resources.rules.detected-ssh-password"
+                ]
+              }
+            },
+            {
+              "id": "32c2046d-e80c-3287-afd9-4bc14c7251f7",
+              "name": "resources.rules.dlint-catastrophic-redos",
+              "shortDescription": {
+                "text": "Opengrep Finding: resources.rules.dlint-catastrophic-redos"
+              },
+              "fullDescription": {
+                "text": "Regex `$X` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)"
+              },
+              "defaultConfiguration": {
+                "enabled": true,
+                "level": "error"
+              },
+              "help": {
+                "text": "Regex `$X` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)\n💎 Enable cross-file analysis and Pro rules for free at sg.run/pro",
+                "markdown": "Regex `$X` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)\n\n#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>\n\n<b>References:</b>\n - [https://r2c.dev/blog/2020/finding-python-redos-bugs-at-scale-using-dlint-and-r2c/](https://r2c.dev/blog/2020/finding-python-redos-bugs-at-scale-using-dlint-and-r2c/)\n - [https://r2c.dev/blog/2020/improving-redos-detection-with-dlint-and-r2c/](https://r2c.dev/blog/2020/improving-redos-detection-with-dlint-and-r2c/)\n"
+              },
+              "properties": {
+                "precision": "very-high",
+                "tags": [
+                  "resources.rules.dlint-catastrophic-redos"
                 ]
               }
             },
@@ -133,31 +133,6 @@
               }
             },
             {
-              "id": "d4f3855b-a455-36dc-9180-11baa02ed7c4",
-              "name": "python.lang.security.audit.formatted-sql-query.formatted-sql-query",
-              "shortDescription": {
-                "text": "Opengrep Finding: python.lang.security.audit.formatted-sql-query.formatted-sql-query"
-              },
-              "fullDescription": {
-                "text": "Detected possible formatted SQL query. Use parameterized queries instead."
-              },
-              "defaultConfiguration": {
-                "enabled": true,
-                "level": "warning"
-              },
-              "helpUri": "https://semgrep.dev/r/python.lang.security.audit.formatted-sql-query.formatted-sql-query",
-              "help": {
-                "text": "Detected possible formatted SQL query. Use parameterized queries instead.\n💎 Enable cross-file analysis and Pro rules for free at sg.run/pro",
-                "markdown": "Detected possible formatted SQL query. Use parameterized queries instead.\n\n#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>\n\n<b>References:</b>\n - [Semgrep Rule](https://semgrep.dev/r/python.lang.security.audit.formatted-sql-query.formatted-sql-query)\n - [https://stackoverflow.com/questions/775296/mysql-parameterized-queries](https://stackoverflow.com/questions/775296/mysql-parameterized-queries)\n"
-              },
-              "properties": {
-                "precision": "very-high",
-                "tags": [
-                  "python.lang.security.audit.formatted-sql-query.formatted-sql-query"
-                ]
-              }
-            },
-            {
               "id": "5f147ec9-4439-3125-a3a9-9aae64855da6",
               "name": "python.lang.security.audit.formatted-sql-query.formatted-sql-query",
               "shortDescription": {
@@ -184,6 +159,31 @@
             },
             {
               "id": "44b1b339-c1ad-3ed9-b3a7-d32a380144b5",
+              "name": "python.lang.security.audit.formatted-sql-query.formatted-sql-query",
+              "shortDescription": {
+                "text": "Opengrep Finding: python.lang.security.audit.formatted-sql-query.formatted-sql-query"
+              },
+              "fullDescription": {
+                "text": "Detected possible formatted SQL query. Use parameterized queries instead."
+              },
+              "defaultConfiguration": {
+                "enabled": true,
+                "level": "warning"
+              },
+              "helpUri": "https://semgrep.dev/r/python.lang.security.audit.formatted-sql-query.formatted-sql-query",
+              "help": {
+                "text": "Detected possible formatted SQL query. Use parameterized queries instead.\n💎 Enable cross-file analysis and Pro rules for free at sg.run/pro",
+                "markdown": "Detected possible formatted SQL query. Use parameterized queries instead.\n\n#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>\n\n<b>References:</b>\n - [Semgrep Rule](https://semgrep.dev/r/python.lang.security.audit.formatted-sql-query.formatted-sql-query)\n - [https://stackoverflow.com/questions/775296/mysql-parameterized-queries](https://stackoverflow.com/questions/775296/mysql-parameterized-queries)\n"
+              },
+              "properties": {
+                "precision": "very-high",
+                "tags": [
+                  "python.lang.security.audit.formatted-sql-query.formatted-sql-query"
+                ]
+              }
+            },
+            {
+              "id": "d4f3855b-a455-36dc-9180-11baa02ed7c4",
               "name": "python.lang.security.audit.formatted-sql-query.formatted-sql-query",
               "shortDescription": {
                 "text": "Opengrep Finding: python.lang.security.audit.formatted-sql-query.formatted-sql-query"
@@ -258,31 +258,6 @@
               }
             },
             {
-              "id": "6e70a3e8-fac5-3c21-b377-4656be2e0f3c",
-              "name": "python.lang.security.audit.formatted-sql-query.formatted-sql-query",
-              "shortDescription": {
-                "text": "Opengrep Finding: python.lang.security.audit.formatted-sql-query.formatted-sql-query"
-              },
-              "fullDescription": {
-                "text": "Detected possible formatted SQL query. Use parameterized queries instead."
-              },
-              "defaultConfiguration": {
-                "enabled": true,
-                "level": "warning"
-              },
-              "helpUri": "https://semgrep.dev/r/python.lang.security.audit.formatted-sql-query.formatted-sql-query",
-              "help": {
-                "text": "Detected possible formatted SQL query. Use parameterized queries instead.\n💎 Enable cross-file analysis and Pro rules for free at sg.run/pro",
-                "markdown": "Detected possible formatted SQL query. Use parameterized queries instead.\n\n#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>\n\n<b>References:</b>\n - [Semgrep Rule](https://semgrep.dev/r/python.lang.security.audit.formatted-sql-query.formatted-sql-query)\n - [https://stackoverflow.com/questions/775296/mysql-parameterized-queries](https://stackoverflow.com/questions/775296/mysql-parameterized-queries)\n"
-              },
-              "properties": {
-                "precision": "very-high",
-                "tags": [
-                  "python.lang.security.audit.formatted-sql-query.formatted-sql-query"
-                ]
-              }
-            },
-            {
               "id": "180b8146-af5a-3e07-8efd-05cf287b3b29",
               "name": "python.lang.security.audit.formatted-sql-query.formatted-sql-query",
               "shortDescription": {
@@ -308,50 +283,27 @@
               }
             },
             {
-              "id": "5ea1d124-0b6d-314b-9fb0-c7d626975cd5",
-              "name": "resources.rules.dangerous-system-call",
+              "id": "6e70a3e8-fac5-3c21-b377-4656be2e0f3c",
+              "name": "python.lang.security.audit.formatted-sql-query.formatted-sql-query",
               "shortDescription": {
-                "text": "Opengrep Finding: resources.rules.dangerous-system-call"
+                "text": "Opengrep Finding: python.lang.security.audit.formatted-sql-query.formatted-sql-query"
               },
               "fullDescription": {
-                "text": "Found dynamic content used in a system call. This is dangerous if external data can reach this function call because it allows a malicious actor to execute commands. Use the 'subprocess' module instead, which is easier to use without accidentally exposing a command injection vulnerability."
+                "text": "Detected possible formatted SQL query. Use parameterized queries instead."
               },
               "defaultConfiguration": {
                 "enabled": true,
                 "level": "warning"
               },
+              "helpUri": "https://semgrep.dev/r/python.lang.security.audit.formatted-sql-query.formatted-sql-query",
               "help": {
-                "text": "Found dynamic content used in a system call. This is dangerous if external data can reach this function call because it allows a malicious actor to execute commands. Use the 'subprocess' module instead, which is easier to use without accidentally exposing a command injection vulnerability.\n💎 Enable cross-file analysis and Pro rules for free at sg.run/pro",
-                "markdown": "Found dynamic content used in a system call. This is dangerous if external data can reach this function call because it allows a malicious actor to execute commands. Use the 'subprocess' module instead, which is easier to use without accidentally exposing a command injection vulnerability.\n\n#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>"
+                "text": "Detected possible formatted SQL query. Use parameterized queries instead.\n💎 Enable cross-file analysis and Pro rules for free at sg.run/pro",
+                "markdown": "Detected possible formatted SQL query. Use parameterized queries instead.\n\n#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>\n\n<b>References:</b>\n - [Semgrep Rule](https://semgrep.dev/r/python.lang.security.audit.formatted-sql-query.formatted-sql-query)\n - [https://stackoverflow.com/questions/775296/mysql-parameterized-queries](https://stackoverflow.com/questions/775296/mysql-parameterized-queries)\n"
               },
               "properties": {
                 "precision": "very-high",
                 "tags": [
-                  "resources.rules.dangerous-system-call"
-                ]
-              }
-            },
-            {
-              "id": "9bd14bdd-eb56-3319-924f-49b8cf371221",
-              "name": "resources.rules.dlint-catastrophic-redos",
-              "shortDescription": {
-                "text": "Opengrep Finding: resources.rules.dlint-catastrophic-redos"
-              },
-              "fullDescription": {
-                "text": "Regex `$X` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)"
-              },
-              "defaultConfiguration": {
-                "enabled": true,
-                "level": "error"
-              },
-              "help": {
-                "text": "Regex `$X` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)\n💎 Enable cross-file analysis and Pro rules for free at sg.run/pro",
-                "markdown": "Regex `$X` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)\n\n#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>\n\n<b>References:</b>\n - [https://r2c.dev/blog/2020/finding-python-redos-bugs-at-scale-using-dlint-and-r2c/](https://r2c.dev/blog/2020/finding-python-redos-bugs-at-scale-using-dlint-and-r2c/)\n - [https://r2c.dev/blog/2020/improving-redos-detection-with-dlint-and-r2c/](https://r2c.dev/blog/2020/improving-redos-detection-with-dlint-and-r2c/)\n"
-              },
-              "properties": {
-                "precision": "very-high",
-                "tags": [
-                  "resources.rules.dlint-catastrophic-redos"
+                  "python.lang.security.audit.formatted-sql-query.formatted-sql-query"
                 ]
               }
             },
@@ -380,7 +332,55 @@
               }
             },
             {
+              "id": "5ea1d124-0b6d-314b-9fb0-c7d626975cd5",
+              "name": "resources.rules.dangerous-system-call",
+              "shortDescription": {
+                "text": "Opengrep Finding: resources.rules.dangerous-system-call"
+              },
+              "fullDescription": {
+                "text": "Found dynamic content used in a system call. This is dangerous if external data can reach this function call because it allows a malicious actor to execute commands. Use the 'subprocess' module instead, which is easier to use without accidentally exposing a command injection vulnerability."
+              },
+              "defaultConfiguration": {
+                "enabled": true,
+                "level": "warning"
+              },
+              "help": {
+                "text": "Found dynamic content used in a system call. This is dangerous if external data can reach this function call because it allows a malicious actor to execute commands. Use the 'subprocess' module instead, which is easier to use without accidentally exposing a command injection vulnerability.\n💎 Enable cross-file analysis and Pro rules for free at sg.run/pro",
+                "markdown": "Found dynamic content used in a system call. This is dangerous if external data can reach this function call because it allows a malicious actor to execute commands. Use the 'subprocess' module instead, which is easier to use without accidentally exposing a command injection vulnerability.\n\n#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>"
+              },
+              "properties": {
+                "precision": "very-high",
+                "tags": [
+                  "resources.rules.dangerous-system-call"
+                ]
+              }
+            },
+            {
               "id": "226511f9-17c0-3382-a17c-31ea6f7390d1",
+              "name": "resources.rules.dlint-catastrophic-redos",
+              "shortDescription": {
+                "text": "Opengrep Finding: resources.rules.dlint-catastrophic-redos"
+              },
+              "fullDescription": {
+                "text": "Regex `$X` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)"
+              },
+              "defaultConfiguration": {
+                "enabled": true,
+                "level": "error"
+              },
+              "help": {
+                "text": "Regex `$X` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)\n💎 Enable cross-file analysis and Pro rules for free at sg.run/pro",
+                "markdown": "Regex `$X` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)\n\n#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>\n\n<b>References:</b>\n - [https://r2c.dev/blog/2020/finding-python-redos-bugs-at-scale-using-dlint-and-r2c/](https://r2c.dev/blog/2020/finding-python-redos-bugs-at-scale-using-dlint-and-r2c/)\n - [https://r2c.dev/blog/2020/improving-redos-detection-with-dlint-and-r2c/](https://r2c.dev/blog/2020/improving-redos-detection-with-dlint-and-r2c/)\n"
+              },
+              "properties": {
+                "precision": "very-high",
+                "tags": [
+                  "resources.rules.dlint-catastrophic-redos"
+                ]
+              }
+            },
+            {
+              "id": "9bd14bdd-eb56-3319-924f-49b8cf371221",
               "name": "resources.rules.dlint-catastrophic-redos",
               "shortDescription": {
                 "text": "Opengrep Finding: resources.rules.dlint-catastrophic-redos"
@@ -668,30 +668,6 @@
               }
             },
             {
-              "id": "1daf892d-80a2-322f-b1a5-3d7017c5e19a",
-              "name": "resources.rules.dangerous-subprocess-use",
-              "shortDescription": {
-                "text": "Opengrep Finding: resources.rules.dangerous-subprocess-use"
-              },
-              "fullDescription": {
-                "text": "Detected subprocess function '$FUNC' without a static string. If this data can be\ncontrolled by a malicious actor, it may be an instance of command injection.\nAudit the use of this call to ensure it is not controllable by an external resource.\nYou may consider using 'shlex.escape()'.\n"
-              },
-              "defaultConfiguration": {
-                "enabled": true,
-                "level": "warning"
-              },
-              "help": {
-                "text": "Detected subprocess function '$FUNC' without a static string. If this data can be\ncontrolled by a malicious actor, it may be an instance of command injection.\nAudit the use of this call to ensure it is not controllable by an external resource.\nYou may consider using 'shlex.escape()'.\n\n💎 Enable cross-file analysis and Pro rules for free at sg.run/pro",
-                "markdown": "Detected subprocess function '$FUNC' without a static string. If this data can be\ncontrolled by a malicious actor, it may be an instance of command injection.\nAudit the use of this call to ensure it is not controllable by an external resource.\nYou may consider using 'shlex.escape()'.\n\n\n#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>\n\n<b>References:</b>\n - [https://stackoverflow.com/questions/3172470/actual-meaning-of-shell-true-in-subprocess](https://stackoverflow.com/questions/3172470/actual-meaning-of-shell-true-in-subprocess)\n - [https://docs.python.org/3/library/subprocess.html](https://docs.python.org/3/library/subprocess.html)\n - [https://docs.python.org/3/library/shlex.html](https://docs.python.org/3/library/shlex.html)\n"
-              },
-              "properties": {
-                "precision": "very-high",
-                "tags": [
-                  "resources.rules.dangerous-subprocess-use"
-                ]
-              }
-            },
-            {
               "id": "34556df0-b24c-344b-87de-7351b40cc3b6",
               "name": "resources.rules.dlint-catastrophic-redos",
               "shortDescription": {
@@ -712,6 +688,30 @@
                 "precision": "very-high",
                 "tags": [
                   "resources.rules.dlint-catastrophic-redos"
+                ]
+              }
+            },
+            {
+              "id": "1daf892d-80a2-322f-b1a5-3d7017c5e19a",
+              "name": "resources.rules.dangerous-subprocess-use",
+              "shortDescription": {
+                "text": "Opengrep Finding: resources.rules.dangerous-subprocess-use"
+              },
+              "fullDescription": {
+                "text": "Detected subprocess function '$FUNC' without a static string. If this data can be\ncontrolled by a malicious actor, it may be an instance of command injection.\nAudit the use of this call to ensure it is not controllable by an external resource.\nYou may consider using 'shlex.escape()'.\n"
+              },
+              "defaultConfiguration": {
+                "enabled": true,
+                "level": "warning"
+              },
+              "help": {
+                "text": "Detected subprocess function '$FUNC' without a static string. If this data can be\ncontrolled by a malicious actor, it may be an instance of command injection.\nAudit the use of this call to ensure it is not controllable by an external resource.\nYou may consider using 'shlex.escape()'.\n\n💎 Enable cross-file analysis and Pro rules for free at sg.run/pro",
+                "markdown": "Detected subprocess function '$FUNC' without a static string. If this data can be\ncontrolled by a malicious actor, it may be an instance of command injection.\nAudit the use of this call to ensure it is not controllable by an external resource.\nYou may consider using 'shlex.escape()'.\n\n\n#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>\n\n<b>References:</b>\n - [https://stackoverflow.com/questions/3172470/actual-meaning-of-shell-true-in-subprocess](https://stackoverflow.com/questions/3172470/actual-meaning-of-shell-true-in-subprocess)\n - [https://docs.python.org/3/library/subprocess.html](https://docs.python.org/3/library/subprocess.html)\n - [https://docs.python.org/3/library/shlex.html](https://docs.python.org/3/library/shlex.html)\n"
+              },
+              "properties": {
+                "precision": "very-high",
+                "tags": [
+                  "resources.rules.dangerous-subprocess-use"
                 ]
               }
             },
@@ -751,37 +751,6 @@
       "language": "en-US",
       "results": [
         {
-          "ruleId": "32c2046d-e80c-3287-afd9-4bc14c7251f7",
-          "kind": "fail",
-          "level": "warning",
-          "message": {
-            "text": "Regex `r\"\\d+\"` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)"
-          },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "src/madengine/core/context.py",
-                  "uriBaseId": "%SRCROOT%"
-                },
-                "region": {
-                  "startLine": 335,
-                  "startColumn": 36,
-                  "endLine": 335,
-                  "endColumn": 69,
-                  "snippet": {
-                    "text": "                kfd_nodeids = [int(re.search(r\"\\d+\",line.split()[0]).group()) for line in kfd_properties]"
-                  }
-                }
-              }
-            }
-          ],
-          "fingerprints": {
-            "matchBasedId/v1": "a9fc6381b8fcc35f48f4757e47364d43b88b29404568e15436015449cb7bb405825307b8fdb339f5f9a8b38595458d04d3672d2ea6d38d1229e80a72f92bf499_0"
-          },
-          "properties": {}
-        },
-        {
           "ruleId": "02994616-8f63-3ed7-a082-3737fc942c0a",
           "kind": "fail",
           "level": "warning",
@@ -809,6 +778,37 @@
           ],
           "fingerprints": {
             "matchBasedId/v1": "b72a2c91fa847d57cb3802f6eb45e7d2bf8e15cad6b800f0e484e4796308245c0d5a2158d7a14ac53237dc4c75575f65d12df7ae420a137f59c99d5ae2f9e0e3_0"
+          },
+          "properties": {}
+        },
+        {
+          "ruleId": "32c2046d-e80c-3287-afd9-4bc14c7251f7",
+          "kind": "fail",
+          "level": "warning",
+          "message": {
+            "text": "Regex `r\"\\d+\"` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/madengine/core/context.py",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 335,
+                  "startColumn": 36,
+                  "endLine": 335,
+                  "endColumn": 69,
+                  "snippet": {
+                    "text": "                kfd_nodeids = [int(re.search(r\"\\d+\",line.split()[0]).group()) for line in kfd_properties]"
+                  }
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "matchBasedId/v1": "a9fc6381b8fcc35f48f4757e47364d43b88b29404568e15436015449cb7bb405825307b8fdb339f5f9a8b38595458d04d3672d2ea6d38d1229e80a72f92bf499_0"
           },
           "properties": {}
         },
@@ -906,37 +906,6 @@
           "properties": {}
         },
         {
-          "ruleId": "d4f3855b-a455-36dc-9180-11baa02ed7c4",
-          "kind": "fail",
-          "level": "warning",
-          "message": {
-            "text": "Detected possible formatted SQL query. Use parameterized queries instead."
-          },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "src/madengine/db/database.py",
-                  "uriBaseId": "%SRCROOT%"
-                },
-                "region": {
-                  "startLine": 114,
-                  "startColumn": 5,
-                  "endLine": 114,
-                  "endColumn": 45,
-                  "snippet": {
-                    "text": "    ENGINE.execute(\"Use {}\".format(db_name))"
-                  }
-                }
-              }
-            }
-          ],
-          "fingerprints": {
-            "matchBasedId/v1": "2bb2a949e4d14c9fc5e1aa7e73eb5aa3a5da195afff04571b927f1f924afa6497908aff81ac6e0a18eaee0b74465f7d588ef5b02fe33e97c380933a45df0c16f_2"
-          },
-          "properties": {}
-        },
-        {
           "ruleId": "5f147ec9-4439-3125-a3a9-9aae64855da6",
           "kind": "fail",
           "level": "warning",
@@ -995,6 +964,37 @@
           ],
           "fingerprints": {
             "matchBasedId/v1": "2bb2a949e4d14c9fc5e1aa7e73eb5aa3a5da195afff04571b927f1f924afa6497908aff81ac6e0a18eaee0b74465f7d588ef5b02fe33e97c380933a45df0c16f_3"
+          },
+          "properties": {}
+        },
+        {
+          "ruleId": "d4f3855b-a455-36dc-9180-11baa02ed7c4",
+          "kind": "fail",
+          "level": "warning",
+          "message": {
+            "text": "Detected possible formatted SQL query. Use parameterized queries instead."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/madengine/db/database.py",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 114,
+                  "startColumn": 5,
+                  "endLine": 114,
+                  "endColumn": 45,
+                  "snippet": {
+                    "text": "    ENGINE.execute(\"Use {}\".format(db_name))"
+                  }
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "matchBasedId/v1": "2bb2a949e4d14c9fc5e1aa7e73eb5aa3a5da195afff04571b927f1f924afa6497908aff81ac6e0a18eaee0b74465f7d588ef5b02fe33e97c380933a45df0c16f_2"
           },
           "properties": {}
         },
@@ -1061,37 +1061,6 @@
           "properties": {}
         },
         {
-          "ruleId": "6e70a3e8-fac5-3c21-b377-4656be2e0f3c",
-          "kind": "fail",
-          "level": "warning",
-          "message": {
-            "text": "Detected possible formatted SQL query. Use parameterized queries instead."
-          },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "src/madengine/db/database.py",
-                  "uriBaseId": "%SRCROOT%"
-                },
-                "region": {
-                  "startLine": 221,
-                  "startColumn": 14,
-                  "endLine": 226,
-                  "endColumn": 6,
-                  "snippet": {
-                    "text": "    result = ENGINE.execute(\n        \"SELECT `COLUMN_NAME` \\\n            FROM `INFORMATION_SCHEMA`.`COLUMNS` \\\n                WHERE `TABLE_SCHEMA`='{}' \\\n                AND `TABLE_NAME`='{}'\".format(db_name, DB_TABLE.__tablename__)\n    )"
-                  }
-                }
-              }
-            }
-          ],
-          "fingerprints": {
-            "matchBasedId/v1": "2bb2a949e4d14c9fc5e1aa7e73eb5aa3a5da195afff04571b927f1f924afa6497908aff81ac6e0a18eaee0b74465f7d588ef5b02fe33e97c380933a45df0c16f_6"
-          },
-          "properties": {}
-        },
-        {
           "ruleId": "180b8146-af5a-3e07-8efd-05cf287b3b29",
           "kind": "fail",
           "level": "warning",
@@ -1123,64 +1092,33 @@
           "properties": {}
         },
         {
-          "ruleId": "5ea1d124-0b6d-314b-9fb0-c7d626975cd5",
+          "ruleId": "6e70a3e8-fac5-3c21-b377-4656be2e0f3c",
           "kind": "fail",
           "level": "warning",
           "message": {
-            "text": "Found dynamic content used in a system call. This is dangerous if external data can reach this function call because it allows a malicious actor to execute commands. Use the 'subprocess' module instead, which is easier to use without accidentally exposing a command injection vulnerability."
+            "text": "Detected possible formatted SQL query. Use parameterized queries instead."
           },
           "locations": [
             {
               "physicalLocation": {
                 "artifactLocation": {
-                  "uri": "src/madengine/scripts/common/pre_scripts/rocEnvTool/rocenv_tool.py",
+                  "uri": "src/madengine/db/database.py",
                   "uriBaseId": "%SRCROOT%"
                 },
                 "region": {
-                  "startLine": 290,
-                  "startColumn": 9,
-                  "endLine": 290,
-                  "endColumn": 39,
+                  "startLine": 221,
+                  "startColumn": 14,
+                  "endLine": 226,
+                  "endColumn": 6,
                   "snippet": {
-                    "text": "        os.system(\"rm -rf \" + out_dir)"
+                    "text": "    result = ENGINE.execute(\n        \"SELECT `COLUMN_NAME` \\\n            FROM `INFORMATION_SCHEMA`.`COLUMNS` \\\n                WHERE `TABLE_SCHEMA`='{}' \\\n                AND `TABLE_NAME`='{}'\".format(db_name, DB_TABLE.__tablename__)\n    )"
                   }
                 }
               }
             }
           ],
           "fingerprints": {
-            "matchBasedId/v1": "bb979b7abc500b8ed1bc74157e4a8fc3f71e7370989da8b6907c62f2bc8b072e44a6b16a0b45aea50abf2b96a96ccd6d865ac0c47009b8921bd41161c123c9a5_0"
-          },
-          "properties": {}
-        },
-        {
-          "ruleId": "9bd14bdd-eb56-3319-924f-49b8cf371221",
-          "kind": "fail",
-          "level": "warning",
-          "message": {
-            "text": "Regex `r\"^Running kernel: (.*)$\"` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)"
-          },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "src/madengine/scripts/common/tools/get_library_trace.py",
-                  "uriBaseId": "%SRCROOT%"
-                },
-                "region": {
-                  "startLine": 122,
-                  "startColumn": 16,
-                  "endLine": 122,
-                  "endColumn": 53,
-                  "snippet": {
-                    "text": "    RE_MATCH = re.compile(r\"^Running kernel: (.*)$\")"
-                  }
-                }
-              }
-            }
-          ],
-          "fingerprints": {
-            "matchBasedId/v1": "f3d086d7b2df4b352ab79ac4fe08918088655cfd57d33c04ea108d3cabda3ef8480246f20d2e2b07543133562dc38142fe5736f7ca79e19644081d5a05db88f6_0"
+            "matchBasedId/v1": "2bb2a949e4d14c9fc5e1aa7e73eb5aa3a5da195afff04571b927f1f924afa6497908aff81ac6e0a18eaee0b74465f7d588ef5b02fe33e97c380933a45df0c16f_6"
           },
           "properties": {}
         },
@@ -1216,6 +1154,37 @@
           "properties": {}
         },
         {
+          "ruleId": "5ea1d124-0b6d-314b-9fb0-c7d626975cd5",
+          "kind": "fail",
+          "level": "warning",
+          "message": {
+            "text": "Found dynamic content used in a system call. This is dangerous if external data can reach this function call because it allows a malicious actor to execute commands. Use the 'subprocess' module instead, which is easier to use without accidentally exposing a command injection vulnerability."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/madengine/scripts/common/pre_scripts/rocEnvTool/rocenv_tool.py",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 290,
+                  "startColumn": 9,
+                  "endLine": 290,
+                  "endColumn": 39,
+                  "snippet": {
+                    "text": "        os.system(\"rm -rf \" + out_dir)"
+                  }
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "matchBasedId/v1": "bb979b7abc500b8ed1bc74157e4a8fc3f71e7370989da8b6907c62f2bc8b072e44a6b16a0b45aea50abf2b96a96ccd6d865ac0c47009b8921bd41161c123c9a5_0"
+          },
+          "properties": {}
+        },
+        {
           "ruleId": "226511f9-17c0-3382-a17c-31ea6f7390d1",
           "kind": "fail",
           "level": "warning",
@@ -1243,6 +1212,37 @@
           ],
           "fingerprints": {
             "matchBasedId/v1": "e9f7b10d682a5a12def3b443e616e65ab8af045c65a1f245710880f227afd23ecb9a24b860ac80657f224bebbb4790c65bd65ebf81f12f8d1b9e09d29a042013_1"
+          },
+          "properties": {}
+        },
+        {
+          "ruleId": "9bd14bdd-eb56-3319-924f-49b8cf371221",
+          "kind": "fail",
+          "level": "warning",
+          "message": {
+            "text": "Regex `r\"^Running kernel: (.*)$\"` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/madengine/scripts/common/tools/get_library_trace.py",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 122,
+                  "startColumn": 16,
+                  "endLine": 122,
+                  "endColumn": 53,
+                  "snippet": {
+                    "text": "    RE_MATCH = re.compile(r\"^Running kernel: (.*)$\")"
+                  }
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "matchBasedId/v1": "f3d086d7b2df4b352ab79ac4fe08918088655cfd57d33c04ea108d3cabda3ef8480246f20d2e2b07543133562dc38142fe5736f7ca79e19644081d5a05db88f6_0"
           },
           "properties": {}
         },
@@ -1588,37 +1588,6 @@
           "properties": {}
         },
         {
-          "ruleId": "1daf892d-80a2-322f-b1a5-3d7017c5e19a",
-          "kind": "fail",
-          "level": "warning",
-          "message": {
-            "text": "Detected subprocess function 'Popen' without a static string. If this data can be\ncontrolled by a malicious actor, it may be an instance of command injection.\nAudit the use of this call to ensure it is not controllable by an external resource.\nYou may consider using 'shlex.escape()'.\n"
-          },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "src/madengine/tools/update_table_db.py",
-                  "uriBaseId": "%SRCROOT%"
-                },
-                "region": {
-                  "startLine": 102,
-                  "startColumn": 19,
-                  "endLine": 102,
-                  "endColumn": 93,
-                  "snippet": {
-                    "text": "            ret = subprocess.Popen(cmd_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE)"
-                  }
-                }
-              }
-            }
-          ],
-          "fingerprints": {
-            "matchBasedId/v1": "5d1a4f06b2eeb7a3b635fe081562ac1967dad3b194b1cb198613f843102f88deef087f5192368c0c8d4f4abf7fc5177548fddf0f6a6a8a7973eca096aed87209_0"
-          },
-          "properties": {}
-        },
-        {
           "ruleId": "34556df0-b24c-344b-87de-7351b40cc3b6",
           "kind": "fail",
           "level": "warning",
@@ -1646,6 +1615,37 @@
           ],
           "fingerprints": {
             "matchBasedId/v1": "2ca0763aecddef1c9526e56794c8e6411ffd10c4c02b64fb0d62ded504008f965bbb6e1000f0238dbba0400b803a1f129b55a72e7da0b5bc82f77c512ed3f86c_0"
+          },
+          "properties": {}
+        },
+        {
+          "ruleId": "1daf892d-80a2-322f-b1a5-3d7017c5e19a",
+          "kind": "fail",
+          "level": "warning",
+          "message": {
+            "text": "Detected subprocess function 'Popen' without a static string. If this data can be\ncontrolled by a malicious actor, it may be an instance of command injection.\nAudit the use of this call to ensure it is not controllable by an external resource.\nYou may consider using 'shlex.escape()'.\n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/madengine/tools/update_table_db.py",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 102,
+                  "startColumn": 19,
+                  "endLine": 102,
+                  "endColumn": 93,
+                  "snippet": {
+                    "text": "            ret = subprocess.Popen(cmd_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE)"
+                  }
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "matchBasedId/v1": "5d1a4f06b2eeb7a3b635fe081562ac1967dad3b194b1cb198613f843102f88deef087f5192368c0c8d4f4abf7fc5177548fddf0f6a6a8a7973eca096aed87209_0"
           },
           "properties": {}
         },
