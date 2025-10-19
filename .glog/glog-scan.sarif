@@ -12,6 +12,30 @@
           "informationUri": "https://www.glog.ai",
           "rules": [
             {
+              "id": "02994616-8f63-3ed7-a082-3737fc942c0a",
+              "name": "resources.rules.detected-ssh-password",
+              "shortDescription": {
+                "text": "Opengrep Finding: resources.rules.detected-ssh-password"
+              },
+              "fullDescription": {
+                "text": "SSH Password detected"
+              },
+              "defaultConfiguration": {
+                "enabled": true,
+                "level": "error"
+              },
+              "help": {
+                "text": "SSH Password detected\n💎 Enable cross-file analysis and Pro rules for free at sg.run/pro",
+                "markdown": "SSH Password detected\n\n#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>"
+              },
+              "properties": {
+                "precision": "very-high",
+                "tags": [
+                  "resources.rules.detected-ssh-password"
+                ]
+              }
+            },
+            {
               "id": "ca51a855-3c83-3e66-ba88-37f6bfc433f6",
               "name": "resources.rules.detected-ssh-password",
               "shortDescription": {
@@ -60,30 +84,6 @@
               }
             },
             {
-              "id": "02994616-8f63-3ed7-a082-3737fc942c0a",
-              "name": "resources.rules.detected-ssh-password",
-              "shortDescription": {
-                "text": "Opengrep Finding: resources.rules.detected-ssh-password"
-              },
-              "fullDescription": {
-                "text": "SSH Password detected"
-              },
-              "defaultConfiguration": {
-                "enabled": true,
-                "level": "error"
-              },
-              "help": {
-                "text": "SSH Password detected\n💎 Enable cross-file analysis and Pro rules for free at sg.run/pro",
-                "markdown": "SSH Password detected\n\n#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>"
-              },
-              "properties": {
-                "precision": "very-high",
-                "tags": [
-                  "resources.rules.detected-ssh-password"
-                ]
-              }
-            },
-            {
               "id": "86caaed8-1c62-38d9-ac88-b385d8db7473",
               "name": "resources.rules.dlint-catastrophic-redos",
               "shortDescription": {
@@ -104,6 +104,31 @@
                 "precision": "very-high",
                 "tags": [
                   "resources.rules.dlint-catastrophic-redos"
+                ]
+              }
+            },
+            {
+              "id": "44b1b339-c1ad-3ed9-b3a7-d32a380144b5",
+              "name": "python.lang.security.audit.formatted-sql-query.formatted-sql-query",
+              "shortDescription": {
+                "text": "Opengrep Finding: python.lang.security.audit.formatted-sql-query.formatted-sql-query"
+              },
+              "fullDescription": {
+                "text": "Detected possible formatted SQL query. Use parameterized queries instead."
+              },
+              "defaultConfiguration": {
+                "enabled": true,
+                "level": "warning"
+              },
+              "helpUri": "https://semgrep.dev/r/python.lang.security.audit.formatted-sql-query.formatted-sql-query",
+              "help": {
+                "text": "Detected possible formatted SQL query. Use parameterized queries instead.\n💎 Enable cross-file analysis and Pro rules for free at sg.run/pro",
+                "markdown": "Detected possible formatted SQL query. Use parameterized queries instead.\n\n#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>\n\n<b>References:</b>\n - [Semgrep Rule](https://semgrep.dev/r/python.lang.security.audit.formatted-sql-query.formatted-sql-query)\n - [https://stackoverflow.com/questions/775296/mysql-parameterized-queries](https://stackoverflow.com/questions/775296/mysql-parameterized-queries)\n"
+              },
+              "properties": {
+                "precision": "very-high",
+                "tags": [
+                  "python.lang.security.audit.formatted-sql-query.formatted-sql-query"
                 ]
               }
             },
@@ -159,56 +184,6 @@
             },
             {
               "id": "88b7441d-9585-3026-ab49-905a71cf5dd0",
-              "name": "python.lang.security.audit.formatted-sql-query.formatted-sql-query",
-              "shortDescription": {
-                "text": "Opengrep Finding: python.lang.security.audit.formatted-sql-query.formatted-sql-query"
-              },
-              "fullDescription": {
-                "text": "Detected possible formatted SQL query. Use parameterized queries instead."
-              },
-              "defaultConfiguration": {
-                "enabled": true,
-                "level": "warning"
-              },
-              "helpUri": "https://semgrep.dev/r/python.lang.security.audit.formatted-sql-query.formatted-sql-query",
-              "help": {
-                "text": "Detected possible formatted SQL query. Use parameterized queries instead.\n💎 Enable cross-file analysis and Pro rules for free at sg.run/pro",
-                "markdown": "Detected possible formatted SQL query. Use parameterized queries instead.\n\n#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>\n\n<b>References:</b>\n - [Semgrep Rule](https://semgrep.dev/r/python.lang.security.audit.formatted-sql-query.formatted-sql-query)\n - [https://stackoverflow.com/questions/775296/mysql-parameterized-queries](https://stackoverflow.com/questions/775296/mysql-parameterized-queries)\n"
-              },
-              "properties": {
-                "precision": "very-high",
-                "tags": [
-                  "python.lang.security.audit.formatted-sql-query.formatted-sql-query"
-                ]
-              }
-            },
-            {
-              "id": "44b1b339-c1ad-3ed9-b3a7-d32a380144b5",
-              "name": "python.lang.security.audit.formatted-sql-query.formatted-sql-query",
-              "shortDescription": {
-                "text": "Opengrep Finding: python.lang.security.audit.formatted-sql-query.formatted-sql-query"
-              },
-              "fullDescription": {
-                "text": "Detected possible formatted SQL query. Use parameterized queries instead."
-              },
-              "defaultConfiguration": {
-                "enabled": true,
-                "level": "warning"
-              },
-              "helpUri": "https://semgrep.dev/r/python.lang.security.audit.formatted-sql-query.formatted-sql-query",
-              "help": {
-                "text": "Detected possible formatted SQL query. Use parameterized queries instead.\n💎 Enable cross-file analysis and Pro rules for free at sg.run/pro",
-                "markdown": "Detected possible formatted SQL query. Use parameterized queries instead.\n\n#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>\n\n<b>References:</b>\n - [Semgrep Rule](https://semgrep.dev/r/python.lang.security.audit.formatted-sql-query.formatted-sql-query)\n - [https://stackoverflow.com/questions/775296/mysql-parameterized-queries](https://stackoverflow.com/questions/775296/mysql-parameterized-queries)\n"
-              },
-              "properties": {
-                "precision": "very-high",
-                "tags": [
-                  "python.lang.security.audit.formatted-sql-query.formatted-sql-query"
-                ]
-              }
-            },
-            {
-              "id": "4e21be9e-40c7-3ff8-97c4-56ca3cb4dd80",
               "name": "python.lang.security.audit.formatted-sql-query.formatted-sql-query",
               "shortDescription": {
                 "text": "Opengrep Finding: python.lang.security.audit.formatted-sql-query.formatted-sql-query"
@@ -308,6 +283,31 @@
               }
             },
             {
+              "id": "4e21be9e-40c7-3ff8-97c4-56ca3cb4dd80",
+              "name": "python.lang.security.audit.formatted-sql-query.formatted-sql-query",
+              "shortDescription": {
+                "text": "Opengrep Finding: python.lang.security.audit.formatted-sql-query.formatted-sql-query"
+              },
+              "fullDescription": {
+                "text": "Detected possible formatted SQL query. Use parameterized queries instead."
+              },
+              "defaultConfiguration": {
+                "enabled": true,
+                "level": "warning"
+              },
+              "helpUri": "https://semgrep.dev/r/python.lang.security.audit.formatted-sql-query.formatted-sql-query",
+              "help": {
+                "text": "Detected possible formatted SQL query. Use parameterized queries instead.\n💎 Enable cross-file analysis and Pro rules for free at sg.run/pro",
+                "markdown": "Detected possible formatted SQL query. Use parameterized queries instead.\n\n#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>\n\n<b>References:</b>\n - [Semgrep Rule](https://semgrep.dev/r/python.lang.security.audit.formatted-sql-query.formatted-sql-query)\n - [https://stackoverflow.com/questions/775296/mysql-parameterized-queries](https://stackoverflow.com/questions/775296/mysql-parameterized-queries)\n"
+              },
+              "properties": {
+                "precision": "very-high",
+                "tags": [
+                  "python.lang.security.audit.formatted-sql-query.formatted-sql-query"
+                ]
+              }
+            },
+            {
               "id": "5ea1d124-0b6d-314b-9fb0-c7d626975cd5",
               "name": "resources.rules.dangerous-system-call",
               "shortDescription": {
@@ -328,30 +328,6 @@
                 "precision": "very-high",
                 "tags": [
                   "resources.rules.dangerous-system-call"
-                ]
-              }
-            },
-            {
-              "id": "226511f9-17c0-3382-a17c-31ea6f7390d1",
-              "name": "resources.rules.dlint-catastrophic-redos",
-              "shortDescription": {
-                "text": "Opengrep Finding: resources.rules.dlint-catastrophic-redos"
-              },
-              "fullDescription": {
-                "text": "Regex `$X` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)"
-              },
-              "defaultConfiguration": {
-                "enabled": true,
-                "level": "error"
-              },
-              "help": {
-                "text": "Regex `$X` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)\n💎 Enable cross-file analysis and Pro rules for free at sg.run/pro",
-                "markdown": "Regex `$X` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)\n\n#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>\n\n<b>References:</b>\n - [https://r2c.dev/blog/2020/finding-python-redos-bugs-at-scale-using-dlint-and-r2c/](https://r2c.dev/blog/2020/finding-python-redos-bugs-at-scale-using-dlint-and-r2c/)\n - [https://r2c.dev/blog/2020/improving-redos-detection-with-dlint-and-r2c/](https://r2c.dev/blog/2020/improving-redos-detection-with-dlint-and-r2c/)\n"
-              },
-              "properties": {
-                "precision": "very-high",
-                "tags": [
-                  "resources.rules.dlint-catastrophic-redos"
                 ]
               }
             },
@@ -404,26 +380,26 @@
               }
             },
             {
-              "id": "94d74b31-b2ac-32a4-be8c-99dfab9cdf24",
-              "name": "resources.rules.unquoted-csv-writer",
+              "id": "226511f9-17c0-3382-a17c-31ea6f7390d1",
+              "name": "resources.rules.dlint-catastrophic-redos",
               "shortDescription": {
-                "text": "Opengrep Finding: resources.rules.unquoted-csv-writer"
+                "text": "Opengrep Finding: resources.rules.dlint-catastrophic-redos"
               },
               "fullDescription": {
-                "text": "Found an unquoted CSV writer. This is susceptible to injection. Use 'quoting=csv.QUOTE_ALL'."
+                "text": "Regex `$X` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)"
               },
               "defaultConfiguration": {
                 "enabled": true,
                 "level": "error"
               },
               "help": {
-                "text": "Found an unquoted CSV writer. This is susceptible to injection. Use 'quoting=csv.QUOTE_ALL'.\n💎 Enable cross-file analysis and Pro rules for free at sg.run/pro",
-                "markdown": "Found an unquoted CSV writer. This is susceptible to injection. Use 'quoting=csv.QUOTE_ALL'.\n\n#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>\n\n<b>References:</b>\n - [https://affinity-it-security.com/how-to-prevent-csv-injection/](https://affinity-it-security.com/how-to-prevent-csv-injection/)\n"
+                "text": "Regex `$X` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)\n💎 Enable cross-file analysis and Pro rules for free at sg.run/pro",
+                "markdown": "Regex `$X` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)\n\n#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>\n\n<b>References:</b>\n - [https://r2c.dev/blog/2020/finding-python-redos-bugs-at-scale-using-dlint-and-r2c/](https://r2c.dev/blog/2020/finding-python-redos-bugs-at-scale-using-dlint-and-r2c/)\n - [https://r2c.dev/blog/2020/improving-redos-detection-with-dlint-and-r2c/](https://r2c.dev/blog/2020/improving-redos-detection-with-dlint-and-r2c/)\n"
               },
               "properties": {
                 "precision": "very-high",
                 "tags": [
-                  "resources.rules.unquoted-csv-writer"
+                  "resources.rules.dlint-catastrophic-redos"
                 ]
               }
             },
@@ -500,50 +476,26 @@
               }
             },
             {
-              "id": "b64483c9-242f-3ef5-8dca-489d165d509d",
-              "name": "resources.rules.use-sys-exit",
+              "id": "94d74b31-b2ac-32a4-be8c-99dfab9cdf24",
+              "name": "resources.rules.unquoted-csv-writer",
               "shortDescription": {
-                "text": "Opengrep Finding: resources.rules.use-sys-exit"
+                "text": "Opengrep Finding: resources.rules.unquoted-csv-writer"
               },
               "fullDescription": {
-                "text": "Use `sys.exit` over the python shell `exit` built-in. `exit` is a helper for the interactive shell and may not be available on all Python implementations. https://stackoverflow.com/questions/6501121/difference-between-exit-and-sys-exit-in-python"
+                "text": "Found an unquoted CSV writer. This is susceptible to injection. Use 'quoting=csv.QUOTE_ALL'."
               },
               "defaultConfiguration": {
                 "enabled": true,
-                "level": "warning"
+                "level": "error"
               },
               "help": {
-                "text": "Use `sys.exit` over the python shell `exit` built-in. `exit` is a helper for the interactive shell and may not be available on all Python implementations. https://stackoverflow.com/questions/6501121/difference-between-exit-and-sys-exit-in-python\n💎 Enable cross-file analysis and Pro rules for free at sg.run/pro",
-                "markdown": "Use `sys.exit` over the python shell `exit` built-in. `exit` is a helper for the interactive shell and may not be available on all Python implementations. https://stackoverflow.com/questions/6501121/difference-between-exit-and-sys-exit-in-python\n\n#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>"
+                "text": "Found an unquoted CSV writer. This is susceptible to injection. Use 'quoting=csv.QUOTE_ALL'.\n💎 Enable cross-file analysis and Pro rules for free at sg.run/pro",
+                "markdown": "Found an unquoted CSV writer. This is susceptible to injection. Use 'quoting=csv.QUOTE_ALL'.\n\n#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>\n\n<b>References:</b>\n - [https://affinity-it-security.com/how-to-prevent-csv-injection/](https://affinity-it-security.com/how-to-prevent-csv-injection/)\n"
               },
               "properties": {
                 "precision": "very-high",
                 "tags": [
-                  "resources.rules.use-sys-exit"
-                ]
-              }
-            },
-            {
-              "id": "746b342e-b76d-38a4-9d64-2a8d3479fbbb",
-              "name": "resources.rules.use-sys-exit",
-              "shortDescription": {
-                "text": "Opengrep Finding: resources.rules.use-sys-exit"
-              },
-              "fullDescription": {
-                "text": "Use `sys.exit` over the python shell `exit` built-in. `exit` is a helper for the interactive shell and may not be available on all Python implementations. https://stackoverflow.com/questions/6501121/difference-between-exit-and-sys-exit-in-python"
-              },
-              "defaultConfiguration": {
-                "enabled": true,
-                "level": "warning"
-              },
-              "help": {
-                "text": "Use `sys.exit` over the python shell `exit` built-in. `exit` is a helper for the interactive shell and may not be available on all Python implementations. https://stackoverflow.com/questions/6501121/difference-between-exit-and-sys-exit-in-python\n💎 Enable cross-file analysis and Pro rules for free at sg.run/pro",
-                "markdown": "Use `sys.exit` over the python shell `exit` built-in. `exit` is a helper for the interactive shell and may not be available on all Python implementations. https://stackoverflow.com/questions/6501121/difference-between-exit-and-sys-exit-in-python\n\n#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>"
-              },
-              "properties": {
-                "precision": "very-high",
-                "tags": [
-                  "resources.rules.use-sys-exit"
+                  "resources.rules.unquoted-csv-writer"
                 ]
               }
             },
@@ -572,7 +524,55 @@
               }
             },
             {
+              "id": "b64483c9-242f-3ef5-8dca-489d165d509d",
+              "name": "resources.rules.use-sys-exit",
+              "shortDescription": {
+                "text": "Opengrep Finding: resources.rules.use-sys-exit"
+              },
+              "fullDescription": {
+                "text": "Use `sys.exit` over the python shell `exit` built-in. `exit` is a helper for the interactive shell and may not be available on all Python implementations. https://stackoverflow.com/questions/6501121/difference-between-exit-and-sys-exit-in-python"
+              },
+              "defaultConfiguration": {
+                "enabled": true,
+                "level": "warning"
+              },
+              "help": {
+                "text": "Use `sys.exit` over the python shell `exit` built-in. `exit` is a helper for the interactive shell and may not be available on all Python implementations. https://stackoverflow.com/questions/6501121/difference-between-exit-and-sys-exit-in-python\n💎 Enable cross-file analysis and Pro rules for free at sg.run/pro",
+                "markdown": "Use `sys.exit` over the python shell `exit` built-in. `exit` is a helper for the interactive shell and may not be available on all Python implementations. https://stackoverflow.com/questions/6501121/difference-between-exit-and-sys-exit-in-python\n\n#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>"
+              },
+              "properties": {
+                "precision": "very-high",
+                "tags": [
+                  "resources.rules.use-sys-exit"
+                ]
+              }
+            },
+            {
               "id": "47096f50-f442-3c8b-9c0a-a32efb25d6c0",
+              "name": "resources.rules.use-sys-exit",
+              "shortDescription": {
+                "text": "Opengrep Finding: resources.rules.use-sys-exit"
+              },
+              "fullDescription": {
+                "text": "Use `sys.exit` over the python shell `exit` built-in. `exit` is a helper for the interactive shell and may not be available on all Python implementations. https://stackoverflow.com/questions/6501121/difference-between-exit-and-sys-exit-in-python"
+              },
+              "defaultConfiguration": {
+                "enabled": true,
+                "level": "warning"
+              },
+              "help": {
+                "text": "Use `sys.exit` over the python shell `exit` built-in. `exit` is a helper for the interactive shell and may not be available on all Python implementations. https://stackoverflow.com/questions/6501121/difference-between-exit-and-sys-exit-in-python\n💎 Enable cross-file analysis and Pro rules for free at sg.run/pro",
+                "markdown": "Use `sys.exit` over the python shell `exit` built-in. `exit` is a helper for the interactive shell and may not be available on all Python implementations. https://stackoverflow.com/questions/6501121/difference-between-exit-and-sys-exit-in-python\n\n#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>"
+              },
+              "properties": {
+                "precision": "very-high",
+                "tags": [
+                  "resources.rules.use-sys-exit"
+                ]
+              }
+            },
+            {
+              "id": "746b342e-b76d-38a4-9d64-2a8d3479fbbb",
               "name": "resources.rules.use-sys-exit",
               "shortDescription": {
                 "text": "Opengrep Finding: resources.rules.use-sys-exit"
@@ -644,6 +644,30 @@
               }
             },
             {
+              "id": "1daf892d-80a2-322f-b1a5-3d7017c5e19a",
+              "name": "resources.rules.dangerous-subprocess-use",
+              "shortDescription": {
+                "text": "Opengrep Finding: resources.rules.dangerous-subprocess-use"
+              },
+              "fullDescription": {
+                "text": "Detected subprocess function '$FUNC' without a static string. If this data can be\ncontrolled by a malicious actor, it may be an instance of command injection.\nAudit the use of this call to ensure it is not controllable by an external resource.\nYou may consider using 'shlex.escape()'.\n"
+              },
+              "defaultConfiguration": {
+                "enabled": true,
+                "level": "warning"
+              },
+              "help": {
+                "text": "Detected subprocess function '$FUNC' without a static string. If this data can be\ncontrolled by a malicious actor, it may be an instance of command injection.\nAudit the use of this call to ensure it is not controllable by an external resource.\nYou may consider using 'shlex.escape()'.\n\n💎 Enable cross-file analysis and Pro rules for free at sg.run/pro",
+                "markdown": "Detected subprocess function '$FUNC' without a static string. If this data can be\ncontrolled by a malicious actor, it may be an instance of command injection.\nAudit the use of this call to ensure it is not controllable by an external resource.\nYou may consider using 'shlex.escape()'.\n\n\n#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>\n\n<b>References:</b>\n - [https://stackoverflow.com/questions/3172470/actual-meaning-of-shell-true-in-subprocess](https://stackoverflow.com/questions/3172470/actual-meaning-of-shell-true-in-subprocess)\n - [https://docs.python.org/3/library/subprocess.html](https://docs.python.org/3/library/subprocess.html)\n - [https://docs.python.org/3/library/shlex.html](https://docs.python.org/3/library/shlex.html)\n"
+              },
+              "properties": {
+                "precision": "very-high",
+                "tags": [
+                  "resources.rules.dangerous-subprocess-use"
+                ]
+              }
+            },
+            {
               "id": "9a04cb3a-9131-3c83-bb64-f023a07b8a2c",
               "name": "resources.rules.dlint-catastrophic-redos",
               "shortDescription": {
@@ -692,30 +716,6 @@
               }
             },
             {
-              "id": "1daf892d-80a2-322f-b1a5-3d7017c5e19a",
-              "name": "resources.rules.dangerous-subprocess-use",
-              "shortDescription": {
-                "text": "Opengrep Finding: resources.rules.dangerous-subprocess-use"
-              },
-              "fullDescription": {
-                "text": "Detected subprocess function '$FUNC' without a static string. If this data can be\ncontrolled by a malicious actor, it may be an instance of command injection.\nAudit the use of this call to ensure it is not controllable by an external resource.\nYou may consider using 'shlex.escape()'.\n"
-              },
-              "defaultConfiguration": {
-                "enabled": true,
-                "level": "warning"
-              },
-              "help": {
-                "text": "Detected subprocess function '$FUNC' without a static string. If this data can be\ncontrolled by a malicious actor, it may be an instance of command injection.\nAudit the use of this call to ensure it is not controllable by an external resource.\nYou may consider using 'shlex.escape()'.\n\n💎 Enable cross-file analysis and Pro rules for free at sg.run/pro",
-                "markdown": "Detected subprocess function '$FUNC' without a static string. If this data can be\ncontrolled by a malicious actor, it may be an instance of command injection.\nAudit the use of this call to ensure it is not controllable by an external resource.\nYou may consider using 'shlex.escape()'.\n\n\n#### 💎 Enable cross-file analysis and Pro rules for free at <a href='https://sg.run/pro'>sg.run/pro</a>\n\n<b>References:</b>\n - [https://stackoverflow.com/questions/3172470/actual-meaning-of-shell-true-in-subprocess](https://stackoverflow.com/questions/3172470/actual-meaning-of-shell-true-in-subprocess)\n - [https://docs.python.org/3/library/subprocess.html](https://docs.python.org/3/library/subprocess.html)\n - [https://docs.python.org/3/library/shlex.html](https://docs.python.org/3/library/shlex.html)\n"
-              },
-              "properties": {
-                "precision": "very-high",
-                "tags": [
-                  "resources.rules.dangerous-subprocess-use"
-                ]
-              }
-            },
-            {
               "id": "c54d7fab-7202-30cc-b79f-3c2e15550e9c",
               "name": "resources.rules.dangerous-subprocess-use",
               "shortDescription": {
@@ -750,6 +750,37 @@
       },
       "language": "en-US",
       "results": [
+        {
+          "ruleId": "02994616-8f63-3ed7-a082-3737fc942c0a",
+          "kind": "fail",
+          "level": "warning",
+          "message": {
+            "text": "SSH Password detected"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/madengine/core/dataprovider.py",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 336,
+                  "startColumn": 23,
+                  "endLine": 336,
+                  "endColumn": 105,
+                  "snippet": {
+                    "text": "                echo 'sshpass -p {password} rsync --progress -avz -e \\\\\\\"ssh -p {port} \\\\\\\" \\\\\\\"\\$@\\\\\\\"' >> /tmp/ssh.sh"
+                  }
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "matchBasedId/v1": "b72a2c91fa847d57cb3802f6eb45e7d2bf8e15cad6b800f0e484e4796308245c0d5a2158d7a14ac53237dc4c75575f65d12df7ae420a137f59c99d5ae2f9e0e3_0"
+          },
+          "properties": {}
+        },
         {
           "ruleId": "ca51a855-3c83-3e66-ba88-37f6bfc433f6",
           "kind": "fail",
@@ -813,37 +844,6 @@
           "properties": {}
         },
         {
-          "ruleId": "02994616-8f63-3ed7-a082-3737fc942c0a",
-          "kind": "fail",
-          "level": "warning",
-          "message": {
-            "text": "SSH Password detected"
-          },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "src/madengine/core/dataprovider.py",
-                  "uriBaseId": "%SRCROOT%"
-                },
-                "region": {
-                  "startLine": 336,
-                  "startColumn": 23,
-                  "endLine": 336,
-                  "endColumn": 105,
-                  "snippet": {
-                    "text": "                echo 'sshpass -p {password} rsync --progress -avz -e \\\\\\\"ssh -p {port} \\\\\\\" \\\\\\\"\\$@\\\\\\\"' >> /tmp/ssh.sh"
-                  }
-                }
-              }
-            }
-          ],
-          "fingerprints": {
-            "matchBasedId/v1": "b72a2c91fa847d57cb3802f6eb45e7d2bf8e15cad6b800f0e484e4796308245c0d5a2158d7a14ac53237dc4c75575f65d12df7ae420a137f59c99d5ae2f9e0e3_0"
-          },
-          "properties": {}
-        },
-        {
           "ruleId": "86caaed8-1c62-38d9-ac88-b385d8db7473",
           "kind": "fail",
           "level": "warning",
@@ -871,6 +871,37 @@
           ],
           "fingerprints": {
             "matchBasedId/v1": "9baa648063af0c2e6392d5bd3f30af9e9060f75eba98d322f60c459c267311b4f87071115a113e840450dd5a15277d34f0422d3ee871336ed44888e304154994_0"
+          },
+          "properties": {}
+        },
+        {
+          "ruleId": "44b1b339-c1ad-3ed9-b3a7-d32a380144b5",
+          "kind": "fail",
+          "level": "warning",
+          "message": {
+            "text": "Detected possible formatted SQL query. Use parameterized queries instead."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/madengine/db/database.py",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 129,
+                  "startColumn": 9,
+                  "endLine": 129,
+                  "endColumn": 69,
+                  "snippet": {
+                    "text": "        ENGINE.execute(\"DROP DATABASE IF EXISTS {}\".format(db_name))"
+                  }
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "matchBasedId/v1": "2bb2a949e4d14c9fc5e1aa7e73eb5aa3a5da195afff04571b927f1f924afa6497908aff81ac6e0a18eaee0b74465f7d588ef5b02fe33e97c380933a45df0c16f_3"
           },
           "properties": {}
         },
@@ -968,68 +999,6 @@
           "properties": {}
         },
         {
-          "ruleId": "44b1b339-c1ad-3ed9-b3a7-d32a380144b5",
-          "kind": "fail",
-          "level": "warning",
-          "message": {
-            "text": "Detected possible formatted SQL query. Use parameterized queries instead."
-          },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "src/madengine/db/database.py",
-                  "uriBaseId": "%SRCROOT%"
-                },
-                "region": {
-                  "startLine": 129,
-                  "startColumn": 9,
-                  "endLine": 129,
-                  "endColumn": 69,
-                  "snippet": {
-                    "text": "        ENGINE.execute(\"DROP DATABASE IF EXISTS {}\".format(db_name))"
-                  }
-                }
-              }
-            }
-          ],
-          "fingerprints": {
-            "matchBasedId/v1": "2bb2a949e4d14c9fc5e1aa7e73eb5aa3a5da195afff04571b927f1f924afa6497908aff81ac6e0a18eaee0b74465f7d588ef5b02fe33e97c380933a45df0c16f_3"
-          },
-          "properties": {}
-        },
-        {
-          "ruleId": "4e21be9e-40c7-3ff8-97c4-56ca3cb4dd80",
-          "kind": "fail",
-          "level": "warning",
-          "message": {
-            "text": "Detected possible formatted SQL query. Use parameterized queries instead."
-          },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "src/madengine/db/database.py",
-                  "uriBaseId": "%SRCROOT%"
-                },
-                "region": {
-                  "startLine": 146,
-                  "startColumn": 18,
-                  "endLine": 150,
-                  "endColumn": 10,
-                  "snippet": {
-                    "text": "        result = ENGINE.execute(\n            \"SELECT * FROM {} \\\n                WHERE {}.created_date= \\\n                    (SELECT MAX(created_date) FROM {}) ;\".format(DB_TABLE.__tablename__)\n        )"
-                  }
-                }
-              }
-            }
-          ],
-          "fingerprints": {
-            "matchBasedId/v1": "2bb2a949e4d14c9fc5e1aa7e73eb5aa3a5da195afff04571b927f1f924afa6497908aff81ac6e0a18eaee0b74465f7d588ef5b02fe33e97c380933a45df0c16f_4"
-          },
-          "properties": {}
-        },
-        {
           "ruleId": "64bb4d88-3207-342a-97c5-fe55118d8692",
           "kind": "fail",
           "level": "warning",
@@ -1123,6 +1092,37 @@
           "properties": {}
         },
         {
+          "ruleId": "4e21be9e-40c7-3ff8-97c4-56ca3cb4dd80",
+          "kind": "fail",
+          "level": "warning",
+          "message": {
+            "text": "Detected possible formatted SQL query. Use parameterized queries instead."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/madengine/db/database.py",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 146,
+                  "startColumn": 18,
+                  "endLine": 150,
+                  "endColumn": 10,
+                  "snippet": {
+                    "text": "        result = ENGINE.execute(\n            \"SELECT * FROM {} \\\n                WHERE {}.created_date= \\\n                    (SELECT MAX(created_date) FROM {}) ;\".format(DB_TABLE.__tablename__)\n        )"
+                  }
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "matchBasedId/v1": "2bb2a949e4d14c9fc5e1aa7e73eb5aa3a5da195afff04571b927f1f924afa6497908aff81ac6e0a18eaee0b74465f7d588ef5b02fe33e97c380933a45df0c16f_4"
+          },
+          "properties": {}
+        },
+        {
           "ruleId": "5ea1d124-0b6d-314b-9fb0-c7d626975cd5",
           "kind": "fail",
           "level": "warning",
@@ -1150,37 +1150,6 @@
           ],
           "fingerprints": {
             "matchBasedId/v1": "bb979b7abc500b8ed1bc74157e4a8fc3f71e7370989da8b6907c62f2bc8b072e44a6b16a0b45aea50abf2b96a96ccd6d865ac0c47009b8921bd41161c123c9a5_0"
-          },
-          "properties": {}
-        },
-        {
-          "ruleId": "226511f9-17c0-3382-a17c-31ea6f7390d1",
-          "kind": "fail",
-          "level": "warning",
-          "message": {
-            "text": "Regex `p` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)"
-          },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "src/madengine/scripts/common/tools/get_library_trace.py",
-                  "uriBaseId": "%SRCROOT%"
-                },
-                "region": {
-                  "startLine": 89,
-                  "startColumn": 19,
-                  "endLine": 89,
-                  "endColumn": 32,
-                  "snippet": {
-                    "text": "    regexes = {p: re.compile(p) for p in patterns}"
-                  }
-                }
-              }
-            }
-          ],
-          "fingerprints": {
-            "matchBasedId/v1": "e9f7b10d682a5a12def3b443e616e65ab8af045c65a1f245710880f227afd23ecb9a24b860ac80657f224bebbb4790c65bd65ebf81f12f8d1b9e09d29a042013_1"
           },
           "properties": {}
         },
@@ -1247,11 +1216,11 @@
           "properties": {}
         },
         {
-          "ruleId": "94d74b31-b2ac-32a4-be8c-99dfab9cdf24",
+          "ruleId": "226511f9-17c0-3382-a17c-31ea6f7390d1",
           "kind": "fail",
           "level": "warning",
           "message": {
-            "text": "Found an unquoted CSV writer. This is susceptible to injection. Use 'quoting=csv.QUOTE_ALL'."
+            "text": "Regex `p` may be vulnerable to catastrophic backtracking, which may lead to denial of service attacks. (This rule only matches regex usage, not actual REDoS patterns. For full detection, use Semgrep Pro Engine.)"
           },
           "locations": [
             {
@@ -1261,19 +1230,19 @@
                   "uriBaseId": "%SRCROOT%"
                 },
                 "region": {
-                  "startLine": 324,
-                  "startColumn": 21,
-                  "endLine": 324,
-                  "endColumn": 40,
+                  "startLine": 89,
+                  "startColumn": 19,
+                  "endLine": 89,
+                  "endColumn": 32,
                   "snippet": {
-                    "text": "        csvwriter = csv.writer(csvfile)"
+                    "text": "    regexes = {p: re.compile(p) for p in patterns}"
                   }
                 }
               }
             }
           ],
           "fingerprints": {
-            "matchBasedId/v1": "c35a060a6d23fd2e2aa8e137bebc9703ebb2181eaeae7703e175443870b24b9ada321fa2abfe43cc4e4eb8af6bc18e0cecf9399f5b4d589c32e4c1ebc3b942fd_0"
+            "matchBasedId/v1": "e9f7b10d682a5a12def3b443e616e65ab8af045c65a1f245710880f227afd23ecb9a24b860ac80657f224bebbb4790c65bd65ebf81f12f8d1b9e09d29a042013_1"
           },
           "properties": {}
         },
@@ -1371,64 +1340,33 @@
           "properties": {}
         },
         {
-          "ruleId": "b64483c9-242f-3ef5-8dca-489d165d509d",
+          "ruleId": "94d74b31-b2ac-32a4-be8c-99dfab9cdf24",
           "kind": "fail",
           "level": "warning",
           "message": {
-            "text": "Use `sys.exit` over the python shell `exit` built-in. `exit` is a helper for the interactive shell and may not be available on all Python implementations. https://stackoverflow.com/questions/6501121/difference-between-exit-and-sys-exit-in-python"
+            "text": "Found an unquoted CSV writer. This is susceptible to injection. Use 'quoting=csv.QUOTE_ALL'."
           },
           "locations": [
             {
               "physicalLocation": {
                 "artifactLocation": {
-                  "uri": "src/madengine/scripts/common/tools/rocm_smi_utils.py",
+                  "uri": "src/madengine/scripts/common/tools/get_library_trace.py",
                   "uriBaseId": "%SRCROOT%"
                 },
                 "region": {
-                  "startLine": 29,
+                  "startLine": 324,
                   "startColumn": 21,
-                  "endLine": 29,
-                  "endColumn": 35,
+                  "endLine": 324,
+                  "endColumn": 40,
                   "snippet": {
-                    "text": "                    exit(ret_init)"
+                    "text": "        csvwriter = csv.writer(csvfile)"
                   }
                 }
               }
             }
           ],
           "fingerprints": {
-            "matchBasedId/v1": "753b380cb4c5a6276dba628b6f67edf272aaee5cd31e15c7690d2ec25b4369ceaa87d09f1c961e68b8fffe08c95da30f3a870fda57f0f1a6f16c04f56cbe86c0_0"
-          },
-          "properties": {}
-        },
-        {
-          "ruleId": "746b342e-b76d-38a4-9d64-2a8d3479fbbb",
-          "kind": "fail",
-          "level": "warning",
-          "message": {
-            "text": "Use `sys.exit` over the python shell `exit` built-in. `exit` is a helper for the interactive shell and may not be available on all Python implementations. https://stackoverflow.com/questions/6501121/difference-between-exit-and-sys-exit-in-python"
-          },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "src/madengine/scripts/common/tools/rocm_smi_utils.py",
-                  "uriBaseId": "%SRCROOT%"
-                },
-                "region": {
-                  "startLine": 32,
-                  "startColumn": 17,
-                  "endLine": 32,
-                  "endColumn": 24,
-                  "snippet": {
-                    "text": "                exit(0)"
-                  }
-                }
-              }
-            }
-          ],
-          "fingerprints": {
-            "matchBasedId/v1": "753b380cb4c5a6276dba628b6f67edf272aaee5cd31e15c7690d2ec25b4369ceaa87d09f1c961e68b8fffe08c95da30f3a870fda57f0f1a6f16c04f56cbe86c0_1"
+            "matchBasedId/v1": "c35a060a6d23fd2e2aa8e137bebc9703ebb2181eaeae7703e175443870b24b9ada321fa2abfe43cc4e4eb8af6bc18e0cecf9399f5b4d589c32e4c1ebc3b942fd_0"
           },
           "properties": {}
         },
@@ -1464,6 +1402,37 @@
           "properties": {}
         },
         {
+          "ruleId": "b64483c9-242f-3ef5-8dca-489d165d509d",
+          "kind": "fail",
+          "level": "warning",
+          "message": {
+            "text": "Use `sys.exit` over the python shell `exit` built-in. `exit` is a helper for the interactive shell and may not be available on all Python implementations. https://stackoverflow.com/questions/6501121/difference-between-exit-and-sys-exit-in-python"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/madengine/scripts/common/tools/rocm_smi_utils.py",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 29,
+                  "startColumn": 21,
+                  "endLine": 29,
+                  "endColumn": 35,
+                  "snippet": {
+                    "text": "                    exit(ret_init)"
+                  }
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "matchBasedId/v1": "753b380cb4c5a6276dba628b6f67edf272aaee5cd31e15c7690d2ec25b4369ceaa87d09f1c961e68b8fffe08c95da30f3a870fda57f0f1a6f16c04f56cbe86c0_0"
+          },
+          "properties": {}
+        },
+        {
           "ruleId": "47096f50-f442-3c8b-9c0a-a32efb25d6c0",
           "kind": "fail",
           "level": "warning",
@@ -1491,6 +1460,37 @@
           ],
           "fingerprints": {
             "matchBasedId/v1": "753b380cb4c5a6276dba628b6f67edf272aaee5cd31e15c7690d2ec25b4369ceaa87d09f1c961e68b8fffe08c95da30f3a870fda57f0f1a6f16c04f56cbe86c0_2"
+          },
+          "properties": {}
+        },
+        {
+          "ruleId": "746b342e-b76d-38a4-9d64-2a8d3479fbbb",
+          "kind": "fail",
+          "level": "warning",
+          "message": {
+            "text": "Use `sys.exit` over the python shell `exit` built-in. `exit` is a helper for the interactive shell and may not be available on all Python implementations. https://stackoverflow.com/questions/6501121/difference-between-exit-and-sys-exit-in-python"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/madengine/scripts/common/tools/rocm_smi_utils.py",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 32,
+                  "startColumn": 17,
+                  "endLine": 32,
+                  "endColumn": 24,
+                  "snippet": {
+                    "text": "                exit(0)"
+                  }
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "matchBasedId/v1": "753b380cb4c5a6276dba628b6f67edf272aaee5cd31e15c7690d2ec25b4369ceaa87d09f1c961e68b8fffe08c95da30f3a870fda57f0f1a6f16c04f56cbe86c0_1"
           },
           "properties": {}
         },
@@ -1557,6 +1557,37 @@
           "properties": {}
         },
         {
+          "ruleId": "1daf892d-80a2-322f-b1a5-3d7017c5e19a",
+          "kind": "fail",
+          "level": "warning",
+          "message": {
+            "text": "Detected subprocess function 'Popen' without a static string. If this data can be\ncontrolled by a malicious actor, it may be an instance of command injection.\nAudit the use of this call to ensure it is not controllable by an external resource.\nYou may consider using 'shlex.escape()'.\n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/madengine/tools/update_table_db.py",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 102,
+                  "startColumn": 19,
+                  "endLine": 102,
+                  "endColumn": 93,
+                  "snippet": {
+                    "text": "            ret = subprocess.Popen(cmd_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE)"
+                  }
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "matchBasedId/v1": "5d1a4f06b2eeb7a3b635fe081562ac1967dad3b194b1cb198613f843102f88deef087f5192368c0c8d4f4abf7fc5177548fddf0f6a6a8a7973eca096aed87209_0"
+          },
+          "properties": {}
+        },
+        {
           "ruleId": "9a04cb3a-9131-3c83-bb64-f023a07b8a2c",
           "kind": "fail",
           "level": "warning",
@@ -1615,37 +1646,6 @@
           ],
           "fingerprints": {
             "matchBasedId/v1": "2ca0763aecddef1c9526e56794c8e6411ffd10c4c02b64fb0d62ded504008f965bbb6e1000f0238dbba0400b803a1f129b55a72e7da0b5bc82f77c512ed3f86c_0"
-          },
-          "properties": {}
-        },
-        {
-          "ruleId": "1daf892d-80a2-322f-b1a5-3d7017c5e19a",
-          "kind": "fail",
-          "level": "warning",
-          "message": {
-            "text": "Detected subprocess function 'Popen' without a static string. If this data can be\ncontrolled by a malicious actor, it may be an instance of command injection.\nAudit the use of this call to ensure it is not controllable by an external resource.\nYou may consider using 'shlex.escape()'.\n"
-          },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "src/madengine/tools/update_table_db.py",
-                  "uriBaseId": "%SRCROOT%"
-                },
-                "region": {
-                  "startLine": 102,
-                  "startColumn": 19,
-                  "endLine": 102,
-                  "endColumn": 93,
-                  "snippet": {
-                    "text": "            ret = subprocess.Popen(cmd_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE)"
-                  }
-                }
-              }
-            }
-          ],
-          "fingerprints": {
-            "matchBasedId/v1": "5d1a4f06b2eeb7a3b635fe081562ac1967dad3b194b1cb198613f843102f88deef087f5192368c0c8d4f4abf7fc5177548fddf0f6a6a8a7973eca096aed87209_0"
           },
           "properties": {}
         },
